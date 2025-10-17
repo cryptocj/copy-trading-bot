@@ -1,0 +1,26 @@
+{
+  "name": "@signal-tracker/bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "lint": "eslint . --ext .ts"
+  },
+  "dependencies": {
+    "grammy": "^1.27.0",
+    "@grammyjs/types": "^3.12.0",
+    "ccxt": "^4.3.0",
+    "dotenv": "^16.4.0",
+    "zod": "^3.23.0",
+    "@signal-tracker/types": "workspace:*",
+    "@signal-tracker/database": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0"
+  }
+}

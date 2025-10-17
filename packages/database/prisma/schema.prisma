@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Signal Groups (Telegram channels)
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  telegramId String  @unique
+  description String?
+  status    GroupStatus @default(TESTING)
+
+  // Statistics
+  totalSignals    Int @default(0)
+  winningSignals  Int @default(0)
+  losingSignals   Int @default(0)
+  totalPnl        Float @default(0)
+
+  // Metadata
+  subscriberCount Int?
+  isVerified      Boolean @default(false)
+  isPremium       Boolean @default(false)
+
+  // Relations
+  signals Signal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([telegramId])
+  @@index([status])
+}
+
+enum GroupStatus {
+  ACTIVE
+  INACTIVE
+  TESTING
+}
+
+// Trading Signals
+model Signal {
+  id        String   @id @default(cuid())
+  groupId   String
+  messageId Int
+  timestamp DateTime @default(now())
+
+  // Signal details
+  symbol    String // e.g., "BTC/USDT"
+  direction SignalDirection
+  leverage  Int?
+
+  // Price levels
+  entryPrice    Float?
+  entryPriceMin Float?
+  entryPriceMax Float?
+
+  stopLoss     Float?
+  takeProfits  Float[] // Array of take profit levels
+
+  // Status
+  status SignalStatus @default(PENDING)
+
+  // Raw data
+  rawMessage String @db.Text
+
+  // Performance tracking
+  currentPrice  Float?
+  pnl           Float? // Profit/Loss percentage
+  pnlAbsolute   Float? // Absolute P&L value
+  closedAt      DateTime?
+
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  priceUpdates PriceUpdate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
+  @@index([symbol])
+  @@index([status])
+  @@index([timestamp])
+}
+
+enum SignalDirection {
+  LONG
+  SHORT
+}
+
+enum SignalStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+// Price Updates (for tracking signal performance over time)
+model PriceUpdate {
+  id        String   @id @default(cuid())
+  signalId  String
+  price     Float
+  timestamp DateTime @default(now())
+
+  // Relations
+  signal Signal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+
+  @@index([signalId])
+  @@index([timestamp])
+}
