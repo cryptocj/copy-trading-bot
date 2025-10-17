@@ -1,5 +1,6 @@
 import { Bot } from 'grammy';
 import { validateConfig } from './config.js';
+import { detectSignal } from './handlers/messages.js';
 
 async function main() {
   try {
@@ -32,18 +33,34 @@ async function main() {
 
     // Listen to all messages (for signal parsing)
     bot.on('message:text', async (ctx) => {
+      const messageText = ctx.message.text;
+
+      // Detect if message contains a signal
+      const detection = detectSignal(messageText);
+
+      // Base log structure
       const log = {
         timestamp: new Date().toISOString(),
         chatId: ctx.chat.id,
         chatTitle: ctx.chat.title || 'Private',
         messageId: ctx.message.message_id,
         from: ctx.from?.username,
-        text: ctx.message.text
+        text: messageText
       };
 
-      console.log('MESSAGE:', JSON.stringify(log));
+      if (detection.isSignal) {
+        // Signal detected - use special log format
+        console.log('SIGNAL DETECTED:', JSON.stringify({
+          ...log,
+          confidence: detection.confidence,
+          matchedPatterns: detection.matchedPatterns
+        }));
+      } else {
+        // Regular message - standard log format
+        console.log('MESSAGE:', JSON.stringify(log));
+      }
 
-      // TODO: Parse and process signals
+      // TODO: Parse and store signals (US3)
     });
 
     // Start bot

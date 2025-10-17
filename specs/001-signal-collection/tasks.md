@@ -94,13 +94,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Create signal detection function in apps/bot/src/handlers/messages.ts (check for LONG/SHORT keywords)
-- [ ] T016 [US2] Add symbol pattern detection to signal detection function (match BTC/USDT format)
-- [ ] T017 [US2] Add price level keywords detection (Entry, TP, SL) to signal detection function
-- [ ] T018 [US2] Update message handler to call detection function and log signal vs non-signal classification
-- [ ] T019 [US2] Add separate console log format for detected signals with "SIGNAL DETECTED:" prefix
+- [x] T015 [US2] Create signal detection function in apps/bot/src/handlers/messages.ts (check for LONG/SHORT keywords)
+- [x] T016 [US2] Add symbol pattern detection to signal detection function (match BTC/USDT format)
+- [x] T017 [US2] Add price level keywords detection (Entry, TP, SL) to signal detection function
+- [x] T018 [US2] Update message handler to call detection function and log signal vs non-signal classification
+- [x] T019 [US2] Add separate console log format for detected signals with "SIGNAL DETECTED:" prefix
 
-**Checkpoint**: US2 complete - bot distinguishes signals from regular messages
+**Checkpoint**: US2 complete - bot distinguishes signals from regular messages ✅
 
 **Manual Testing Checklist**:
 
