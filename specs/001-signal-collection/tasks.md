@@ -8,11 +8,13 @@
 **Organization**: Tasks organized by user story for independent implementation and testing
 
 ## Format: `[ID] [P?] [Story?] Description`
+
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (US1, US2, US3)
 - Include exact file paths in descriptions
 
 ## Path Conventions
+
 - **Monorepo structure**: `apps/bot/src/` for bot code
 - All new code in `apps/bot/src/handlers/` directory
 - Existing code: `apps/bot/src/main.ts` and `apps/bot/src/config.ts`
@@ -23,11 +25,11 @@
 
 **Purpose**: Environment setup and bot token registration (manual external steps)
 
-- [ ] T001 Register bot via @BotFather in Telegram (manual: send /newbot, get token)
-- [ ] T002 Update .env.example with TELEGRAM_BOT_TOKEN placeholder documentation
-- [ ] T003 Copy .env.example to .env and add actual bot token from T001
+- [x] T001 Register bot via @BotFather in Telegram (manual: send /newbot, get token)
+- [x] T002 Update .env.example with TELEGRAM_BOT_TOKEN placeholder documentation
+- [x] T003 Copy .env.example to .env and add actual bot token from T001
 
-**Checkpoint**: Environment configured with bot token
+**Checkpoint**: Environment configured with bot token ✅
 
 ---
 
@@ -37,12 +39,18 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create handlers directory structure in apps/bot/src/handlers/
-- [ ] T005 Implement config validation function in apps/bot/src/config.ts (validate TELEGRAM_BOT_TOKEN format and presence)
-- [ ] T006 Update apps/bot/src/main.ts to call config validation before bot initialization
-- [ ] T007 Add global error handler using bot.catch() in apps/bot/src/main.ts
+- [x] T004 Create handlers directory structure in apps/bot/src/handlers/
+- [x] T005 Implement config validation function in apps/bot/src/config.ts (validate TELEGRAM_BOT_TOKEN format and presence)
+- [x] T006 Update apps/bot/src/main.ts to call config validation before bot initialization
+- [x] T007 Add global error handler using bot.catch() in apps/bot/src/main.ts
 
-**Checkpoint**: Foundation ready - bot starts with validated config and error handling
+**Checkpoint**: Foundation ready - bot starts with validated config and error handling ✅
+
+**Additional Completed**:
+
+- [x] Docker Compose setup for PostgreSQL (port 5434)
+- [x] Database schema pushed and seeded with 3 test groups
+- [x] Real Chat IDs updated in database (-4970174008, -4929651494, -4891936452)
 
 ---
 
@@ -54,22 +62,25 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [P] [US1] Implement /start command handler in apps/bot/src/handlers/commands.ts
-- [ ] T009 [P] [US1] Implement /status command handler in apps/bot/src/handlers/commands.ts
-- [ ] T010 [US1] Implement message logging handler in apps/bot/src/handlers/messages.ts (structured JSON console logging)
-- [ ] T011 [US1] Register command handlers in apps/bot/src/main.ts (import and use bot.command())
-- [ ] T012 [US1] Register message handler in apps/bot/src/main.ts (use bot.on('message:text'))
+- [x] T008 [P] [US1] Implement /start command handler ~~in apps/bot/src/handlers/commands.ts~~ (implemented inline in main.ts)
+- [x] T009 [P] [US1] Implement /status command handler ~~in apps/bot/src/handlers/commands.ts~~ (implemented inline in main.ts)
+- [x] T010 [US1] Implement message logging handler ~~in apps/bot/src/handlers/messages.ts~~ (implemented inline in main.ts with structured JSON console logging)
+- [x] T011 [US1] Register command handlers in apps/bot/src/main.ts (using bot.command())
+- [x] T012 [US1] Register message handler in apps/bot/src/main.ts (using bot.on('message:text'))
 - [ ] T013 [US1] Add database query to check if message from monitored group in apps/bot/src/handlers/messages.ts
 - [ ] T014 [US1] Update console log format to include group name from database in apps/bot/src/handlers/messages.ts
 
-**Checkpoint**: US1 complete - bot online, responds to commands, logs messages from groups
+**Checkpoint**: US1 partially complete - bot online, responds to commands, logs all messages ⚠️
+
+**Note**: Commands implemented inline in main.ts instead of separate handler files. Works functionally but doesn't follow the modular structure in tasks. T013-T014 can be added if needed for database-aware logging.
 
 **Manual Testing Checklist**:
-- [ ] AS-1: Create bot via @BotFather → receive token ✅
-- [ ] AS-2: Start bot with token → responds to /start and /status ✅
-- [ ] AS-3: Add bot to test group 1 → bot logs messages ✅
-- [ ] AS-4: Add bot to test group 2 → bot logs messages ✅
-- [ ] AS-5: Add bot to test group 3 → bot logs messages ✅
+
+- [x] AS-1: Create bot via @BotFather → receive token ✅
+- [x] AS-2: Start bot with token → responds to /start and /status ✅
+- [x] AS-3: Add bot to test group 1 → bot logs messages ✅
+- [x] AS-4: Add bot to test group 2 → bot logs messages ✅
+- [x] AS-5: Add bot to test group 3 → bot logs messages ✅
 
 **Post-Testing**: Update seeded group telegramIds in database via Prisma Studio with actual chat IDs from /status command
 
@@ -92,6 +103,7 @@
 **Checkpoint**: US2 complete - bot distinguishes signals from regular messages
 
 **Manual Testing Checklist**:
+
 - [ ] AS-1: Post "LONG BTC/USDT" → flagged as signal ✅
 - [ ] AS-2: Post "hello everyone" → logged but not flagged ✅
 - [ ] AS-3: Post "Entry: 50000 TP: 52000 SL: 48000" → flagged as signal ✅
@@ -124,6 +136,7 @@
 **Checkpoint**: US3 complete - signals parsed and stored in database with all extracted fields
 
 **Manual Testing Checklist**:
+
 - [ ] AS-1: Post "LONG BTC/USDT" → Signal record with symbol and direction ✅
 - [ ] AS-2: Post "Entry: 50000-51000" → Signal record with entryPriceMin/Max ✅
 - [ ] AS-3: Post "TP: 52000, 54000, 56000" → Signal record with takeProfits array ✅
@@ -224,17 +237,20 @@ Task T034: "Code formatting"
 6. 🎉 **MVP Delivered**: Monitoring infrastructure established
 
 **Time Estimate for US1**: 2-4 hours
+
 - Setup: 30 min
 - Foundational: 1 hour
 - US1 Implementation: 1-2 hours
 - Manual Testing: 30 min
 
 **Then Add US2** (signal detection):
+
 - Continue with Phase 4 (T015-T019)
 - Test independently: 30 min
 - **Incremental delivery**: Bot now identifies signals
 
 **Then Add US3** (signal storage):
+
 - Continue with Phase 5 (T020-T032)
 - Test independently with database verification
 - **Incremental delivery**: Complete signal tracking system
@@ -251,6 +267,7 @@ If implementing all at once:
 6. Complete Phase 6: Polish → Final validation
 
 **Time Estimate for Full**: 6-8 hours
+
 - Includes all 3 user stories
 - Includes manual testing for each story
 - Includes final polish and validation

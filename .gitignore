@@ -43,3 +43,6 @@ pnpm-debug.log*
 *.db
 *.db-journal
 prisma/migrations
+
+# TypeScript
+*.tsbuildinfo
