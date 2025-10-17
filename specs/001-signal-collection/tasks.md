@@ -104,10 +104,10 @@
 
 **Manual Testing Checklist**:
 
-- [ ] AS-1: Post "LONG BTC/USDT" → flagged as signal ✅
-- [ ] AS-2: Post "hello everyone" → logged but not flagged ✅
-- [ ] AS-3: Post "Entry: 50000 TP: 52000 SL: 48000" → flagged as signal ✅
-- [ ] AS-4: Verify group association → signal logs include group name ✅
+- [x] AS-1: Post "LONG BTC/USDT" → flagged as signal ✅
+- [x] AS-2: Post "hello everyone" → logged but not flagged ✅
+- [x] AS-3: Post "Entry: 50000 TP: 52000 SL: 48000" → flagged as signal ✅
+- [x] AS-4: Verify group association → signal logs include group name ✅
 
 ---
 

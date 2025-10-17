@@ -18,7 +18,9 @@ async function main() {
 
     // Register handlers
     bot.command('start', (ctx) => {
-      return ctx.reply('Welcome to Signal Tracker Bot! 🚀\n\nI will monitor crypto trading signals.');
+      return ctx.reply(
+        'Welcome to Signal Tracker Bot! 🚀\n\nI will monitor crypto trading signals.'
+      );
     });
 
     bot.command('status', (ctx) => {
@@ -26,7 +28,7 @@ async function main() {
         'Bot Status: Online ✅',
         `Chat ID: ${ctx.chat.id}`,
         `Chat Type: ${ctx.chat.type}`,
-        `Chat Title: ${ctx.chat.title || 'N/A'}`
+        `Chat Title: ${ctx.chat.title || 'N/A'}`,
       ].join('\n');
       return ctx.reply(response);
     });
@@ -45,16 +47,19 @@ async function main() {
         chatTitle: ctx.chat.title || 'Private',
         messageId: ctx.message.message_id,
         from: ctx.from?.username,
-        text: messageText
+        text: messageText,
       };
 
       if (detection.isSignal) {
         // Signal detected - use special log format
-        console.log('SIGNAL DETECTED:', JSON.stringify({
-          ...log,
-          confidence: detection.confidence,
-          matchedPatterns: detection.matchedPatterns
-        }));
+        console.log(
+          'SIGNAL DETECTED:',
+          JSON.stringify({
+            ...log,
+            confidence: detection.confidence,
+            matchedPatterns: detection.matchedPatterns,
+          })
+        );
       } else {
         // Regular message - standard log format
         console.log('MESSAGE:', JSON.stringify(log));
