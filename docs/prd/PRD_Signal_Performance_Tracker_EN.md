@@ -1,6 +1,7 @@
 # PRD: Crypto Trading Signal Group Performance Tracker
 
 ## Document Information
+
 - **Product Name**: Signal Performance Tracker
 - **Version**: v1.0 MVP
 - **Created Date**: 2024-10-17
@@ -10,6 +11,7 @@
 ---
 
 ## 📋 Table of Contents
+
 1. [Product Overview](#product-overview)
 2. [Problem & Opportunity](#problem--opportunity)
 3. [Product Goals](#product-goals)
@@ -25,14 +27,17 @@
 ## Product Overview
 
 ### 1.1 Product Positioning
+
 A third-party, neutral crypto trading signal group performance verification platform that provides transparent, verifiable performance data by automatically tracking and backtesting recommendations from paid Telegram signal groups.
 
 ### 1.2 Core Value Proposition
+
 - **For Traders**: Understand real performance of signal groups before paying for subscriptions, avoid false advertising
 - **For Signal Providers**: Build credibility through third-party verification, attract more quality subscribers
 - **For Moonlander**: Acquire traffic through content marketing, establish "transparent data aggregator" brand image
 
 ### 1.3 Product Type
+
 - **Phase 1**: Content product + data platform (weekly report format)
 - **Phase 2**: Interactive web platform
 - **Phase 3**: Integration with Moonlander copy trading features
@@ -44,12 +49,14 @@ A third-party, neutral crypto trading signal group performance verification plat
 ### 2.1 Market Pain Points
 
 **User Pain Points**:
+
 1. Proliferation of paid TG signal groups with inconsistent quality
 2. Groups often only showcase successful cases, hiding failed trades
 3. Lack of third-party verification, users misled by false advertising
 4. Manual signal execution is time-consuming and easy to miss
 
 **Signal Provider Pain Points**:
+
 1. Quality groups struggle to stand out from low-quality groups
 2. Lack of credible performance proof mechanisms
 3. High user trust acquisition costs
@@ -57,16 +64,19 @@ A third-party, neutral crypto trading signal group performance verification plat
 ### 2.2 Market Opportunity
 
 **Market Size**:
+
 - Estimated hundreds of crypto trading signal TG groups
 - Each group subscription fee: $50-500/month
 - Total subscriber count estimated at tens of thousands
 
 **Competitive Landscape**:
+
 - Currently no mainstream third-party signal group verification platform
 - Existing solutions mostly self-verified by groups, lacking credibility
 - Platforms like Bitget have internal copy trading, but not cross-platform
 
 **Technical Feasibility**:
+
 - TG API is mature, low technical barrier for signal collection
 - Backtest engine logic is clear, can be implemented quickly
 - No need for user registration or fund custody, reducing compliance risk
@@ -76,21 +86,25 @@ A third-party, neutral crypto trading signal group performance verification plat
 ## Product Goals
 
 ### 3.1 North Star Metric
+
 **Phase 1 (3 months)**: Monthly report X platform views reach 50,000+
 
 ### 3.2 Key Results (OKRs)
 
 **O1: Establish market-leading signal group verification platform position**
+
 - KR1: Track at least 15 mainstream signal groups
 - KR2: Publish weekly performance reports, X platform engagement rate >3%
 - KR3: Receive at least 3 proactive cooperation requests from KOLs/groups
 
 **O2: Drive traffic to Moonlander and build brand**
+
 - KR1: Bring 500+ Moonlander page visits through report links
 - KR2: Achieve 5% conversion rate (visit → registration)
 - KR3: Increase brand keyword search volume by 200%
 
 **O3: Accumulate data assets, lay foundation for Phase 2**
+
 - KR1: Collect at least 1000 signal data points
 - KR2: Establish signal parsing accuracy >90%
 - KR3: Backtest engine error <2%
@@ -102,18 +116,21 @@ A third-party, neutral crypto trading signal group performance verification plat
 ### 4.1 Primary User Groups
 
 **User Type 1: Cautious Trader**
+
 - **Characteristics**: Some trading experience, seeking reliable signal sources
 - **Pain Point**: Deceived by false advertising before, needs third-party verification
 - **Needs**: Transparent historical performance data, risk indicators
 - **Value**: Save trial-and-error costs, find quality signal sources
 
 **User Type 2: Signal Group Operator**
+
 - **Characteristics**: Operates paid TG group, needs to build credibility
 - **Pain Point**: Difficult to prove actual track record
 - **Needs**: Third-party performance certification, increased exposure
 - **Value**: Gain more subscribers, increase group value
 
 **User Type 3: Content Consumer**
+
 - **Characteristics**: Follows crypto market, enjoys reading industry analysis
 - **Pain Point**: Information overload, needs to filter valuable content
 - **Needs**: Interesting, data-backed industry insights
@@ -122,16 +139,19 @@ A third-party, neutral crypto trading signal group performance verification plat
 ### 4.2 User Journey
 
 **Discovery Stage**:
+
 1. See performance report on X/Twitter
 2. Click to view detailed data
 3. Follow account to get updates
 
 **Evaluation Stage**:
+
 1. Compare multiple signal group performances
 2. Review historical reports to verify consistency
 3. Decide whether to subscribe to a signal group
 
 **Action Stage**:
+
 1. Subscribe to signal group
 2. Possibly choose to execute trades through Moonlander (Phase 2)
 
@@ -142,9 +162,11 @@ A third-party, neutral crypto trading signal group performance verification plat
 ### 5.1 MVP Features (P0 - Must Have)
 
 #### 5.1.1 Signal Collection System
+
 **Feature Description**: Automatically monitor target TG groups and collect trading signals
 
 **Detailed Requirements**:
+
 - Support monitoring 15-20 TG groups
 - Recognize common signal formats:
   - Coin/trading pair (e.g., BTC/USDT, ETH)
@@ -160,6 +182,7 @@ A third-party, neutral crypto trading signal group performance verification plat
 **Output**: Structured trading signal data
 
 **Technical Requirements**:
+
 ```python
 Signal Schema:
 {
@@ -182,9 +205,11 @@ Signal Schema:
 ```
 
 #### 5.1.2 Signal Parser Engine
+
 **Feature Description**: Parse unstructured TG messages into standardized trading signals
 
 **Detailed Requirements**:
+
 - Support multiple formats:
   - Plain text format
   - Image signals (OCR, Phase 2)
@@ -194,6 +219,7 @@ Signal Schema:
 - Anomaly detection: identify invalid or incomplete signals
 
 **Example Input**:
+
 ```
 🚀 BTC Long Setup
 Entry: 45000-45500
@@ -205,9 +231,11 @@ Leverage: 10x
 **Parsing Accuracy Target**: >90%
 
 #### 5.1.3 Backtest Engine
+
 **Feature Description**: Simulate signal execution based on historical price data, calculate performance metrics
 
 **Detailed Requirements**:
+
 - Fetch historical candlestick data (Binance/OKX API)
 - Simulate order execution logic:
   - Entry: Fill when price hits entry range
@@ -223,6 +251,7 @@ Leverage: 10x
   - Signal response time distribution
 
 **Calculation Formulas**:
+
 ```python
 # Single trade PnL calculation
 pnl = (exit_price - entry_price) / entry_price * leverage * position_size
@@ -243,9 +272,11 @@ avg_win_loss_ratio = avg(winning_trades) / abs(avg(losing_trades))
 **Output**: Performance report data for each signal group
 
 #### 5.1.4 Data Storage System
+
 **Feature Description**: Store raw signals, parsing results, backtest data
 
 **Database Design**:
+
 ```sql
 -- Signal groups table
 groups:
@@ -267,9 +298,11 @@ performance_snapshots:
 ```
 
 #### 5.1.5 Report Generator
+
 **Feature Description**: Automatically generate weekly/monthly reports as publishable content
 
 **Report Content**:
+
 1. **Overview**:
    - Number of tracked groups
    - Total signals
@@ -291,16 +324,20 @@ performance_snapshots:
    - Risk warnings
 
 **Output Formats**:
+
 - Markdown (easy to convert)
 - Chart PNGs (for X/Twitter)
 - PDF (archival)
 
 **Example Output Structure**:
+
 ```markdown
 # 📊 Weekly Signal Group Performance Report
+
 ## Week 42, 2024 (Oct 14-20)
 
 ### 🏆 Top Performers
+
 1. **Alpha Whale Calls**
    - PnL: +18.5% | Win Rate: 72% | Signals: 12
 
@@ -308,9 +345,11 @@ performance_snapshots:
    - PnL: +12.3% | Win Rate: 65% | Signals: 18
 
 ### ⚠️ Underperformers
+
 ...
 
 ### 💡 Key Insights
+
 - BTC signals outperformed Altcoins this week
 - Average signal response time: 5.2 minutes
 - Largest single gain: +45% (ETH Long by Alpha Whale)
@@ -319,15 +358,18 @@ performance_snapshots:
 ```
 
 #### 5.1.6 Publishing System
+
 **Feature Description**: Automatically publish reports to X/Twitter
 
 **Detailed Requirements**:
+
 - X API integration
 - Scheduled publishing (every Monday at 10 AM)
 - Text + image combination
 - Interaction replies (manual or semi-automatic)
 
 **Publishing Format**:
+
 ```
 📊 Weekly Crypto Signal Groups Performance
 
@@ -350,22 +392,26 @@ Want transparent trading data? Follow @MoonlanderTracker
 ### 5.2 Phase 2 Features (P1 - Should Have)
 
 #### 5.2.1 Web Dashboard
+
 - Interactive leaderboard
 - Individual group detail pages
 - Historical report archive
 - Search and filter functionality
 
 #### 5.2.2 User Subscription System
+
 - Email weekly report subscriptions
 - Custom group following
 - Performance alerts (notify when group performance is anomalous)
 
 #### 5.2.3 Group Submission Feature
+
 - Allow users to submit new signal groups
 - Community voting to decide whether to track
 - Group operator claiming and verification
 
 #### 5.2.4 One-Click Copy Trading Integration
+
 - Connect to Moonlander API
 - Users can directly copy signals to Moonlander for trading
 - Track real copy trader performance
@@ -373,16 +419,19 @@ Want transparent trading data? Follow @MoonlanderTracker
 ### 5.3 Phase 3 Features (P2 - Could Have)
 
 #### 5.3.1 Signal Marketplace
+
 - Paid subscriptions to high-quality signals
 - Signal provider revenue sharing
 - User rating and review system
 
 #### 5.3.2 AI Signal Analysis
+
 - Use ML to predict signal success rate
 - Intelligent recommendation of most suitable signal groups for users
 - Market sentiment analysis
 
 #### 5.3.3 Portfolio Strategies
+
 - Users can combine signals from multiple groups
 - Automated capital allocation and risk management
 - Backtest custom strategies
@@ -440,6 +489,7 @@ Want transparent trading data? Follow @MoonlanderTracker
 ### 6.2 Technology Stack
 
 **Backend**:
+
 - **Language**: Python 3.11+
 - **Framework**: FastAPI (API) + Celery (async tasks)
 - **TG Integration**: Telethon / python-telegram-bot
@@ -447,17 +497,20 @@ Want transparent trading data? Follow @MoonlanderTracker
 - **Scheduling**: APScheduler / Celery Beat
 
 **Database**:
+
 - **Main Database**: PostgreSQL 15+
 - **Cache**: Redis 7+
 - **File Storage**: AWS S3 / Cloudflare R2
 
 **Frontend** (Phase 2):
+
 - **Framework**: Next.js 14+ (React)
 - **UI Library**: shadcn/ui, TailwindCSS
 - **Charts**: Recharts / Chart.js
 - **Deployment**: Vercel
 
 **Infrastructure**:
+
 - **Containerization**: Docker + Docker Compose
 - **CI/CD**: GitHub Actions
 - **Monitoring**: Sentry (error tracking), Grafana (performance)
@@ -466,6 +519,7 @@ Want transparent trading data? Follow @MoonlanderTracker
 ### 6.3 Core Module Design
 
 #### 6.3.1 Signal Collector Module
+
 ```python
 class TelegramSignalCollector:
     """
@@ -490,6 +544,7 @@ class TelegramSignalCollector:
 ```
 
 #### 6.3.2 Signal Parser Module
+
 ```python
 class SignalParser:
     """
@@ -528,6 +583,7 @@ class SignalParser:
 ```
 
 #### 6.3.3 Backtest Engine Module
+
 ```python
 class BacktestEngine:
     """
@@ -591,6 +647,7 @@ class BacktestEngine:
 ```
 
 #### 6.3.4 Performance Calculator Module
+
 ```python
 class PerformanceCalculator:
     """
@@ -634,6 +691,7 @@ class PerformanceCalculator:
 ```
 
 #### 6.3.5 Report Generator Module
+
 ```python
 class ReportGenerator:
     """
@@ -741,6 +799,7 @@ POST /api/subscribe                  # Subscribe to email notifications (Phase 2
 ```
 
 **Response Example**:
+
 ```json
 GET /api/groups/123/performance?period=weekly
 
@@ -785,16 +844,19 @@ GET /api/groups/123/performance?period=weekly
 ### 7.1 Timeline (3-Week Sprint)
 
 **Week 1: Infrastructure + Data Collection**
+
 - Day 1-2: Project setup, database design, Docker configuration
 - Day 3-4: TG Signal Collector implementation
 - Day 5-7: Signal Parser implementation + testing
 
 **Week 2: Backtest Engine + Performance Calculation**
+
 - Day 1-2: Price data fetching integration (Binance API)
 - Day 3-5: Backtest Engine core logic
 - Day 6-7: Performance Calculator + unit tests
 
 **Week 3: Report Generation + Publishing**
+
 - Day 1-3: Report Generator + chart generation
 - Day 4-5: X/Twitter publishing integration
 - Day 6: Full workflow testing + bug fixes
@@ -802,21 +864,23 @@ GET /api/groups/123/performance?period=weekly
 
 ### 7.2 Milestones
 
-| Milestone | Date | Deliverable | Success Criteria |
-|-----------|------|-------------|------------------|
-| M1: Data collection complete | Week 1 | Successfully monitor 5 TG groups | Collect 100+ signals in 7 days |
-| M2: Backtest engine live | Week 2 | Complete historical signal backtest | Backtest accuracy >95% |
-| M3: First report published | Week 3 | Weekly report + X post | X views >1000 |
-| M4: Ongoing operations | Week 4-12 | Weekly reports | Average views >5000 |
+| Milestone                    | Date      | Deliverable                         | Success Criteria               |
+| ---------------------------- | --------- | ----------------------------------- | ------------------------------ |
+| M1: Data collection complete | Week 1    | Successfully monitor 5 TG groups    | Collect 100+ signals in 7 days |
+| M2: Backtest engine live     | Week 2    | Complete historical signal backtest | Backtest accuracy >95%         |
+| M3: First report published   | Week 3    | Weekly report + X post              | X views >1000                  |
+| M4: Ongoing operations       | Week 4-12 | Weekly reports                      | Average views >5000            |
 
 ### 7.3 Resource Requirements
 
 **Personnel**:
+
 - 1 full-stack developer (3 weeks full-time)
 - 1 data analyst (part-time, weekend help with analysis)
 - 1 content operator (Phase 2, manage X account)
 
 **Cost Budget**:
+
 ```
 Development Phase (Week 1-3):
 - Cloud server: $50
@@ -838,12 +902,14 @@ Subtotal: $750-1250/month
 ### 7.4 Technical Debt Management
 
 **Phase 1 acceptable compromises**:
+
 - Manual correction of parsing errors (no need for 100% automation)
 - Simple report styling (no need for fancy design)
 - No support for image signals (leave OCR to Phase 2)
 - Limited error handling (focus on core workflow)
 
 **Must do well**:
+
 - Data accuracy (backtest logic)
 - System stability (24/7 operation)
 - Data security (backup strategy)
@@ -875,22 +941,22 @@ Subtotal: $750-1250/month
 
 ### 8.2 Business Metrics
 
-| Metric | Target | Impact |
-|--------|--------|--------|
-| Moonlander brand search volume | +200% | SEO value |
-| KOL cooperation requests | 5+ | Business development |
-| Media coverage | 3+ | PR value |
-| Community discussion | Discussed in 10 TG groups | Word-of-mouth |
+| Metric                         | Target                    | Impact               |
+| ------------------------------ | ------------------------- | -------------------- |
+| Moonlander brand search volume | +200%                     | SEO value            |
+| KOL cooperation requests       | 5+                        | Business development |
+| Media coverage                 | 3+                        | PR value             |
+| Community discussion           | Discussed in 10 TG groups | Word-of-mouth        |
 
 ### 8.3 Technical Metrics
 
-| Metric | Target | Measurement Method |
-|--------|--------|-------------------|
-| System uptime | 99%+ | Uptime monitoring |
-| Signal parsing accuracy | 90%+ | Manual sampling verification |
-| Backtest calculation error | <2% | Compare with real trades |
-| Report generation time | <5 minutes | Performance monitoring |
-| API response time (P95) | <500ms | APM tool |
+| Metric                     | Target     | Measurement Method           |
+| -------------------------- | ---------- | ---------------------------- |
+| System uptime              | 99%+       | Uptime monitoring            |
+| Signal parsing accuracy    | 90%+       | Manual sampling verification |
+| Backtest calculation error | <2%        | Compare with real trades     |
+| Report generation time     | <5 minutes | Performance monitoring       |
+| API response time (P95)    | <500ms     | APM tool                     |
 
 ---
 
@@ -899,6 +965,7 @@ Subtotal: $750-1250/month
 ### 9.1 Technical Risks
 
 **Risk 1: TG API ban**
+
 - **Probability**: Medium
 - **Impact**: High (unable to collect data)
 - **Mitigation**:
@@ -907,6 +974,7 @@ Subtotal: $750-1250/month
   - Research backup plans (manual collection + automation)
 
 **Risk 2: Exchange API rate limiting**
+
 - **Probability**: Medium
 - **Impact**: Medium (backtest delays)
 - **Mitigation**:
@@ -915,6 +983,7 @@ Subtotal: $750-1250/month
   - Cache historical price data
 
 **Risk 3: Signal parsing errors**
+
 - **Probability**: High
 - **Impact**: Medium (inaccurate data)
 - **Mitigation**:
@@ -925,6 +994,7 @@ Subtotal: $750-1250/month
 ### 9.2 Business Risks
 
 **Risk 4: Insufficient user traffic**
+
 - **Probability**: Medium
 - **Impact**: High (product failure)
 - **Mitigation**:
@@ -933,6 +1003,7 @@ Subtotal: $750-1250/month
   - Content quality: ensure reports are interesting and insightful
 
 **Risk 5: Signal group operator pushback**
+
 - **Probability**: Low
 - **Impact**: Medium (legal risk)
 - **Mitigation**:
@@ -941,6 +1012,7 @@ Subtotal: $750-1250/month
   - Provide opt-out mechanism
 
 **Risk 6: Market competition**
+
 - **Probability**: Medium
 - **Impact**: Medium (market share)
 - **Mitigation**:
@@ -951,6 +1023,7 @@ Subtotal: $750-1250/month
 ### 9.3 Operational Risks
 
 **Risk 7: High maintenance costs**
+
 - **Probability**: Medium
 - **Impact**: Medium (profit pressure)
 - **Mitigation**:
@@ -959,6 +1032,7 @@ Subtotal: $750-1250/month
   - Seek sponsorship or partners
 
 **Risk 8: Content quality decline**
+
 - **Probability**: Medium
 - **Impact**: High (user churn)
 - **Mitigation**:
@@ -992,16 +1066,17 @@ Subtotal: $750-1250/month
 
 ### B. Competitive Analysis
 
-| Product | Type | Strengths | Weaknesses | Differentiation |
-|---------|------|-----------|------------|-----------------|
-| Bitget Copy Trading | Platform internal | Big platform endorsement | Limited to Bitget | We're cross-platform |
-| 3Commas | Automation tool | Full-featured | Complex, expensive | We're simpler |
-| Cryptohopper | Bot platform | Automated trading | Not transparent | We're more transparent |
-| TradingView Ideas | Community | Large user base | No verification | We have backtesting |
+| Product             | Type              | Strengths                | Weaknesses         | Differentiation        |
+| ------------------- | ----------------- | ------------------------ | ------------------ | ---------------------- |
+| Bitget Copy Trading | Platform internal | Big platform endorsement | Limited to Bitget  | We're cross-platform   |
+| 3Commas             | Automation tool   | Full-featured            | Complex, expensive | We're simpler          |
+| Cryptohopper        | Bot platform      | Automated trading        | Not transparent    | We're more transparent |
+| TradingView Ideas   | Community         | Large user base          | No verification    | We have backtesting    |
 
 ### C. Legal & Compliance
 
 **Disclaimer Template**:
+
 ```
 Disclaimer:
 This report is for informational and educational purposes only and does not constitute investment advice.
@@ -1017,6 +1092,7 @@ We respect content creators' rights, please contact us if you have concerns.
 ### D. Future Outlook
 
 **Possible directions after 6 months**:
+
 1. Expand to YouTube/Discord signal sources
 2. Introduce AI signal quality prediction
 3. Build own signal marketplace
@@ -1031,19 +1107,19 @@ similar to CoinGecko (price), DeFi Llama (TVL) positioning.
 
 ## Change Log
 
-| Version | Date | Changes | Author |
-|---------|------|---------|--------|
-| v1.0 | 2024-10-17 | Initial version | Claude |
+| Version | Date       | Changes         | Author |
+| ------- | ---------- | --------------- | ------ |
+| v1.0    | 2024-10-17 | Initial version | Claude |
 
 ---
 
 ## Approval
 
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Product Owner | | | |
-| Technical Lead | | | |
-| Operations Lead | | | |
+| Role            | Name | Signature | Date |
+| --------------- | ---- | --------- | ---- |
+| Product Owner   |      |           |      |
+| Technical Lead  |      |           |      |
+| Operations Lead |      |           |      |
 
 ---
 

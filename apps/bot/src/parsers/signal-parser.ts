@@ -5,12 +5,7 @@
  * Handles various signal formats and provides validation via Zod.
  */
 
-import {
-  SignalSchema,
-  SignalDirection,
-  SignalStatus,
-  ParsedSignal,
-} from '@signal-tracker/types';
+import { SignalSchema, SignalDirection, SignalStatus, ParsedSignal } from '@signal-tracker/types';
 import type { Signal } from '@signal-tracker/types';
 
 /**
@@ -256,8 +251,7 @@ export function extractTakeProfits(text: string): number[] | undefined {
  * @returns Stop loss price, or undefined
  */
 export function extractStopLoss(text: string): number | undefined {
-  const slPattern =
-    /(?:sl|SL|stop|Stop|STOP|stop\s*loss|STOP\s*LOSS)[:\s]+([0-9.]+)/i;
+  const slPattern = /(?:sl|SL|stop|Stop|STOP|stop\s*loss|STOP\s*LOSS)[:\s]+([0-9.]+)/i;
   const match = text.match(slPattern);
 
   if (!match) return undefined;

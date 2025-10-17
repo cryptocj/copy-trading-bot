@@ -19,12 +19,12 @@ Implement the foundational bot infrastructure to register a Telegram bot and con
 **Target Platform**: Node.js server (Linux/macOS development, cloud deployment ready)
 **Project Type**: Monorepo (pnpm workspace + Turborepo)
 **Performance Goals**: <30s bot startup, <5s message receipt latency, 24h+ uptime without restarts
-**Constraints**: Must follow ESM module conventions (.js imports), workspace dependencies (workspace:*), TypeScript strict mode
+**Constraints**: Must follow ESM module conventions (.js imports), workspace dependencies (workspace:\*), TypeScript strict mode
 **Scale/Scope**: 3 test groups initially, designed for 10+ groups in production
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 ### Principle I: MVP-First Development ✅ PASS
 
@@ -96,9 +96,10 @@ packages/types/          # Shared types (NO CHANGES for US1)
 
 ## Complexity Tracking
 
-*No constitution violations - this section intentionally left empty.*
+_No constitution violations - this section intentionally left empty._
 
 All implementation follows MVP-First principles:
+
 - No premature abstractions (direct grammY API usage)
 - No complex error recovery patterns (basic try-catch sufficient for MVP)
 - No comprehensive test framework (manual testing per constitution)

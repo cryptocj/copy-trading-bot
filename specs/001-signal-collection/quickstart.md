@@ -7,6 +7,7 @@
 ## Prerequisites
 
 Before starting, ensure you have:
+
 - ✅ Node.js ≥20.0.0 installed
 - ✅ pnpm ≥9.0.0 installed
 - ✅ PostgreSQL database running
@@ -32,20 +33,25 @@ Send the following commands to BotFather:
 ```
 
 BotFather will ask for a name:
+
 ```
 Signal Tracker Bot
 ```
+
 (Or any name you prefer - this is the display name)
 
 BotFather will ask for a username:
+
 ```
 signal_tracker_mvp_bot
 ```
+
 (Must end with "bot" and be unique across Telegram)
 
 ### 1.3 Save Bot Token
 
 BotFather will respond with your bot token:
+
 ```
 Done! Congratulations on your new bot...
 
@@ -62,11 +68,13 @@ Use this token to access the HTTP API:
 **Why**: By default, bots in groups only receive commands and @mentions. To log ALL messages (including trading signals), Privacy Mode must be disabled.
 
 Send to BotFather:
+
 ```
 /mybots
 ```
 
 Then:
+
 1. Select your bot from the list
 2. Click **"Bot Settings"**
 3. Click **"Group Privacy"**
@@ -81,11 +89,13 @@ You should see: **"Privacy mode is disabled for [your bot]"**
 ### 2.1 Update .env File
 
 If you haven't already, copy the example:
+
 ```bash
 cp .env.example .env
 ```
 
 Edit `.env` and paste your bot token:
+
 ```bash
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
@@ -112,6 +122,7 @@ pnpm --filter @signal-tracker/bot dev
 ```
 
 Expected output:
+
 ```
 Starting Signal Tracker Bot...
 Bot is running! Listening for messages...
@@ -122,11 +133,13 @@ Bot is running! Listening for messages...
 ### 3.2 Verify Bot is Online
 
 Open Telegram, search for your bot username (e.g., `@signal_tracker_mvp_bot`), and send:
+
 ```
 /start
 ```
 
 Expected response:
+
 ```
 Welcome to Signal Tracker Bot! 🚀
 
@@ -134,6 +147,7 @@ I will monitor crypto trading signals.
 ```
 
 Send `/status`:
+
 ```
 Bot Status: Online ✅
 Chat ID: 123456789
@@ -150,11 +164,13 @@ Chat Title: N/A
 You need to join (or create) 3 Telegram groups to serve as test signal channels:
 
 **Option A: Use Real Signal Groups** (if you have access):
+
 1. Evening Trader
 2. Wolf of Trading
 3. Binance Killers
 
 **Option B: Create Test Groups**:
+
 1. Create a new group: "Test Group 1 - Evening Trader"
 2. Create a new group: "Test Group 2 - Wolf of Trading"
 3. Create a new group: "Test Group 3 - Binance Killers"
@@ -173,11 +189,13 @@ For each group:
 ### 4.3 Verify Bot Can See Messages
 
 In each group, send:
+
 ```
 /status
 ```
 
 Expected response:
+
 ```
 Bot Status: Online ✅
 Chat ID: -1001234567890
@@ -190,11 +208,13 @@ Chat Title: Test Group 1 - Evening Trader
 ### 4.4 Test Message Logging
 
 Send a test message in one of the groups:
+
 ```
 Test message from Evening Trader
 ```
 
 Check the bot terminal - you should see:
+
 ```json
 MESSAGE: {"timestamp":"2025-10-17T...","chatId":-1001234567890,"chatTitle":"Test Group 1 - Evening Trader","messageId":123,"from":"your_username","text":"Test message from Evening Trader"}
 ```
@@ -206,6 +226,7 @@ MESSAGE: {"timestamp":"2025-10-17T...","chatId":-1001234567890,"chatTitle":"Test
 ### 5.1 Open Prisma Studio
 
 In a new terminal (keep bot running):
+
 ```bash
 pnpm --filter @signal-tracker/database db:studio
 ```
@@ -222,6 +243,7 @@ This opens a database GUI at `http://localhost:5555`
 6. Repeat for "Wolf of Trading" and "Binance Killers"
 
 **Example**:
+
 - Before: `telegramId: "-1001234567890"` (placeholder)
 - After: `telegramId: "-1001987654321"` (actual chat ID from /status)
 
@@ -236,11 +258,13 @@ Click "Group" model again and verify all 3 groups have real Telegram chat IDs.
 ### 6.1 Test Bot Startup
 
 Stop the bot (Ctrl+C in bot terminal) and restart:
+
 ```bash
 pnpm --filter @signal-tracker/bot dev
 ```
 
 Expected output:
+
 ```
 Starting Signal Tracker Bot...
 Bot is running! Listening for messages...
@@ -248,19 +272,20 @@ Bot is running! Listening for messages...
 
 ### 6.2 Test All Acceptance Scenarios
 
-| Scenario | Action | Expected Result |
-|----------|--------|-----------------|
-| AS-1 | Create bot via @BotFather | ✅ Bot token received |
-| AS-2 | Start bot with valid token | ✅ Bot comes online, responds to /start and /status |
-| AS-3 | Add bot to Evening Trader | ✅ Bot sees and logs messages from that group |
-| AS-4 | Add bot to Wolf of Trading | ✅ Bot sees and logs messages from that group |
-| AS-5 | Add bot to Binance Killers | ✅ Bot sees and logs messages from that group |
+| Scenario | Action                     | Expected Result                                     |
+| -------- | -------------------------- | --------------------------------------------------- |
+| AS-1     | Create bot via @BotFather  | ✅ Bot token received                               |
+| AS-2     | Start bot with valid token | ✅ Bot comes online, responds to /start and /status |
+| AS-3     | Add bot to Evening Trader  | ✅ Bot sees and logs messages from that group       |
+| AS-4     | Add bot to Wolf of Trading | ✅ Bot sees and logs messages from that group       |
+| AS-5     | Add bot to Binance Killers | ✅ Bot sees and logs messages from that group       |
 
 Send a test message in each group and verify console logs appear for all 3.
 
 ### 6.3 Test Error Handling
 
 Test invalid token:
+
 1. Edit `.env` and corrupt the token (e.g., remove last 5 characters)
 2. Restart bot
 3. Expected: Clear error message about invalid token format
@@ -293,6 +318,7 @@ Verify against spec.md success criteria:
 
 **Problem**: Bot created but no response in Telegram
 **Solution**:
+
 1. Verify bot is running (`pnpm --filter @signal-tracker/bot dev`)
 2. Check for errors in terminal
 3. Try sending `/start` again
@@ -310,6 +336,7 @@ Verify against spec.md success criteria:
 3. Send a test message - logs should now appear
 
 **Other checks**:
+
 - Verify you're an admin in the group
 - Check bot is actually in the group (see member list)
 - Check terminal for errors
@@ -318,6 +345,7 @@ Verify against spec.md success criteria:
 
 **Problem**: Bot logs messages but they're not associated with correct groups
 **Solution**:
+
 1. Open Prisma Studio (`pnpm --filter @signal-tracker/database db:studio`)
 2. Update `Group.telegramId` with actual Chat IDs from `/status` command
 3. Restart bot
@@ -325,16 +353,19 @@ Verify against spec.md success criteria:
 ## Next Steps
 
 ✅ **User Story 1 Complete!** You now have:
+
 - Telegram bot registered and online
 - Bot connected to 3 test signal groups
 - Bot logging messages from all groups
 - Database with correct group mappings
 
 **Ready for**:
+
 - ✅ User Story 2: Signal Message Detection
 - ✅ User Story 3: Signal Parsing and Storage
 
 To continue, run:
+
 ```bash
 /speckit.tasks  # Generate implementation tasks for all user stories
 ```
@@ -342,6 +373,7 @@ To continue, run:
 ## Quick Reference
 
 ### Essential Commands
+
 ```bash
 # Start bot in development
 pnpm --filter @signal-tracker/bot dev
@@ -357,12 +389,14 @@ pnpm build
 ```
 
 ### Bot Commands
+
 ```
 /start  - Verify bot is online
 /status - Show connection info and chat ID
 ```
 
 ### File Locations
+
 - Bot code: `apps/bot/src/main.ts`
 - Config: `apps/bot/src/config.ts`
 - Environment: `.env` (root directory)

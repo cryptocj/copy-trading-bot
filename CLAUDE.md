@@ -20,6 +20,7 @@ Signal Tracker is a Telegram bot for monitoring and analyzing crypto trading sig
 ## Essential Commands
 
 ### Initial Setup
+
 ```bash
 # Install dependencies (pnpm workspace aware)
 pnpm install
@@ -35,6 +36,7 @@ pnpm --filter @signal-tracker/database db:seed      # Seed test data
 ```
 
 ### Development
+
 ```bash
 # Run bot in watch mode
 pnpm --filter @signal-tracker/bot dev
@@ -50,6 +52,7 @@ pnpm format
 ```
 
 ### Database Management
+
 ```bash
 # Open Prisma Studio (database GUI)
 pnpm --filter @signal-tracker/database db:studio
@@ -62,6 +65,7 @@ pnpm --filter @signal-tracker/database db:generate
 ```
 
 ### Workspace Commands
+
 ```bash
 # Run command in specific workspace
 pnpm --filter <workspace-name> <command>
@@ -74,6 +78,7 @@ pnpm --filter @signal-tracker/database db:studio
 ## Architecture
 
 ### Monorepo Structure
+
 ```
 apps/
   bot/              # Telegram bot application (grammY)
@@ -98,12 +103,14 @@ packages/
 ### Data Model (Prisma Schema)
 
 **Group** (Signal source):
+
 - Telegram channel metadata (name, telegramId, subscriberCount)
 - Status: ACTIVE | INACTIVE | TESTING
 - Aggregated statistics: totalSignals, winningSignals, losingSignals, totalPnl
 - One-to-many relationship with Signals
 
 **Signal** (Trading signal):
+
 - Belongs to a Group (via groupId)
 - Signal details: symbol, direction (LONG/SHORT), leverage
 - Price levels: entryPrice/entryPriceMin/entryPriceMax, stopLoss, takeProfits[]
@@ -113,12 +120,14 @@ packages/
 - One-to-many relationship with PriceUpdates
 
 **PriceUpdate** (Time-series price tracking):
+
 - Belongs to a Signal (via signalId)
 - Records price snapshots over time for performance calculation
 
 ### Type System
 
 The `@signal-tracker/types` package provides:
+
 1. **Zod Schemas**: Runtime validation for Signal and Group data
 2. **TypeScript Types**: Inferred from Zod schemas (`z.infer<>`)
 3. **Enums**: SignalDirection, SignalStatus, GroupStatus (exported from types, mirrored in Prisma)
@@ -127,7 +136,8 @@ The `@signal-tracker/types` package provides:
 ### Key Design Patterns
 
 **Workspace Dependencies**:
-- Bot depends on `@signal-tracker/database` (workspace:*) and `@signal-tracker/types` (workspace:*)
+
+- Bot depends on `@signal-tracker/database` (workspace:_) and `@signal-tracker/types` (workspace:_)
 - Database package exports Prisma client for bot consumption
 - Types package provides shared schemas and enums
 
@@ -138,12 +148,14 @@ The `@signal-tracker/types` package provides:
 ## Development Workflow
 
 ### Adding a New Signal Parser
+
 1. Define parsing logic in bot/src (parse rawMessage → structured Signal)
 2. Use Zod schemas from `@signal-tracker/types` for validation
 3. Create Signal record in database via Prisma client
 4. Consider signal format variations (different groups use different formats)
 
 ### Adding CCXT Price Tracking
+
 1. Import ccxt library (already in bot dependencies)
 2. Initialize exchange connection (e.g., `new ccxt.binance()`)
 3. Fetch ticker prices for signal symbols
@@ -151,12 +163,14 @@ The `@signal-tracker/types` package provides:
 5. Calculate P&L based on entry price and current price
 
 ### Database Schema Changes
+
 1. Edit `packages/database/prisma/schema.prisma`
 2. Run `pnpm --filter @signal-tracker/database db:generate` (regenerate client)
 3. Run `pnpm --filter @signal-tracker/database db:push` (apply to dev DB) OR
 4. Run `pnpm --filter @signal-tracker/database db:migrate` (create migration for production)
 
 ### Adding New Workspace Package
+
 1. Create directory in `packages/` or `apps/`
 2. Add package.json with name matching `@signal-tracker/<name>`
 3. Package automatically picked up by pnpm workspace (defined in `pnpm-workspace.yaml`)
@@ -165,6 +179,7 @@ The `@signal-tracker/types` package provides:
 ## Testing Context
 
 The seed script (`packages/database/prisma/seed.ts`) creates three test groups:
+
 1. **Evening Trader**: 92-95% win rate claim
 2. **Wolf of Trading**: 200K+ subscribers
 3. **Binance Killers**: Binance-focused signals
@@ -174,17 +189,19 @@ Use these for development testing of signal parsing and performance tracking.
 ## Common Patterns
 
 ### Database Access
+
 ```typescript
 import { prisma } from '@signal-tracker/database';
 
 // Query with relations
 const group = await prisma.group.findUnique({
   where: { telegramId: '...' },
-  include: { signals: true }
+  include: { signals: true },
 });
 ```
 
 ### Type Validation
+
 ```typescript
 import { SignalSchema, type Signal } from '@signal-tracker/types';
 
@@ -196,6 +213,7 @@ if (result.success) {
 ```
 
 ### Bot Message Handling
+
 ```typescript
 bot.on('message:text', async (ctx) => {
   const text = ctx.message.text;

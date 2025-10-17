@@ -3,26 +3,29 @@
 ## ✅ Completed
 
 ### Initial Setup (Commit: c223aa5)
+
 - [x] Monorepo structure with Turborepo + pnpm
 - [x] TypeScript configuration
 - [x] Git repository initialized
 
 ### Applications
+
 - [x] **apps/bot** - Telegram bot with grammY
   - Basic bot setup
   - Config management
   - Message listener
 
 ### Packages
+
 - [x] **packages/database** - Prisma + PostgreSQL
   - Schema: Groups, Signals, PriceUpdates
   - Seed data for 3 test groups
-  
 - [x] **packages/types** - Shared types
   - Signal types with Zod validation
   - Group types and statistics
 
 ### Documentation
+
 - [x] README.md (50 lines)
 - [x] docs/SETUP.md (60 lines)
 - [x] docs/prd/ (Product requirements)
@@ -30,12 +33,14 @@
 ## 🎯 Next Steps
 
 ### Phase 1: Signal Collection
+
 - [ ] Create Telegram bot via @BotFather
 - [ ] Implement signal parser
 - [ ] Connect to 3 test groups
 - [ ] Test signal collection
 
 ### Phase 2: Performance Tracking
+
 - [ ] Integrate CCXT for price data
 - [ ] Implement P&L calculation
 - [ ] Update signal status

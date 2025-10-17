@@ -72,27 +72,18 @@ async function main() {
         const group = await getGroupByTelegramId(telegramId);
 
         if (!group) {
-          console.error(
-            `⚠️ Signal from unknown group: ${telegramId} (${ctx.chat.title})`
-          );
+          console.error(`⚠️ Signal from unknown group: ${telegramId} (${ctx.chat.title})`);
           return;
         }
 
         // Parse signal
-        const parsed = parseSignal(
-          messageText,
-          group.id,
-          group.name,
-          ctx.message.message_id
-        );
+        const parsed = parseSignal(messageText, group.id, group.name, ctx.message.message_id);
 
         if (parsed.success) {
           // Store parsed signal
           const stored = await storeSignal(parsed);
           if (stored) {
-            console.log(
-              `✅ Signal stored: ${stored.id} (${stored.symbol} ${stored.direction})`
-            );
+            console.log(`✅ Signal stored: ${stored.id} (${stored.symbol} ${stored.direction})`);
           } else {
             console.error('❌ Failed to store parsed signal');
           }

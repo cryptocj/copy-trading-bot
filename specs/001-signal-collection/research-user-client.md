@@ -8,6 +8,7 @@
 **Recommendation for MVP**: ⚠️ **Stick with Bot API** (current approach)
 
 **Reasoning**:
+
 - Bot API is simpler and officially designed for automation
 - User client adds authentication complexity (phone codes, session management)
 - For MVP, create test groups where you're admin (removes blocker)
@@ -18,12 +19,14 @@
 ### Authentication
 
 **Bot API** (Current):
+
 ```typescript
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
 // Done - single token, instant start
 ```
 
 **User Client** (GramJS):
+
 ```typescript
 const client = new TelegramClient(session, apiId, apiHash, {});
 await client.start({
@@ -40,17 +43,18 @@ await client.start({
 
 ### Group Access
 
-| Scenario | Bot API | User Client API |
-|----------|---------|-----------------|
-| Join public group | ❌ Need admin | ✅ Join directly |
-| Join private group | ❌ Need admin + invite | ✅ If you have invite link |
-| Read current messages | ✅ After added | ✅ After joining |
-| Read message history | ❌ No | ✅ Yes |
-| Permissions required | Admin must add | You join as member |
+| Scenario              | Bot API                | User Client API            |
+| --------------------- | ---------------------- | -------------------------- |
+| Join public group     | ❌ Need admin          | ✅ Join directly           |
+| Join private group    | ❌ Need admin + invite | ✅ If you have invite link |
+| Read current messages | ✅ After added         | ✅ After joining           |
+| Read message history  | ❌ No                  | ✅ Yes                     |
+| Permissions required  | Admin must add         | You join as member         |
 
 ### Implementation Complexity
 
 **Bot API**: ⭐⭐☆☆☆ (Simple)
+
 - Single token authentication
 - Stateless (no session management)
 - Clear error messages
@@ -58,6 +62,7 @@ await client.start({
 - No phone number required
 
 **User Client API**: ⭐⭐⭐⭐⭐ (Complex)
+
 - Multi-step authentication (phone → code → 2FA)
 - Session string persistence required
 - First-run requires user interaction
@@ -109,11 +114,11 @@ import * as readline from 'readline';
 function input(prompt: string): Promise<string> {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
-  return new Promise(resolve => {
-    rl.question(prompt, answer => {
+  return new Promise((resolve) => {
+    rl.question(prompt, (answer) => {
       rl.close();
       resolve(answer);
     });
@@ -125,14 +130,9 @@ async function main() {
   const apiHash = process.env.TELEGRAM_API_HASH!;
   const sessionString = process.env.TELEGRAM_SESSION || '';
 
-  const client = new TelegramClient(
-    new StringSession(sessionString),
-    apiId,
-    apiHash,
-    {
-      connectionRetries: 5,
-    }
-  );
+  const client = new TelegramClient(new StringSession(sessionString), apiId, apiHash, {
+    connectionRetries: 5,
+  });
 
   console.log('Connecting to Telegram...');
 
@@ -159,7 +159,7 @@ async function main() {
         chatId: event.message.chatId.toString(),
         chatTitle: chat.title || 'Private',
         messageId: event.message.id,
-        text: event.message.text
+        text: event.message.text,
       });
     }
   }, new NewMessage({}));
@@ -198,7 +198,7 @@ client.addEventHandler(async (event) => {
 
   // Check if monitored group
   const group = await prisma.group.findUnique({
-    where: { telegramId: chatId }
+    where: { telegramId: chatId },
   });
 
   if (!group) {
@@ -217,47 +217,56 @@ client.addEventHandler(async (event) => {
 ### Advantages
 
 ✅ **Join Groups Directly**
+
 - No need to ask admins to add a bot
 - Join any public signal group instantly
 - Use invite links for private groups
 
 ✅ **Access Message History**
+
 - Read past signals for backtesting
 - Don't miss signals from before you joined
 
 ✅ **Works in Bot-Restricted Groups**
+
 - Many premium signal groups ban bots
 - User account works everywhere
 
 ✅ **More Natural Integration**
+
 - You're probably already in these groups
 - Just automate what you do manually
 
 ### Disadvantages
 
 ❌ **Complex Authentication**
+
 - Phone number required
 - SMS/Telegram code on every first run
 - 2FA adds another step
 - Session management required
 
 ❌ **Account Risk**
+
 - Automation detected → account warnings
 - Possible temporary bans if misused
 - Risk to your personal Telegram account
 
 ❌ **Rate Limits**
+
 - Lower than Bot API for some operations
 - Flood wait errors if too many requests
 - Need exponential backoff
 
 ❌ **Terms of Service Gray Area**
+
 - Bots are officially supported for automation
 - User account automation is less clear
 - Personal use is generally okay
 - Commercial use may violate TOS
 
 ❌ **Operational Complexity**
+
 - Session expiration handling
 - Phone code input mechanism needed
 - More failure modes to handle
@@ -285,6 +294,7 @@ client.addEventHandler(async (event) => {
 ```
 
 **Benefits**:
+
 - User client for monitoring groups
 - Bot for management/status
 - Separate concerns cleanly
@@ -294,16 +304,19 @@ client.addEventHandler(async (event) => {
 If you want to migrate later:
 
 ### Phase 1: Keep Current Bot
+
 - Continue with bot approach
 - Create test groups you control
 - Prove signal parsing works
 
 ### Phase 2: Add User Client Alongside
+
 - Add GramJS package
 - Run user client in parallel
 - Gradually shift monitoring to user client
 
 ### Phase 3: Full User Client (Optional)
+
 - Keep bot for admin commands
 - User client handles all monitoring
 - Best of both worlds
@@ -315,6 +328,7 @@ If you want to migrate later:
 ❌ **Do NOT implement user client yet**
 
 **Reasons**:
+
 1. Violates MVP-First principle (adds complexity)
 2. Authentication blocking (phone codes on startup)
 3. Account risk to your personal Telegram
@@ -322,12 +336,14 @@ If you want to migrate later:
 5. Test groups solve the "admin blocker"
 
 **Instead**:
+
 1. ✅ Stick with current bot approach
 2. ✅ Create 3 test groups (you're admin)
 3. ✅ Prove concept with controlled data
 4. ✅ Defer user client to Phase 2
 
 **When to Revisit User Client**:
+
 - After MVP working (signal parsing proven)
 - When you need to join real signal groups
 - When you want historical data
@@ -364,9 +380,7 @@ const session = new StringSession(process.env.TELEGRAM_SESSION);
 
 // BETTER - session encrypted at rest
 import { decrypt } from './crypto';
-const session = new StringSession(
-  decrypt(process.env.ENCRYPTED_SESSION)
-);
+const session = new StringSession(decrypt(process.env.ENCRYPTED_SESSION));
 ```
 
 ### Account Isolation

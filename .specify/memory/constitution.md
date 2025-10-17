@@ -1,21 +1,22 @@
-<!--
-================================================================================
-SYNC IMPACT REPORT
-================================================================================
+# <!--
+
+# SYNC IMPACT REPORT
+
 Version Change: N/A → 1.0.0 (Initial constitution)
 Modified Principles: N/A (initial creation)
 Added Sections:
-  - Core Principles (3 principles: MVP-First, Quality Gates, Incremental Testing)
-  - Development Workflow
-  - Governance
+
+- Core Principles (3 principles: MVP-First, Quality Gates, Incremental Testing)
+- Development Workflow
+- Governance
 
 Templates Requiring Updates:
-  ✅ plan-template.md - Already flexible, compatible with MVP approach
-  ✅ spec-template.md - User story prioritization aligns with MVP-First principle
-  ✅ tasks-template.md - Phase-based approach supports incremental delivery
+✅ plan-template.md - Already flexible, compatible with MVP approach
+✅ spec-template.md - User story prioritization aligns with MVP-First principle
+✅ tasks-template.md - Phase-based approach supports incremental delivery
 
-Follow-up TODOs: None - all placeholders filled
-================================================================================
+# Follow-up TODOs: None - all placeholders filled
+
 -->
 
 # Signal Tracker Constitution
@@ -52,17 +53,20 @@ Follow-up TODOs: None - all placeholders filled
 **Testing grows with the product, not before it.** Testing follows a pragmatic progression:
 
 **Phase 1 - MVP (Current)**:
+
 - Manual testing via documented test scenarios is SUFFICIENT
 - Automated tests are OPTIONAL unless explicitly requested
 - Focus on smoke testing: "Does the happy path work?"
 - Document test scenarios in user stories for manual validation
 
 **Phase 2 - Post-MVP (Future)**:
+
 - Add integration tests for critical paths that have proven problematic
 - Add contract tests for stable APIs that other systems depend on
 - Add unit tests for complex business logic that has bugs in production
 
 **Phase 3 - Scale (Future)**:
+
 - Comprehensive test coverage for battle-tested code
 - TDD for new features in mature areas
 - Performance and load testing for scale bottlenecks
@@ -80,11 +84,13 @@ Follow-up TODOs: None - all placeholders filled
 5. **Iterate**: Add P2/P3 based on real usage feedback, refactor based on actual pain points
 
 **Commit Discipline**:
+
 - Commit after each working feature or logical unit
 - Commit messages should reference user story if applicable (e.g., "feat: implement P1 signal parser")
 - Breaking changes should be clearly marked and validated
 
 **Refactoring Policy**:
+
 - Refactoring is DEFERRED until Phase 2 unless it blocks new features
 - Document technical debt in code comments with `// TODO(debt): [description]`
 - Patterns emerge from real usage, not upfront design
@@ -94,17 +100,20 @@ Follow-up TODOs: None - all placeholders filled
 **This constitution guides MVP development and will evolve with the product.**
 
 **Amendment Process**:
+
 - Constitution amendments require explicit user approval and version update
 - Version increments follow semantic versioning (MAJOR.MINOR.PATCH)
 - Major version change signals transition between phases (e.g., MVP → Post-MVP)
 
 **Compliance Expectations**:
+
 - Quality gates (Principle II) are NON-NEGOTIABLE even at MVP stage
 - MVP-First (Principle I) and Incremental Testing (Principle III) guide decision-making but can be overridden by explicit user direction
 - All PRs and commits should be validated against quality gates
 - When in doubt, ask the user for priority/approach clarification
 
 **Phase Transitions**:
+
 - MVP → Post-MVP transition occurs when:
   - Core P1 user stories are stable in production
   - Real users are providing feedback

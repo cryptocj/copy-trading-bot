@@ -11,6 +11,7 @@
 ## 2. Setup Database
 
 ### Docker (Recommended)
+
 ```bash
 docker run --name signal-tracker-db \
   -e POSTGRES_PASSWORD=password \
@@ -19,6 +20,7 @@ docker run --name signal-tracker-db \
 ```
 
 ### Local PostgreSQL
+
 ```bash
 brew install postgresql@16
 brew services start postgresql@16

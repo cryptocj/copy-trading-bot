@@ -5,7 +5,7 @@
 **Status**: Draft
 **Input**: User description: "start the phase 1 in @PROJECT_STATUS.md"
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Bot Registration and Connection (Priority: P1)
 
@@ -73,7 +73,7 @@ As the system, I need to extract structured data from trading signal messages an
 - What happens when a signal has incomplete information (missing SL or TP)? (Store what's available, mark fields as null, preserve rawMessage)
 - What happens when leverage is specified in different formats (5x, 5X, x5)? (Parse common variations, default to null if unclear)
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -115,7 +115,7 @@ As the system, I need to extract structured data from trading signal messages an
 - The 3 test groups (Evening Trader, Wolf of Trading, Binance Killers) are already seeded in the database
 - Bot will have necessary permissions to read messages in groups (not restricted by Telegram privacy settings)
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

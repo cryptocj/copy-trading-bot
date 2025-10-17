@@ -150,6 +150,7 @@
 **Post-Testing**: Verified signals in database via psql ✅
 
 **Supported Format**: Evening Trader / Wolf of Trading style
+
 - Symbol: `$SYMBOL` format (converts to SYMBOL/USDT)
 - Direction: LONG/SHORT keywords
 - Entry: Single price or numbered entries with percentages
