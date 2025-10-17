@@ -119,21 +119,21 @@
 
 ### Implementation for User Story 3
 
-- [ ] T020 [P] [US3] Create signal parser module in apps/bot/src/parsers/signal-parser.ts (export parseSignal function)
-- [ ] T021 [P] [US3] Implement symbol extraction in signal parser (regex for SYMBOL/QUOTE format)
-- [ ] T022 [P] [US3] Implement direction extraction in signal parser (detect LONG/SHORT)
-- [ ] T023 [P] [US3] Implement entry price extraction in signal parser (single value or range)
-- [ ] T024 [P] [US3] Implement take profit extraction in signal parser (support multiple TP levels)
-- [ ] T025 [P] [US3] Implement stop loss extraction in signal parser (single SL value)
-- [ ] T026 [P] [US3] Implement leverage extraction in signal parser (detect 5x, x5, 5X formats)
-- [ ] T027 [US3] Add Zod schema validation in signal parser using SignalSchema from @signal-tracker/types
-- [ ] T028 [US3] Create database storage function in apps/bot/src/services/signal-service.ts
-- [ ] T029 [US3] Implement Signal creation with Prisma in signal-service.ts (link to Group, store rawMessage, set status=PENDING)
-- [ ] T030 [US3] Update message handler to call parser and storage when signal detected
-- [ ] T031 [US3] Add error handling for parse failures (log error, still store rawMessage)
-- [ ] T032 [US3] Add console log for successful signal storage with database ID
+- [x] T020 [P] [US3] Create signal parser module in apps/bot/src/parsers/signal-parser.ts (export parseSignal function)
+- [x] T021 [P] [US3] Implement symbol extraction in signal parser (regex for SYMBOL/QUOTE format)
+- [x] T022 [P] [US3] Implement direction extraction in signal parser (detect LONG/SHORT)
+- [x] T023 [P] [US3] Implement entry price extraction in signal parser (single value or range)
+- [x] T024 [P] [US3] Implement take profit extraction in signal parser (support multiple TP levels)
+- [x] T025 [P] [US3] Implement stop loss extraction in signal parser (single SL value)
+- [x] T026 [P] [US3] Implement leverage extraction in signal parser (detect 5x, x5, 5X formats)
+- [x] T027 [US3] Add Zod schema validation in signal parser using SignalSchema from @signal-tracker/types
+- [x] T028 [US3] Create database storage function in apps/bot/src/services/signal-service.ts
+- [x] T029 [US3] Implement Signal creation with Prisma in signal-service.ts (link to Group, store rawMessage, set status=PENDING)
+- [x] T030 [US3] Update message handler to call parser and storage when signal detected
+- [x] T031 [US3] Add error handling for parse failures (log error, still store rawMessage)
+- [x] T032 [US3] Add console log for successful signal storage with database ID
 
-**Checkpoint**: US3 complete - signals parsed and stored in database with all extracted fields
+**Checkpoint**: US3 complete - signals parsed and stored in database with all extracted fields ✅
 
 **Manual Testing Checklist**:
 
