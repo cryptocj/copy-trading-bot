@@ -45,22 +45,35 @@ export function detectSignal(text: string): SignalDetectionResult {
   }
 
   // Pattern 3: Price level keywords (Entry, TP/Target, SL/Stop)
-  const priceLevelPattern = /\b(entry|entries|Entry|ENTRY|tp|TP|target|Target|TARGET|sl|SL|stop|Stop|STOP|take\s*profit|TAKE\s*PROFIT|stop\s*loss|STOP\s*LOSS)\b/i;
-  const hasPriceLevel = priceLevelPattern.test(text);
-  if (hasPriceLevel) {
+  // Check for multiple price level indicators for stronger confidence
+  const entryPattern = /\b(entry|entries|ENTRY)\b/i;
+  const tpPattern = /\b(tp|TP|target|Target|TARGET|take\s*profit|TAKE\s*PROFIT)\b/i;
+  const slPattern = /\b(sl|SL|stop|Stop|STOP|stop\s*loss|STOP\s*LOSS)\b/i;
+
+  const hasEntry = entryPattern.test(text);
+  const hasTP = tpPattern.test(text);
+  const hasSL = slPattern.test(text);
+
+  const priceLevelCount = [hasEntry, hasTP, hasSL].filter(Boolean).length;
+
+  if (priceLevelCount > 0) {
     matchedPatterns.push('priceLevel');
   }
 
   // Determine if this is a signal based on matched patterns
   const patternCount = matchedPatterns.length;
 
+  // Special case: Multiple price levels (Entry + TP + SL) is strong signal evidence
+  // even without direction/symbol (e.g., "Entry: 50000 TP: 52000 SL: 48000")
+  if (priceLevelCount >= 2) {
+    return { isSignal: true, confidence: 'medium', matchedPatterns };
+  }
+
   if (patternCount === 0) {
     // No signal indicators found
     return { isSignal: false, confidence: 'low', matchedPatterns };
   } else if (patternCount === 1) {
-    // Single indicator - might be signal, but low confidence
-    // Only consider it a signal if it's direction + symbol would be better
-    // For now, single pattern is not enough (could be false positive)
+    // Single indicator - not enough evidence
     return { isSignal: false, confidence: 'low', matchedPatterns };
   } else if (patternCount === 2) {
     // Two indicators - likely a signal (medium confidence)
