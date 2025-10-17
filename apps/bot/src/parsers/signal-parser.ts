@@ -91,14 +91,30 @@ export function parseSignal(
 }
 
 /**
- * Extract trading symbol (e.g., BTC/USDT, ETH/USD)
+ * Extract trading symbol (e.g., BTC/USDT, ETH/USD, $EDEN)
  *
- * Pattern: 2-5 uppercase letters, /, 2-5 uppercase letters
+ * Supports multiple formats:
+ * - Standard format: BTC/USDT, ETH/USD
+ * - $ prefix format: $EDEN, $BTC (converts to EDEN/USDT, BTC/USDT)
  */
 export function extractSymbol(text: string): string | undefined {
-  const symbolPattern = /\b([A-Z]{2,5})\/([A-Z]{2,5})\b/;
-  const match = text.match(symbolPattern);
-  return match ? match[0] : undefined;
+  // Pattern 1: Standard format (BTC/USDT, ETH/USD)
+  const standardPattern = /\b([A-Z]{2,5})\/([A-Z]{2,5})\b/;
+  const standardMatch = text.match(standardPattern);
+  if (standardMatch) {
+    return standardMatch[0];
+  }
+
+  // Pattern 2: $ prefix format ($EDEN, $BTC)
+  // Extract the symbol and default to USDT as quote currency
+  const dollarPattern = /\$([A-Z]{2,10})\b/;
+  const dollarMatch = text.match(dollarPattern);
+  if (dollarMatch) {
+    const baseSymbol = dollarMatch[1];
+    return `${baseSymbol}/USDT`; // Default to USDT pair
+  }
+
+  return undefined;
 }
 
 /**
@@ -123,6 +139,7 @@ export function extractDirection(text: string): SignalDirection | undefined {
  * - Single value: "Entry: 50000"
  * - Range: "Entry: 50000-51000"
  * - Multiple entries: "Entry: 50000, 51000"
+ * - Numbered entries: "Entry 1 (30%): 0.1745 Entry 2 (70%): 0.1571"
  *
  * @returns Object with entryPrice (single), entryPriceMin/Max (range), or undefined
  */
@@ -131,30 +148,46 @@ export function extractEntryPrice(text: string): {
   entryPriceMin?: number;
   entryPriceMax?: number;
 } {
-  // Pattern: Entry keyword followed by numbers
-  const entryPattern =
-    /(?:entry|entries|ENTRY)[:\s]+([0-9.,\s-]+?)(?=\s*(?:tp|TP|target|Target|sl|SL|stop|Stop|leverage|Leverage|$))/i;
-  const match = text.match(entryPattern);
+  const values: number[] = [];
 
-  if (!match) return {};
-
-  const priceText = match[1].trim();
-
-  // Check for range format (e.g., "50000-51000")
-  const rangeMatch = priceText.match(/([0-9.]+)\s*-\s*([0-9.]+)/);
-  if (rangeMatch) {
-    const min = parseFloat(rangeMatch[1]);
-    const max = parseFloat(rangeMatch[2]);
-    if (!isNaN(min) && !isNaN(max)) {
-      return { entryPriceMin: min, entryPriceMax: max };
+  // Pattern 1: Entry 1, Entry 2 format with percentages
+  const numberedEntryPattern = /(?:entry|Entry|ENTRY)\s*\d+\s*(?:\([^)]+\))?[:\s]+([0-9.]+)/gi;
+  let match;
+  while ((match = numberedEntryPattern.exec(text)) !== null) {
+    const value = parseFloat(match[1]);
+    if (!Number.isNaN(value)) {
+      values.push(value);
     }
   }
 
-  // Check for comma-separated values (e.g., "50000, 51000")
-  const values = priceText
-    .split(/[,\s]+/)
-    .map((v) => parseFloat(v.replace(/,/g, '')))
-    .filter((v) => !isNaN(v));
+  // Pattern 2: Simple entry format
+  if (values.length === 0) {
+    const entryPattern =
+      /(?:entry|entries|ENTRY)[:\s]+([0-9.,\s-]+?)(?=\s*(?:tp|TP|target|Target|sl|SL|stop|Stop|leverage|Leverage|$))/i;
+    const simpleMatch = text.match(entryPattern);
+
+    if (simpleMatch) {
+      const priceText = simpleMatch[1].trim();
+
+      // Check for range format (e.g., "50000-51000")
+      const rangeMatch = priceText.match(/([0-9.]+)\s*-\s*([0-9.]+)/);
+      if (rangeMatch) {
+        const min = parseFloat(rangeMatch[1]);
+        const max = parseFloat(rangeMatch[2]);
+        if (!Number.isNaN(min) && !Number.isNaN(max)) {
+          return { entryPriceMin: min, entryPriceMax: max };
+        }
+      }
+
+      // Check for comma-separated values (e.g., "50000, 51000")
+      const simpleValues = priceText
+        .split(/[,\s]+/)
+        .map((v) => parseFloat(v.replace(/,/g, '')))
+        .filter((v) => !Number.isNaN(v));
+
+      values.push(...simpleValues);
+    }
+  }
 
   if (values.length === 0) return {};
 
@@ -174,6 +207,7 @@ export function extractEntryPrice(text: string): {
  * Supports:
  * - Single TP: "TP: 52000"
  * - Multiple TPs: "TP: 52000, 54000, 56000"
+ * - Dash-separated: "TP: 0.1904 - 0.2094 - 0.2313 - 0.2515"
  * - TP1, TP2 format: "TP1: 52000 TP2: 54000"
  *
  * @returns Array of take profit prices, or undefined
@@ -181,17 +215,18 @@ export function extractEntryPrice(text: string): {
 export function extractTakeProfits(text: string): number[] | undefined {
   const takeProfits: number[] = [];
 
-  // Pattern 1: TP/Target keyword followed by numbers
+  // Pattern 1: TP/Target keyword followed by numbers (including dashes)
   const tpPattern =
-    /(?:tp|TP|target|Target|TARGET|take\s*profit|TAKE\s*PROFIT)[:\s]+([0-9.,\s]+?)(?=\s*(?:sl|SL|stop|Stop|leverage|Leverage|$))/gi;
+    /(?:tp|TP|target|Target|TARGET|take\s*profit|TAKE\s*PROFIT)[:\s]+([0-9.,\s-]+?)(?=\s*(?:sl|SL|stop|Stop|leverage|Leverage|Available|$))/gi;
 
   let match;
   while ((match = tpPattern.exec(text)) !== null) {
     const priceText = match[1].trim();
+    // Split by comma, space, or dash
     const values = priceText
-      .split(/[,\s]+/)
+      .split(/[,\s-]+/)
       .map((v) => parseFloat(v.replace(/,/g, '')))
-      .filter((v) => !isNaN(v));
+      .filter((v) => !Number.isNaN(v));
     takeProfits.push(...values);
   }
 
@@ -199,7 +234,7 @@ export function extractTakeProfits(text: string): number[] | undefined {
   const tpIndexedPattern = /(?:tp|TP)(\d+)[:\s]+([0-9.]+)/gi;
   while ((match = tpIndexedPattern.exec(text)) !== null) {
     const value = parseFloat(match[2]);
-    if (!isNaN(value) && !takeProfits.includes(value)) {
+    if (!Number.isNaN(value) && !takeProfits.includes(value)) {
       takeProfits.push(value);
     }
   }
