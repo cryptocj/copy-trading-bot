@@ -1,6 +1,12 @@
 import { Bot } from 'grammy';
 import { validateConfig } from './config.js';
 import { detectSignal } from './handlers/messages.js';
+import { parseSignal } from './parsers/signal-parser.js';
+import {
+  storeSignal,
+  storeUnparseableSignal,
+  getGroupByTelegramId,
+} from './services/signal-service.js';
 
 async function main() {
   try {
@@ -60,12 +66,54 @@ async function main() {
             matchedPatterns: detection.matchedPatterns,
           })
         );
+
+        // Parse and store signal (US3)
+        const telegramId = ctx.chat.id.toString();
+        const group = await getGroupByTelegramId(telegramId);
+
+        if (!group) {
+          console.error(
+            `⚠️ Signal from unknown group: ${telegramId} (${ctx.chat.title})`
+          );
+          return;
+        }
+
+        // Parse signal
+        const parsed = parseSignal(
+          messageText,
+          group.id,
+          group.name,
+          ctx.message.message_id
+        );
+
+        if (parsed.success) {
+          // Store parsed signal
+          const stored = await storeSignal(parsed);
+          if (stored) {
+            console.log(
+              `✅ Signal stored: ${stored.id} (${stored.symbol} ${stored.direction})`
+            );
+          } else {
+            console.error('❌ Failed to store parsed signal');
+          }
+        } else {
+          // Parsing failed - store raw message for manual review
+          const stored = await storeUnparseableSignal(
+            messageText,
+            group.id,
+            ctx.message.message_id,
+            parsed.error || 'Unknown parsing error'
+          );
+          if (stored) {
+            console.log(`⚠️ Unparseable signal stored: ${stored.id}`);
+          } else {
+            console.error('❌ Failed to store unparseable signal');
+          }
+        }
       } else {
         // Regular message - standard log format
         console.log('MESSAGE:', JSON.stringify(log));
       }
-
-      // TODO: Parse and store signals (US3)
     });
 
     // Start bot
