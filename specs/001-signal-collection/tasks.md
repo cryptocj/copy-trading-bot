@@ -137,16 +137,25 @@
 
 **Manual Testing Checklist**:
 
-- [ ] AS-1: Post "LONG BTC/USDT" → Signal record with symbol and direction ✅
-- [ ] AS-2: Post "Entry: 50000-51000" → Signal record with entryPriceMin/Max ✅
-- [ ] AS-3: Post "TP: 52000, 54000, 56000" → Signal record with takeProfits array ✅
-- [ ] AS-4: Post "SL: 48000" → Signal record with stopLoss ✅
-- [ ] AS-5: Post "5x leverage" → Signal record with leverage=5 ✅
-- [ ] AS-6: Verify groupId link → Signal.groupId matches Group.id ✅
-- [ ] AS-7: Post unparseable signal → rawMessage stored, fields null ✅
-- [ ] AS-8: Post multiple signals rapidly → each stored separately with timestamps ✅
+- [x] AS-1: Real signals tested: UB/USDT and EDEN/USDT with symbol and direction ✅
+- [x] AS-2: EDEN/USDT with entryPriceMin=0.1571, entryPriceMax=0.1745 ✅
+- [x] AS-3: Both signals with takeProfits arrays (dash-separated format) ✅
+- [x] AS-4: Both signals with stopLoss values (0.0303, 0.146) ✅
+- [x] AS-5: UB/USDT with leverage=5 from "5x" format ✅
+- [x] AS-6: Complete signals with all fields parsed correctly ✅
+- [x] AS-7: Verified groupId links (UB→Evening Trader, EDEN→Wolf of Trading) ✅
+- [x] AS-8: Earlier test with unparseable signal stored with placeholders ✅
+- [x] AS-9: Multiple signals stored separately with correct timestamps ✅
 
-**Post-Testing**: Verify all signals in database via Prisma Studio
+**Post-Testing**: Verified signals in database via psql ✅
+
+**Supported Format**: Evening Trader / Wolf of Trading style
+- Symbol: `$SYMBOL` format (converts to SYMBOL/USDT)
+- Direction: LONG/SHORT keywords
+- Entry: Single price or numbered entries with percentages
+- TP: Dash-separated format (e.g., 0.1904 - 0.2094 - 0.2313)
+- SL: Single value
+- Leverage: "Nx" or "Max Nx-Ny" (takes first value)
 
 ---
 
