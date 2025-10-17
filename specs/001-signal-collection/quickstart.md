@@ -57,6 +57,25 @@ Use this token to access the HTTP API:
 
 **IMPORTANT**: Copy this token - you'll need it in the next step!
 
+### 1.4 Disable Privacy Mode (CRITICAL)
+
+**Why**: By default, bots in groups only receive commands and @mentions. To log ALL messages (including trading signals), Privacy Mode must be disabled.
+
+Send to BotFather:
+```
+/mybots
+```
+
+Then:
+1. Select your bot from the list
+2. Click **"Bot Settings"**
+3. Click **"Group Privacy"**
+4. Click **"Turn OFF"** (or "Disable")
+
+You should see: **"Privacy mode is disabled for [your bot]"**
+
+**Without this step, your bot will NOT receive regular messages in groups - only commands!**
+
 ## Step 2: Configure Environment (2 minutes)
 
 ### 2.1 Update .env File
@@ -281,13 +300,19 @@ Verify against spec.md success criteria:
 
 ### Bot doesn't see group messages
 
-**Problem**: Added bot to group but no console logs
-**Solution**:
-1. Verify you're an admin in the group
-2. Check bot is actually in the group (see member list)
-3. Send `/status` in group - if bot responds, it's working
-4. Check terminal for errors
-5. Verify bot's privacy mode is OFF (default for new bots)
+**Problem**: Bot responds to `/status` but doesn't log regular messages
+**Solution**: **Privacy Mode is ON** (most common issue!)
+
+1. **Disable Privacy Mode via @BotFather**:
+   - Send `/mybots` to @BotFather
+   - Select your bot → "Bot Settings" → "Group Privacy" → "Turn OFF"
+2. **Restart your bot** (Ctrl+C then start again)
+3. Send a test message - logs should now appear
+
+**Other checks**:
+- Verify you're an admin in the group
+- Check bot is actually in the group (see member list)
+- Check terminal for errors
 
 ### Wrong Chat IDs in database
 
