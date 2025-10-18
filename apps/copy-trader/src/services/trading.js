@@ -76,14 +76,32 @@ export async function stopCopyTrading() {
     try {
         // Close WebSocket connection
         if (session.monitorExchange && typeof session.monitorExchange.close === 'function') {
-            await session.monitorExchange.close();
-            console.log('WebSocket connection closed');
+            try {
+                await session.monitorExchange.close();
+                console.log('✅ WebSocket connection closed');
+            } catch (closeError) {
+                // ExchangeClosedByUser is expected, not an error
+                if (closeError.constructor.name === 'ExchangeClosedByUser' || closeError.message?.includes('closedByUser')) {
+                    console.log('✅ WebSocket connection closed by user');
+                } else {
+                    console.warn('⚠️ Warning while closing WebSocket:', closeError.message);
+                }
+            }
         }
 
         // Close REST API connection
         if (session.executeExchange && typeof session.executeExchange.close === 'function') {
-            await session.executeExchange.close();
-            console.log('REST API connection closed');
+            try {
+                await session.executeExchange.close();
+                console.log('✅ REST API connection closed');
+            } catch (closeError) {
+                // ExchangeClosedByUser is expected, not an error
+                if (closeError.constructor.name === 'ExchangeClosedByUser' || closeError.message?.includes('closedByUser')) {
+                    console.log('✅ REST API connection closed by user');
+                } else {
+                    console.warn('⚠️ Warning while closing REST API:', closeError.message);
+                }
+            }
         }
 
         // Clear leverage cache
@@ -92,9 +110,9 @@ export async function stopCopyTrading() {
         // Clear session
         session = null;
 
-        console.log('Copy trading session stopped successfully');
+        console.log('✅ Copy trading session stopped successfully');
     } catch (error) {
-        console.error('Error stopping copy trading:', error);
+        console.error('❌ Unexpected error stopping copy trading:', error);
         session = null; // Clear session anyway
     }
 }
@@ -116,7 +134,10 @@ async function monitoringLoop() {
     while (session && session.isRunning) {
         try {
             // Watch trader's trades via WebSocket
-            const trades = await monitorExchange.watchMyTrades(config.traderAddress);
+            // Pass trader address in params for Hyperliquid
+            const trades = await monitorExchange.watchMyTrades(undefined, undefined, undefined, {
+                user: config.traderAddress
+            });
 
             for (const trade of trades) {
                 // Skip historical trades (before activation)
@@ -178,7 +199,16 @@ async function executeCopyTrade(trade) {
         // Execute limit order at trader's exact price
         const order = await executeExchange.createLimitOrder(symbol, side, amount, price);
 
-        console.log('Order executed successfully:', order);
+        console.log('✅ Order executed successfully:', {
+            orderId: order.id,
+            symbol: order.symbol,
+            side: order.side,
+            amount: order.amount,
+            price: order.price,
+            cost: order.cost,
+            status: order.status,
+            timestamp: new Date(order.timestamp).toLocaleString()
+        });
 
         // Notify callback with order details
         if (onOrderExecuted) {

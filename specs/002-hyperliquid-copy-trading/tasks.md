@@ -82,15 +82,15 @@
 
 ### Implementation for User Story 2
 
-- [ ] T015 [P] [US2] Add form input elements to index.html (trader address, API key, trade value, max leverage)
-- [ ] T016 [P] [US2] Add Start/Stop buttons to index.html with initial disabled state
-- [ ] T017 [US2] Implement validateTradeValue() in validation.js (minimum $12)
-- [ ] T018 [US2] Implement validateLeverage() in validation.js (1-50 range)
-- [ ] T019 [US2] Add blur event listeners for all form inputs in main.js (real-time validation)
-- [ ] T020 [US2] Implement enableStartButton() function in main.js (enable when all fields valid)
-- [ ] T021 [US2] Implement setFormDisabled() function in main.js (disable/enable form inputs)
-- [ ] T022 [US2] Add click handler for Start button in main.js (calls startCopyTrading)
-- [ ] T023 [US2] Add click handler for Stop button in main.js (calls stopCopyTrading)
+- [X] T015 [P] [US2] Add form input elements to index.html (trader address, API key, trade value, max leverage)
+- [X] T016 [P] [US2] Add Start/Stop buttons to index.html with initial disabled state
+- [X] T017 [US2] Implement validateTradeValue() in validation.js (minimum $12)
+- [X] T018 [US2] Implement validateLeverage() in validation.js (1-50 range)
+- [X] T019 [US2] Add blur event listeners for all form inputs in main.js (real-time validation)
+- [X] T020 [US2] Implement enableStartButton() function in main.js (enable when all fields valid)
+- [X] T021 [US2] Implement setFormDisabled() function in main.js (disable/enable form inputs)
+- [X] T022 [US2] Add click handler for Start button in main.js (calls startCopyTrading)
+- [X] T023 [US2] Add click handler for Stop button in main.js (calls stopCopyTrading)
 
 **Checkpoint**: US2 complete - form validation works, Start/Stop buttons functional ✓
 

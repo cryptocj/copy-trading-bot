@@ -45,6 +45,15 @@ let isCopyTradingActive = false;
 let orderList = []; // Max 6 orders (FIFO)
 let leaderboardTraders = [];
 
+// localStorage keys
+const STORAGE_KEYS = {
+  TRADER_ADDRESS: 'copyTrading.traderAddress',
+  TRADE_VALUE: 'copyTrading.tradeValue',
+  MAX_LEVERAGE: 'copyTrading.maxLeverage',
+  API_KEY: 'copyTrading.apiKey',
+  SAVE_API_KEY: 'copyTrading.saveApiKey',
+};
+
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
 
@@ -97,22 +106,147 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize history panel listeners
   setupHistoryPanelListeners();
 
+  // Load saved settings from localStorage
+  loadSavedSettings();
+
   // Load leaderboard on page load (US1)
   loadLeaderboard();
 
+  // Expose utility functions to console for debugging
+  window.copyTrading = {
+    clearSavedSettings,
+    saveSettings,
+    config,
+    viewSavedSettings: () => {
+      console.log('Saved Settings:', {
+        traderAddress: localStorage.getItem(STORAGE_KEYS.TRADER_ADDRESS),
+        tradeValue: localStorage.getItem(STORAGE_KEYS.TRADE_VALUE),
+        maxLeverage: localStorage.getItem(STORAGE_KEYS.MAX_LEVERAGE),
+        apiKeySaved: localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true',
+      });
+    },
+  };
+
   console.log('App initialized successfully.');
+  console.log('💾 Settings auto-save enabled. Use copyTrading.clearSavedSettings() to clear.');
 });
+
+/**
+ * Load saved settings from localStorage
+ */
+function loadSavedSettings() {
+  console.log('Loading saved settings from localStorage...');
+
+  // Load trader address
+  const savedTraderAddress = localStorage.getItem(STORAGE_KEYS.TRADER_ADDRESS);
+  if (savedTraderAddress) {
+    elements.traderAddressInput.value = savedTraderAddress;
+    config.traderAddress = savedTraderAddress;
+  }
+
+  // Load trade value
+  const savedTradeValue = localStorage.getItem(STORAGE_KEYS.TRADE_VALUE);
+  if (savedTradeValue) {
+    elements.tradeValueInput.value = savedTradeValue;
+    config.tradeValue = parseFloat(savedTradeValue);
+  }
+
+  // Load max leverage
+  const savedMaxLeverage = localStorage.getItem(STORAGE_KEYS.MAX_LEVERAGE);
+  if (savedMaxLeverage) {
+    elements.maxLeverageInput.value = savedMaxLeverage;
+    config.maxLeverage = parseInt(savedMaxLeverage);
+  }
+
+  // Load API key only if user opted in
+  const saveApiKey = localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true';
+  const saveApiKeyCheckbox = document.getElementById('save-api-key');
+  if (saveApiKeyCheckbox) {
+    saveApiKeyCheckbox.checked = saveApiKey;
+  }
+
+  let savedApiKey = null;
+  if (saveApiKey) {
+    savedApiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+    if (savedApiKey) {
+      elements.apiKeyInput.value = savedApiKey;
+      config.userApiKey = savedApiKey;
+    }
+  }
+
+  // Check form validity after loading
+  checkFormValidity();
+
+  console.log('Settings loaded:', {
+    traderAddress: savedTraderAddress ? '✓' : '✗',
+    tradeValue: savedTradeValue ? '✓' : '✗',
+    maxLeverage: savedMaxLeverage ? '✓' : '✗',
+    apiKey: saveApiKey && savedApiKey ? '✓' : '✗',
+  });
+}
+
+/**
+ * Save settings to localStorage
+ */
+function saveSettings() {
+  // Always save these
+  if (config.traderAddress) {
+    localStorage.setItem(STORAGE_KEYS.TRADER_ADDRESS, config.traderAddress);
+  }
+  if (config.tradeValue) {
+    localStorage.setItem(STORAGE_KEYS.TRADE_VALUE, config.tradeValue.toString());
+  }
+  if (config.maxLeverage) {
+    localStorage.setItem(STORAGE_KEYS.MAX_LEVERAGE, config.maxLeverage.toString());
+  }
+
+  // Only save API key if user opted in
+  const saveApiKeyCheckbox = document.getElementById('save-api-key');
+  if (saveApiKeyCheckbox && saveApiKeyCheckbox.checked) {
+    localStorage.setItem(STORAGE_KEYS.SAVE_API_KEY, 'true');
+    if (config.userApiKey) {
+      localStorage.setItem(STORAGE_KEYS.API_KEY, config.userApiKey);
+    }
+  } else {
+    localStorage.setItem(STORAGE_KEYS.SAVE_API_KEY, 'false');
+    localStorage.removeItem(STORAGE_KEYS.API_KEY);
+  }
+}
+
+/**
+ * Clear all saved settings
+ */
+function clearSavedSettings() {
+  Object.values(STORAGE_KEYS).forEach(key => {
+    localStorage.removeItem(key);
+  });
+  console.log('All saved settings cleared');
+}
 
 /**
  * Setup validation listeners for all form inputs
  */
 function setupValidationListeners() {
+  // Save API key checkbox listener
+  const saveApiKeyCheckbox = document.getElementById('save-api-key');
+  if (saveApiKeyCheckbox) {
+    saveApiKeyCheckbox.addEventListener('change', () => {
+      saveSettings(); // Update storage when checkbox changes
+      if (!saveApiKeyCheckbox.checked) {
+        console.log('API key will not be saved (more secure)');
+      } else {
+        console.log('API key will be saved in localStorage (less secure)');
+      }
+    });
+  }
+
   // Trader address validation
   elements.traderAddressInput.addEventListener('blur', () => {
     const result = validateAddress(elements.traderAddressInput.value);
     displayValidationError('trader-address', result);
     if (result.valid) {
       config.traderAddress = result.address;
+      saveSettings(); // Auto-save on valid input
     }
     checkFormValidity();
   });
@@ -123,6 +257,7 @@ function setupValidationListeners() {
     displayValidationError('api-key', result);
     if (result.valid) {
       config.userApiKey = result.key;
+      saveSettings(); // Auto-save on valid input
     }
     checkFormValidity();
   });
@@ -133,6 +268,7 @@ function setupValidationListeners() {
     displayValidationError('trade-value', result);
     if (result.valid) {
       config.tradeValue = result.value;
+      saveSettings(); // Auto-save on valid input
     }
     checkFormValidity();
   });
@@ -143,6 +279,7 @@ function setupValidationListeners() {
     displayValidationError('max-leverage', result);
     if (result.valid) {
       config.maxLeverage = result.leverage;
+      saveSettings(); // Auto-save on valid input
     }
     checkFormValidity();
   });
@@ -305,11 +442,16 @@ async function stopCopyTrading() {
     // Re-enable form validation
     checkFormValidity();
 
-    console.log('Copy trading stopped successfully');
+    console.log('✅ Copy trading stopped successfully');
   } catch (error) {
-    console.error('Error stopping copy trading:', error);
+    // ExchangeClosedByUser is expected when stopping, not an error
+    if (error.constructor?.name === 'ExchangeClosedByUser' || error.message?.includes('closedByUser')) {
+      console.log('✅ Copy trading stopped successfully');
+    } else {
+      console.error('❌ Error stopping copy trading:', error);
+    }
 
-    // Update UI state anyway
+    // Update UI state anyway (stop succeeded even if cleanup had issues)
     isCopyTradingActive = false;
     elements.startButton.disabled = false;
     elements.stopButton.disabled = true;
@@ -421,4 +563,6 @@ export {
   renderOrderList,
   setFormDisabled,
   checkFormValidity,
+  clearSavedSettings,
+  saveSettings,
 };
