@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperliquid Copy Trading</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Hyperliquid Copy Trading</h1>
+            <p class="subtitle">Discover top traders and automatically copy their positions</p>
+        </header>
+
+        <!-- User Story 1: Leaderboard Section -->
+        <section class="leaderboard-section">
+            <h2>Top 20 Traders (Weekly ROI)</h2>
+            <div id="leaderboard-error" class="error-message" style="display:none;"></div>
+            <div class="table-container">
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Trader Address</th>
+                            <th>Account Value (USDC)</th>
+                            <th>Weekly ROI</th>
+                            <th>Weekly PnL (USDC)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- User Story 2: Configuration Form -->
+        <section class="config-section">
+            <h2>Configure Copy Trading</h2>
+            <form id="config-form">
+                <div class="form-group">
+                    <label for="trader-address">Trader Address (40 hex characters)</label>
+                    <input type="text" id="trader-address" placeholder="0x..." required>
+                    <span class="validation-error" id="trader-address-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="api-key">Your API Key (64 hex characters)</label>
+                    <input type="password" id="api-key" placeholder="0x..." required>
+                    <span class="validation-error" id="api-key-error"></span>
+                    <small class="warning">⚠️ API key has full trading permissions. Never share it.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="trade-value">Trade Value per Position (USD, min $12)</label>
+                    <input type="number" id="trade-value" placeholder="50" min="12" step="1" required>
+                    <span class="validation-error" id="trade-value-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="max-leverage">Max Leverage (1-50x)</label>
+                    <input type="number" id="max-leverage" placeholder="10" min="1" max="50" step="1" required>
+                    <span class="validation-error" id="max-leverage-error"></span>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" id="start-button" disabled>Start Copy Trading</button>
+                    <button type="button" id="stop-button" disabled>Stop Copy Trading</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- User Story 4: Recent Orders Display -->
+        <section class="orders-section">
+            <h2>Recent Orders (Last 6)</h2>
+            <div class="table-container">
+                <table id="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Amount</th>
+                            <th>Price</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>

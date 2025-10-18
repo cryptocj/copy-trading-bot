@@ -14,6 +14,12 @@
   - Basic bot setup
   - Config management
   - Message listener
+- [x] **apps/copy-trader** - Browser-based Hyperliquid copy trading
+  - Leaderboard discovery (top 20 traders by weekly ROI)
+  - Configuration form with validation
+  - WebSocket trade monitoring (CCXT)
+  - Automatic order execution
+  - Order history display (last 6)
 
 ### Packages
 
@@ -59,9 +65,34 @@
   - TypeScript compilation ✅
   - Code formatting with Prettier ✅
 
+### Phase 2: Copy Trading MVP ✅ COMPLETE
+
+- [x] **User Story 1**: Discover Traders via Leaderboard
+  - Fetch top 20 traders from Hyperliquid stats API
+  - Display weekly ROI, account value, PnL
+  - Click row to auto-fill trader address
+  - Error handling with manual entry fallback
+- [x] **User Story 2**: Configure and Start Copy Trading
+  - Form validation (address, API key, trade value, leverage)
+  - Real-time validation feedback
+  - Start/Stop button state management
+  - Form disable during active trading
+- [x] **User Story 3**: Auto-Copy Trader Positions
+  - CCXT v4.3.66+ integration (WebSocket + REST)
+  - Monitor trader via `watchMyTrades()`
+  - Calculate proportional position size
+  - Automatic leverage management per symbol
+  - Limit order execution at trader's price
+  - Error handling and auto-reconnect
+- [x] **User Story 4**: View Recent Copied Orders
+  - Display last 6 orders (FIFO)
+  - Show symbol, side, amount, price, timestamp
+  - Color-coded buy/sell indicators
+  - Real-time order list updates
+
 ## 🎯 Next Steps
 
-### Phase 2: Performance Tracking
+### Phase 3: Performance Tracking
 
 - [ ] Integrate CCXT for price data
 - [ ] Implement P&L calculation
@@ -71,13 +102,14 @@
 ## 📊 Project Stats
 
 ```
-Files: ~45
-Lines of Code: ~5,000
+Files: ~55
+Lines of Code: ~6,500
 Packages: 3 (bot, database, types)
-Applications: 1 (Telegram bot)
-Documentation: Spec, Plan, Tasks, Quickstart, Research
+Applications: 2 (Telegram bot, Copy trader)
+Documentation: Multiple specs with plan/tasks/quickstart
 Test Groups: 3 configured and operational
 Signals Stored: Real signals from Evening Trader & Wolf of Trading
+Trading Features: Leaderboard, auto-copy, order display
 ```
 
 ## 🚀 Quick Commands

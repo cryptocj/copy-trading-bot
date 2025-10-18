@@ -1,0 +1,190 @@
+openapi: 3.0.0
+info:
+  title: Hyperliquid Leaderboard API
+  description: Public API for fetching top-performing traders on Hyperliquid DEX
+  version: 1.0.0
+  contact:
+    name: Hyperliquid Stats Server
+    url: https://hyperliquid.xyz
+
+servers:
+  - url: https://stats-data.hyperliquid.xyz
+    description: Hyperliquid mainnet stats server
+
+paths:
+  /Mainnet/leaderboard:
+    get:
+      summary: Get leaderboard of top traders
+      description: |
+        Returns a list of traders ranked by trading performance across different time periods.
+        This is a public endpoint with no authentication required.
+
+        **Performance Data Periods**:
+        - day: Last 24 hours
+        - week: Last 7 days
+        - month: Last 30 days
+        - allTime: Since account creation
+
+        **Rate Limiting**: No documented rate limits (as of 2025-01-18)
+
+        **Caching Strategy**: Recommended to cache for 1-5 minutes to reduce load
+      operationId: getLeaderboard
+      tags:
+        - Leaderboard
+      responses:
+        '200':
+          description: Successful response with leaderboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - leaderboardRows
+                properties:
+                  leaderboardRows:
+                    type: array
+                    description: List of traders sorted by performance
+                    items:
+                      $ref: '#/components/schemas/LeaderboardRow'
+              examples:
+                top_traders:
+                  summary: Top 3 traders example
+                  value:
+                    leaderboardRows:
+                      - ethAddress: "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf"
+                        accountValue: "78966920.9561020285"
+                        windowPerformances:
+                          - - day
+                            - pnl: "-891301.448448"
+                              roi: "-0.0146177998"
+                              vlm: "3870296378.8500008583"
+                          - - week
+                            - pnl: "5439043.8596469993"
+                              roi: "0.0752306305"
+                              vlm: "26809002207.0699996948"
+                          - - month
+                            - pnl: "8088541.172724002"
+                              roi: "0.0965580765"
+                              vlm: "75797391291.6799926758"
+                          - - allTime
+                            - pnl: "1971249.4302249998"
+                              roi: "0.0187533745"
+                              vlm: "201012938504.9599609375"
+                        prize: 0
+                        displayName: null
+                      - ethAddress: "0x1234567890abcdef1234567890abcdef12345678"
+                        accountValue: "52481920.5012"
+                        windowPerformances:
+                          - - week
+                            - pnl: "2419043.12"
+                              roi: "0.0482"
+                              vlm: "15220012207.08"
+                        prize: 0
+                        displayName: "CryptoTrader123"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    LeaderboardRow:
+      type: object
+      required:
+        - ethAddress
+        - accountValue
+        - windowPerformances
+        - prize
+      properties:
+        ethAddress:
+          type: string
+          description: Ethereum wallet address of the trader (40 hex characters)
+          pattern: '^0x[0-9a-fA-F]{40}$'
+          example: "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf"
+        accountValue:
+          type: string
+          description: Current account value in USDC (string to preserve precision)
+          example: "78966920.9561020285"
+        windowPerformances:
+          type: array
+          description: Performance metrics across different time periods
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items:
+              oneOf:
+                - type: string
+                  enum: [day, week, month, allTime]
+                  description: Time period identifier
+                - $ref: '#/components/schemas/PerformanceMetrics'
+        prize:
+          type: integer
+          description: Trading competition prize amount (if applicable)
+          example: 0
+        displayName:
+          type: string
+          nullable: true
+          description: Optional display name set by the trader
+          example: "CryptoTrader123"
+
+    PerformanceMetrics:
+      type: object
+      required:
+        - pnl
+        - roi
+        - vlm
+      properties:
+        pnl:
+          type: string
+          description: |
+            Profit and Loss in USDC for the period (string to preserve precision).
+            Negative values indicate losses.
+          example: "5439043.8596469993"
+        roi:
+          type: string
+          description: |
+            Return on Investment as decimal percentage (not percentage points).
+            Example: "0.0752306305" = 7.52% ROI
+            Negative values indicate losses.
+          example: "0.0752306305"
+        vlm:
+          type: string
+          description: |
+            Trading volume in USDC for the period (string to preserve precision).
+          example: "26809002207.0699996948"
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Service temporarily unavailable"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "SERVICE_UNAVAILABLE"
+
+  examples:
+    WeeklyPerformance:
+      summary: Weekly performance data
+      value:
+        - week
+        - pnl: "5439043.8596469993"
+          roi: "0.0752306305"
+          vlm: "26809002207.0699996948"
+
+tags:
+  - name: Leaderboard
+    description: Trader ranking and performance data
