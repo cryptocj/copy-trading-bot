@@ -3,7 +3,8 @@
  * US3: Auto-Copy Trader Positions
  */
 
-import ccxt from 'https://cdn.jsdelivr.net/npm/ccxt@4.3.66/dist/ccxt.browser.js';
+// CCXT library loaded via script tag in HTML (global variable)
+// Available as window.ccxt
 
 // Active trading session state
 let session = null;

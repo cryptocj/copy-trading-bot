@@ -1,0 +1,19 @@
+# Full leaderboard data (20MB, too large for git)
+data/leaderboard.json
+
+# Filtered leaderboard is committed (4.5KB, deployment-ready)
+# data/leaderboard-top20.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

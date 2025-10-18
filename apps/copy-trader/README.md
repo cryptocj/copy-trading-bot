@@ -4,7 +4,7 @@ Browser-based copy trading interface for Hyperliquid DEX. Discover top traders, 
 
 ## Features
 
-- **Trader Discovery**: Browse top 20 traders by weekly ROI from public leaderboard
+- **Trader Discovery**: Browse top 20 traders by monthly ROI from public leaderboard
 - **Configurable Copy Trading**: Set trade value ($12+ USDC) and max leverage (1-50x)
 - **Auto-Copy Trades**: Monitor trader via WebSocket and execute matching limit orders
 - **Order Display**: View last 6 copied orders with symbol, side, amount, timestamp
@@ -20,14 +20,41 @@ Browser-based copy trading interface for Hyperliquid DEX. Discover top traders, 
 ### Run Locally
 
 ```bash
-# Option 1: Serve with Python
+# Serve with Python (required for leaderboard to load)
 cd apps/copy-trader
 python3 -m http.server 8000
 # Open http://localhost:8000
-
-# Option 2: Open directly in browser
-open apps/copy-trader/index.html
 ```
+
+**Note**: Opening `index.html` directly in browser won't work due to CORS restrictions on local file loading.
+
+### Refresh Leaderboard Data
+
+The leaderboard data is stored locally (filtered to top 20 active traders with $50K+ accounts) to bypass CORS restrictions and enable frontend deployment.
+
+**To update:**
+
+```bash
+cd apps/copy-trader
+
+# 1. Download full leaderboard (20MB, ~25K traders)
+curl https://stats-data.hyperliquid.xyz/Mainnet/leaderboard -o data/leaderboard.json
+
+# 2. Filter to top 20 active traders with $50K+ accounts (4.5KB)
+node scripts/filter-leaderboard.js
+```
+
+**Filter criteria:**
+- Account value > $50,000 (substantial capital)
+- Trading volume > 0 (active traders, not dormant)
+- Sorted by monthly ROI (current month performance)
+- Top 20 only (deployment-optimized)
+
+**File sizes:**
+- `data/leaderboard.json`: 20MB (not committed to git)
+- `data/leaderboard-top20.json`: 4.3KB (committed, production-ready)
+
+**Recommendation**: Update weekly to see latest monthly top performers.
 
 ### Usage
 

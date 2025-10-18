@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hyperliquid Copy Trading</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/ccxt@4.5.11/dist/ccxt.browser.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -13,27 +15,70 @@
             <p class="subtitle">Discover top traders and automatically copy their positions</p>
         </header>
 
-        <!-- User Story 1: Leaderboard Section -->
-        <section class="leaderboard-section">
-            <h2>Top 20 Traders (Weekly ROI)</h2>
-            <div id="leaderboard-error" class="error-message" style="display:none;"></div>
-            <div class="table-container">
-                <table id="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Trader Address</th>
-                            <th>Account Value (USDC)</th>
-                            <th>Weekly ROI</th>
-                            <th>Weekly PnL (USDC)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
+        <!-- User Story 1: Two-Column Layout (Leaderboard + History) -->
+        <div class="two-column-layout">
+            <!-- Left Column: Leaderboard -->
+            <section class="leaderboard-section">
+                <h2>Top 20 Traders (Monthly ROI)</h2>
+                <p style="color:#888; font-size:14px; margin-bottom:10px;">
+                    📊 Active traders with $50K+ accounts, sorted by monthly ROI. Click a trader to view order history.
+                </p>
+                <div id="leaderboard-error" class="error-message" style="display:none;"></div>
+                <div class="table-container">
+                    <table id="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Trader</th>
+                                <th>Account</th>
+                                <th>ROI</th>
+                                <th>PnL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Right Column: Order History -->
+            <section class="history-section">
+                <h2>Order History</h2>
+                <div id="history-placeholder" style="text-align:center; padding:60px 20px; color:#666;">
+                    👈 Select a trader from the leaderboard to view their order history
+                </div>
+                <div id="history-loading" style="display:none; text-align:center; padding:40px;">
+                    Loading order history...
+                </div>
+                <div id="history-error" class="error-message" style="display:none;"></div>
+                <div id="history-content" style="display:none;">
+                    <div style="margin-bottom:15px; color:#888;">
+                        <strong>Trader:</strong> <span id="history-address"></span>
+                        <span style="margin-left:20px; color:#666;">Aggregated orders (fills combined)</span>
+                    </div>
+                    <div class="table-container">
+                        <table id="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Direction</th>
+                                    <th>Size</th>
+                                    <th>Avg Price</th>
+                                    <th>PnL</th>
+                                    <th>Fills</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
 
         <!-- User Story 2: Configuration Form -->
         <section class="config-section">

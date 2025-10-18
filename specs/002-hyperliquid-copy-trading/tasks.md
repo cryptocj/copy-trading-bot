@@ -26,10 +26,10 @@
 
 **Purpose**: Create browser app directory structure and basic files
 
-- [ ] T001 Create directory structure for copy-trader app in apps/copy-trader/
-- [ ] T002 Create index.html with basic structure (leaderboard table, config form, order list) in apps/copy-trader/
-- [ ] T003 Create main.css with basic layout styles in apps/copy-trader/styles/
-- [ ] T004 Create README.md with project description in apps/copy-trader/
+- [X] T001 Create directory structure for copy-trader app in apps/copy-trader/
+- [X] T002 Create index.html with basic structure (leaderboard table, config form, order list) in apps/copy-trader/
+- [X] T003 Create main.css with basic layout styles in apps/copy-trader/styles/
+- [X] T004 Create README.md with project description in apps/copy-trader/
 
 **Checkpoint**: Directory structure created, HTML skeleton in place ✓
 
@@ -41,9 +41,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 [P] Create validation.js with address/API key validators in apps/copy-trader/src/services/
-- [ ] T006 [P] Create format.js with number/timestamp formatting in apps/copy-trader/src/utils/
-- [ ] T007 Create main.js with CCXT CDN import and app initialization in apps/copy-trader/src/
+- [X] T005 [P] Create validation.js with address/API key validators in apps/copy-trader/src/services/
+- [X] T006 [P] Create format.js with number/timestamp formatting in apps/copy-trader/src/utils/
+- [X] T007 Create main.js with CCXT CDN import and app initialization in apps/copy-trader/src/
 
 **Checkpoint**: Foundation ready - validation and formatting utilities available ✓
 
@@ -57,13 +57,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [P] [US1] Create leaderboard.js service in apps/copy-trader/src/services/
-- [ ] T009 [US1] Implement fetchLeaderboard() function with API call to stats-data.hyperliquid.xyz
-- [ ] T010 [US1] Implement parseLeaderboardData() to extract weekly ROI and format traders
-- [ ] T011 [US1] Implement renderLeaderboardTable() to create table HTML with trader rows
-- [ ] T012 [US1] Add click event listener to table rows in main.js to populate trader address
-- [ ] T013 [US1] Add error handling for leaderboard fetch failures (show error, enable manual entry)
-- [ ] T014 [US1] Call fetchLeaderboard() on page load in main.js
+- [X] T008 [P] [US1] Create leaderboard.js service in apps/copy-trader/src/services/
+- [X] T009 [US1] Implement fetchLeaderboard() function with API call to stats-data.hyperliquid.xyz
+- [X] T010 [US1] Implement parseLeaderboardData() to extract weekly ROI and format traders
+- [X] T011 [US1] Implement renderLeaderboardTable() to create table HTML with trader rows
+- [X] T012 [US1] Add click event listener to table rows in main.js to populate trader address
+- [X] T013 [US1] Add error handling for leaderboard fetch failures (show error, enable manual entry)
+- [X] T014 [US1] Call fetchLeaderboard() on page load in main.js
 
 **Checkpoint**: US1 complete - leaderboard displays, click handler works ✓
 

@@ -1,0 +1,164 @@
+{
+  "traders": [
+    {
+      "address": "0xd77eb80f38fec10d87a192d07329415173307e93",
+      "accountValue": 258936.368815,
+      "pnl": 124234.113451,
+      "roi": 1242.34113451,
+      "volume": 1350885.31,
+      "displayName": null
+    },
+    {
+      "address": "0xb74e56e5c5ce5a99561a751f813e0e717db78053",
+      "accountValue": 124980.330967,
+      "pnl": 62029.604054,
+      "roi": 620.29604054,
+      "volume": 961713.09,
+      "displayName": null
+    },
+    {
+      "address": "0x9263c1bd29aa87a118242f3fbba4517037f8cc7a",
+      "accountValue": 17223403.402322,
+      "pnl": 18559363.200441,
+      "roi": 148.482968964,
+      "volume": 1066380170.18,
+      "displayName": null
+    },
+    {
+      "address": "0x0050f3427e5388e9cc458e977bc3444faf015618",
+      "accountValue": 58114.532974,
+      "pnl": 10893,
+      "roi": 108.93,
+      "volume": 764315.94,
+      "displayName": null
+    },
+    {
+      "address": "0xa87bac952868726052dcce756c864f3bb2bbf4ff",
+      "accountValue": 101524.182454,
+      "pnl": 10728.292588,
+      "roi": 107.28292588,
+      "volume": 2503952.59,
+      "displayName": null
+    },
+    {
+      "address": "0x2e3d94f0562703b25c83308a05046ddaf9a8dd14",
+      "accountValue": 5000000,
+      "pnl": 31808490.54,
+      "roi": 53.0141509,
+      "volume": 1627354769.21,
+      "displayName": null
+    },
+    {
+      "address": "0xcc9f75838cf7095bfa9b832fee7a2011f13bdc18",
+      "accountValue": 193438.827746,
+      "pnl": 3733.93,
+      "roi": 37.3393,
+      "volume": 1681298.45,
+      "displayName": null
+    },
+    {
+      "address": "0x5a367a7fc76709beae48b18782122705a65a2e56",
+      "accountValue": 217903.241455,
+      "pnl": 291645.501455,
+      "roi": 12.4397252194,
+      "volume": 70660543.24,
+      "displayName": null
+    },
+    {
+      "address": "0x4baa6a1343a5024a570c4b02198e4f36aab66169",
+      "accountValue": 60903.199626,
+      "pnl": 72327.699626,
+      "roi": 12.2669368361,
+      "volume": 14189790.11,
+      "displayName": null
+    },
+    {
+      "address": "0x0e09b56ef137f417e424f1265425e93bfff77e17",
+      "accountValue": 293651.462344,
+      "pnl": 1481585.92314,
+      "roi": 11.2956945991,
+      "volume": 470015415.58,
+      "displayName": null
+    },
+    {
+      "address": "0x4fe56c2713883a96a1f42c2bf5c596b43f142bbc",
+      "accountValue": 197846.437746,
+      "pnl": 305674.572002,
+      "roi": 9.6396822402,
+      "volume": 30624464.21,
+      "displayName": null
+    },
+    {
+      "address": "0xddc7e50a83710f9c62efb558bcd0f640314ae2f8",
+      "accountValue": 4395272.090692,
+      "pnl": 9377420.639968,
+      "roi": 9.2129560113,
+      "volume": 477576893.51,
+      "displayName": null
+    },
+    {
+      "address": "0x99ab3fdbeecbfc8a36101f9f80c763c8434ecea8",
+      "accountValue": 856312.508068,
+      "pnl": 769234.363079,
+      "roi": 8.8338395722,
+      "volume": 16840763.21,
+      "displayName": null
+    },
+    {
+      "address": "0xf2dcefa56f3d9f056cd2d02d4ac1d62256b7cb02",
+      "accountValue": 95730.678911,
+      "pnl": 1280.094813,
+      "roi": 6.7637728775,
+      "volume": 173187.89,
+      "displayName": null
+    },
+    {
+      "address": "0x1a1c0dcdbc89a56ceda56dcbea13a67855b9b356",
+      "accountValue": 1318219.122706,
+      "pnl": 531.19,
+      "roi": 5.3119,
+      "volume": 2333637.02,
+      "displayName": null
+    },
+    {
+      "address": "0xcb02837caaee310c178501855b63bf7f4f4b1f8b",
+      "accountValue": 461164.96775,
+      "pnl": 384457.052362,
+      "roi": 5.0054353177,
+      "volume": 61458690.8,
+      "displayName": null
+    },
+    {
+      "address": "0xc30c7ea910a71ce06ae840868b0c7e47616ba4c9",
+      "accountValue": 220626.054695,
+      "pnl": 1107160.821291,
+      "roi": 4.9914274622,
+      "volume": 103508602.86,
+      "displayName": null
+    },
+    {
+      "address": "0x4f7634c03ec4e87e14725c84913ade523c6fad5a",
+      "accountValue": 6900449.277712,
+      "pnl": 48754451.654337,
+      "roi": 4.6492711398,
+      "volume": 146371536.88,
+      "displayName": null
+    },
+    {
+      "address": "0x4e24d39d815454ab5e2bf8ee075402a0f4467023",
+      "accountValue": 50493.623576,
+      "pnl": 183026.455574,
+      "roi": 4.581560148,
+      "volume": 3313186.71,
+      "displayName": null
+    },
+    {
+      "address": "0xc4b2879001501f32bc319546a2da38ea7f5b9736",
+      "accountValue": 184995.218923,
+      "pnl": 186663.655159,
+      "roi": 4.50195448,
+      "volume": 955736.11,
+      "displayName": null
+    }
+  ]
+}

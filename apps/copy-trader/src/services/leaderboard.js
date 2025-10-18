@@ -3,132 +3,130 @@
  * US1: Discover Traders via Leaderboard
  */
 
-import { formatNumber, formatPercentage, truncateAddress } from '../utils/format.js';
+import { formatNumber, truncateAddress } from '../utils/format.js';
 
-const LEADERBOARD_API = 'https://stats-data.hyperliquid.xyz/Mainnet/leaderboard';
+// Local leaderboard data (bypasses CORS restrictions)
+// Pre-filtered to top 20 active traders with account value > $50K
+const LEADERBOARD_FILE = 'data/leaderboard-top20.json';
 
 /**
- * Fetch leaderboard data from Hyperliquid stats API
+ * Fetch leaderboard data from local JSON file
  * @returns {Promise<Array>} Array of trader objects or empty array on error
  */
 export async function fetchLeaderboard() {
-    try {
-        console.log('Fetching leaderboard from:', LEADERBOARD_API);
+  try {
+    console.log('Loading filtered leaderboard from:', LEADERBOARD_FILE);
 
-        const response = await fetch(LEADERBOARD_API);
+    const response = await fetch(LEADERBOARD_FILE);
 
-        if (!response.ok) {
-            throw new Error(`API returned ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (!data || !data.leaderboardRows) {
-            throw new Error('Invalid API response format');
-        }
-
-        console.log(`Fetched ${data.leaderboardRows.length} traders from leaderboard`);
-
-        return parseLeaderboardData(data.leaderboardRows);
-    } catch (error) {
-        console.error('Leaderboard fetch failed:', error);
-        return [];
+    if (!response.ok) {
+      throw new Error(`Failed to load: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+
+    if (!data || !data.traders) {
+      throw new Error('Invalid file format - expected { traders: [...] }');
+    }
+
+    console.log(`Loaded ${data.traders.length} traders (active, $50K+ accounts)`);
+
+    // Data is already filtered and sorted, just return it
+    return data.traders;
+  } catch (error) {
+    console.error('Leaderboard fetch failed:', error);
+    return [];
+  }
 }
 
-/**
- * Parse raw leaderboard data and extract weekly metrics
- * @param {Array} rows - Raw leaderboard rows from API
- * @returns {Array} Parsed and sorted trader objects
- */
-export function parseLeaderboardData(rows) {
-    const traders = rows.map(row => {
-        // Extract weekly performance (windowPerformances is array of [period, metrics] tuples)
-        const weeklyPerf = row.windowPerformances?.find(([period]) => period === 'week');
-
-        if (!weeklyPerf || !weeklyPerf[1]) {
-            return null; // Skip traders without weekly data
-        }
-
-        const metrics = weeklyPerf[1];
-
-        return {
-            address: row.ethAddress,
-            accountValue: parseFloat(row.accountValue) || 0,
-            weeklyPnL: parseFloat(metrics.pnl) || 0,
-            weeklyROI: parseFloat(metrics.roi) || 0,
-            weeklyVolume: parseFloat(metrics.vlm) || 0,
-            displayName: row.displayName || null
-        };
-    }).filter(trader => trader !== null); // Remove null entries
-
-    // Sort by weekly ROI descending
-    traders.sort((a, b) => b.weeklyROI - a.weeklyROI);
-
-    // Take top 20
-    return traders.slice(0, 20);
-}
+// parseLeaderboardData function removed - data is now pre-filtered and pre-sorted
+// The filter script (see README) handles:
+// - Extracting all-time performance metrics
+// - Calculating ROI from PnL / Account Value
+// - Filtering for account value > $50K and active traders (volume > 0)
+// - Sorting by ROI descending
+// - Taking top 20
 
 /**
  * Render leaderboard table in UI
  * @param {Array} traders - Array of parsed trader objects
  * @param {HTMLElement} tableBody - Table body element to populate
  * @param {Function} onRowClick - Callback for row click (receives trader address)
+ * @param {Function} onHistoryClick - Callback for viewing trader history (receives trader address)
  */
-export function renderLeaderboardTable(traders, tableBody, onRowClick) {
-    if (!tableBody) {
-        console.error('Leaderboard table body element not found');
-        return;
-    }
+export function renderLeaderboardTable(traders, tableBody, onRowClick, onHistoryClick) {
+  if (!tableBody) {
+    console.error('Leaderboard table body element not found');
+    return;
+  }
 
-    if (traders.length === 0) {
-        tableBody.innerHTML = `
+  if (traders.length === 0) {
+    tableBody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align:center; padding:30px; color:#666;">
+                <td colspan="6" style="text-align:center; padding:30px; color:#666;">
                     No traders available. You can still enter a trader address manually below.
                 </td>
             </tr>
         `;
-        return;
-    }
+    return;
+  }
 
-    const html = traders.map((trader, index) => {
-        const roiClass = trader.weeklyROI >= 0 ? 'buy' : 'sell';
-        const roiSign = trader.weeklyROI >= 0 ? '+' : '';
+  const html = traders
+    .map((trader, index) => {
+      const roiClass = trader.roi >= 0 ? 'buy' : 'sell';
+      const roiSign = trader.roi >= 0 ? '+' : '';
+      const hyperliquidUrl = `https://app.hyperliquid.xyz/explorer/address/${trader.address}`;
 
-        return `
+      return `
             <tr data-address="${trader.address}" style="cursor:pointer;">
                 <td>${index + 1}</td>
                 <td title="${trader.address}">
                     ${truncateAddress(trader.address)}
+                    <a href="${hyperliquidUrl}" target="_blank" rel="noopener noreferrer"
+                       class="trader-link"
+                       style="color:#00d4ff; text-decoration:none; margin-left:8px; font-size:0.9em;"
+                       title="Verify on Hyperliquid">
+                        ↗
+                    </a>
                     ${trader.displayName ? `<br><small style="color:#888;">${trader.displayName}</small>` : ''}
                 </td>
                 <td>$${formatNumber(trader.accountValue, 2)}</td>
-                <td class="${roiClass}">${roiSign}${formatPercentage(trader.weeklyROI, 2)}</td>
-                <td class="${roiClass}">${roiSign}$${formatNumber(trader.weeklyPnL, 2)}</td>
+                <td class="${roiClass}">${roiSign}${formatNumber(trader.roi, 2)}%</td>
+                <td class="${roiClass}">${roiSign}$${formatNumber(trader.pnl, 2)}</td>
             </tr>
         `;
-    }).join('');
+    })
+    .join('');
 
-    tableBody.innerHTML = html;
+  tableBody.innerHTML = html;
 
-    // Add click event listeners to rows
-    tableBody.querySelectorAll('tr[data-address]').forEach(row => {
-        row.addEventListener('click', () => {
-            const address = row.dataset.address;
+  // Add click event listeners to rows
+  tableBody.querySelectorAll('tr[data-address]').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      // Check if clicked element is a link
+      if (e.target.closest('.trader-link')) {
+        return; // Let the link handle it
+      }
 
-            // Remove 'selected' class from all rows
-            tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+      const address = row.dataset.address;
 
-            // Add 'selected' class to clicked row
-            row.classList.add('selected');
+      // Remove 'selected' class from all rows
+      tableBody.querySelectorAll('tr').forEach((r) => r.classList.remove('selected'));
 
-            // Call callback with trader address
-            if (onRowClick) {
-                onRowClick(address);
-            }
-        });
+      // Add 'selected' class to clicked row
+      row.classList.add('selected');
+
+      // Auto-fill trader address in form
+      if (onRowClick) {
+        onRowClick(address);
+      }
+
+      // Show order history in right panel
+      if (onHistoryClick) {
+        onHistoryClick(address);
+      }
     });
+  });
 }
 
 /**
@@ -137,10 +135,10 @@ export function renderLeaderboardTable(traders, tableBody, onRowClick) {
  * @param {string} message - Error message to display
  */
 export function showLeaderboardError(errorElement, message) {
-    if (!errorElement) return;
+  if (!errorElement) return;
 
-    errorElement.textContent = message;
-    errorElement.style.display = 'block';
+  errorElement.textContent = message;
+  errorElement.style.display = 'block';
 }
 
 /**
@@ -148,8 +146,8 @@ export function showLeaderboardError(errorElement, message) {
  * @param {HTMLElement} errorElement - Error message container
  */
 export function hideLeaderboardError(errorElement) {
-    if (!errorElement) return;
+  if (!errorElement) return;
 
-    errorElement.textContent = '';
-    errorElement.style.display = 'none';
+  errorElement.textContent = '';
+  errorElement.style.display = 'none';
 }
