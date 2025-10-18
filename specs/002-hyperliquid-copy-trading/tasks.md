@@ -109,19 +109,19 @@
 
 ### Implementation for User Story 3
 
-- [ ] T024 [P] [US3] Create trading.js service in apps/copy-trader/src/services/
-- [ ] T025 [US3] Implement startCopyTrading() function that initializes CCXT instances
-- [ ] T026 [US3] Create monitorExchange (ccxt.pro.hyperliquid) with WebSocket connection
-- [ ] T027 [US3] Create executeExchange (ccxt.hyperliquid) with REST connection
-- [ ] T028 [US3] Implement monitoringLoop() function with watchMyTrades() call
-- [ ] T029 [US3] Add timestamp filtering to ignore historical trades (before activation)
-- [ ] T030 [US3] Implement calculateTradeAmount() function (tradeValue / price)
-- [ ] T031 [US3] Implement fetchMarketInfo() to get symbol leverage limits
-- [ ] T032 [US3] Implement setLeverageIfNeeded() with leverageCache check
-- [ ] T033 [US3] Implement executeCopyTrade() function that creates limit orders
-- [ ] T034 [US3] Add error handling for order execution failures (log, continue monitoring)
-- [ ] T035 [US3] Implement stopCopyTrading() function that closes connections and clears state
-- [ ] T036 [US3] Add reconnection logic for network failures (reset timestamp)
+- [X] T024 [P] [US3] Create trading.js service in apps/copy-trader/src/services/
+- [X] T025 [US3] Implement startCopyTrading() function that initializes CCXT instances
+- [X] T026 [US3] Create monitorExchange (ccxt.pro.hyperliquid) with WebSocket connection
+- [X] T027 [US3] Create executeExchange (ccxt.hyperliquid) with REST connection
+- [X] T028 [US3] Implement monitoringLoop() function with watchMyTrades() call
+- [X] T029 [US3] Add timestamp filtering to ignore historical trades (before activation)
+- [X] T030 [US3] Implement calculateTradeAmount() function (tradeValue / price)
+- [X] T031 [US3] Implement fetchMarketInfo() to get symbol leverage limits
+- [X] T032 [US3] Implement setLeverageIfNeeded() with leverageCache check
+- [X] T033 [US3] Implement executeCopyTrade() function that creates limit orders
+- [X] T034 [US3] Add error handling for order execution failures (log, continue monitoring)
+- [X] T035 [US3] Implement stopCopyTrading() function that closes connections and clears state
+- [X] T036 [US3] Add reconnection logic for network failures (reset timestamp)
 
 **Checkpoint**: US3 complete - trades copy automatically, leverage managed correctly ✓
 
@@ -140,14 +140,14 @@
 
 ### Implementation for User Story 4
 
-- [ ] T037 [P] [US4] Add order list container to index.html with table structure
-- [ ] T038 [P] [US4] Add CSS styling for order list in main.css (buy/sell colors)
-- [ ] T039 [US4] Implement addOrder() function in main.js with FIFO logic (max 6 orders)
-- [ ] T040 [US4] Implement renderOrderList() function to update table HTML
-- [ ] T041 [US4] Implement formatOrderSide() in format.js (buy = green +, sell = red -)
-- [ ] T042 [US4] Implement formatTimestamp() in format.js (readable date/time)
-- [ ] T043 [US4] Call addOrder() from executeCopyTrade() after successful order creation
-- [ ] T044 [US4] Initialize empty orderList array in main.js global state
+- [X] T037 [P] [US4] Add order list container to index.html with table structure
+- [X] T038 [P] [US4] Add CSS styling for order list in main.css (buy/sell colors)
+- [X] T039 [US4] Implement addOrder() function in main.js with FIFO logic (max 6 orders)
+- [X] T040 [US4] Implement renderOrderList() function to update table HTML
+- [X] T041 [US4] Implement formatOrderSide() in format.js (buy = green +, sell = red -)
+- [X] T042 [US4] Implement formatTimestamp() in format.js (readable date/time)
+- [X] T043 [US4] Call addOrder() from executeCopyTrade() after successful order creation
+- [X] T044 [US4] Initialize empty orderList array in main.js global state
 
 **Checkpoint**: US4 complete - order list displays last 6 orders with proper formatting ✓
 
