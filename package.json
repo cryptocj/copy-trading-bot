@@ -2,6 +2,7 @@
   "name": "signal-tracker",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Crypto trading signal performance tracker",
   "scripts": {
     "dev": "turbo dev",
@@ -12,7 +13,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "ccxt": "^4.3.0",
+    "dotenv": "^16.4.0",
     "dotenv-cli": "^10.0.0",
+    "ethers": "^6.15.0",
     "prettier": "^3.3.0",
     "turbo": "^2.0.0",
     "typescript": "^5.5.0"

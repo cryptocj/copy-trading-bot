@@ -5,6 +5,8 @@
 
 // CCXT library loaded via script tag in HTML (global variable)
 // Available as window.ccxt
+// Ethers.js library loaded via script tag in HTML (global variable)
+// Available as window.ethers
 
 // Active trading session state
 let session = null;
@@ -23,15 +25,22 @@ export async function startCopyTrading(config, onOrderExecuted) {
     });
 
     try {
+        // Derive wallet address from private key
+        // ethers.js is loaded via CDN and available as window.ethers
+        const wallet = new ethers.Wallet(config.userApiKey);
+        const walletAddress = wallet.address;
+        console.log('Wallet address:', walletAddress);
+
         // Initialize CCXT instances
+        // Hyperliquid uses Ethereum-style wallet authentication
         const monitorExchange = new ccxt.pro.hyperliquid({
-            apiKey: config.userApiKey,
-            secret: config.userApiKey, // Hyperliquid uses same value for both
+            privateKey: config.userApiKey, // Ethereum wallet private key
+            walletAddress: walletAddress,   // Derived from private key
         });
 
         const executeExchange = new ccxt.hyperliquid({
-            apiKey: config.userApiKey,
-            secret: config.userApiKey,
+            privateKey: config.userApiKey, // Ethereum wallet private key
+            walletAddress: walletAddress,   // Derived from private key
         });
 
         // Create session

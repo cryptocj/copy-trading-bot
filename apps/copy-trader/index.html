@@ -7,6 +7,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <link rel="stylesheet" href="styles/main.css">
     <script src="https://cdn.jsdelivr.net/npm/ccxt@4.5.11/dist/ccxt.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -101,16 +102,16 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="api-key">Your API Key (64 hex characters)</label>
+                    <label for="api-key">Hyperliquid API Key (from app.hyperliquid.xyz/API)</label>
                     <input type="password" id="api-key" placeholder="0x..." required>
                     <span class="validation-error" id="api-key-error"></span>
                     <div style="margin-top: 8px;">
                         <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
                             <input type="checkbox" id="save-api-key" style="margin-right: 8px;">
-                            <span>Remember API key (less secure, but convenient)</span>
+                            <span>Remember API key (localStorage - use test account only)</span>
                         </label>
                     </div>
-                    <small class="warning">⚠️ API key has full trading permissions. Never share it.</small>
+                    <small class="warning">⚠️ API key has full trading permissions. Use a dedicated test account, never your main account.</small>
                 </div>
 
                 <div class="form-group">
@@ -136,9 +137,6 @@
         <section class="orders-section">
             <div class="section-header">
                 <h2>Recent Orders (Last 6)</h2>
-                <button type="button" id="test-order-button" class="test-button" title="Create a test order for UI testing">
-                    🧪 Test Order
-                </button>
             </div>
             <div class="table-container">
                 <table id="orders-table">
@@ -157,51 +155,6 @@
                 </table>
             </div>
         </section>
-    </div>
-
-    <!-- Test Order Modal -->
-    <div id="test-order-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>🧪 Create Test Order</h3>
-                <button class="modal-close" id="test-modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="test-symbol">Symbol</label>
-                    <select id="test-symbol">
-                        <option value="BTC/USD:USD">BTC/USD:USD</option>
-                        <option value="ETH/USD:USD">ETH/USD:USD</option>
-                        <option value="SOL/USD:USD">SOL/USD:USD</option>
-                        <option value="ARB/USD:USD">ARB/USD:USD</option>
-                        <option value="AVAX/USD:USD">AVAX/USD:USD</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="test-side">Side</label>
-                    <select id="test-side">
-                        <option value="buy">Buy</option>
-                        <option value="sell">Sell</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="test-amount">Amount</label>
-                    <input type="number" id="test-amount" placeholder="e.g., 1.5" step="0.0001" min="0">
-                </div>
-                <div class="form-group">
-                    <label for="test-price">Price (USD)</label>
-                    <input type="number" id="test-price" placeholder="e.g., 45000" step="0.01" min="0">
-                </div>
-                <div class="form-group">
-                    <label for="test-leverage">Leverage (optional, display only)</label>
-                    <input type="number" id="test-leverage" placeholder="e.g., 10" step="1" min="1" max="50">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" id="test-modal-random" class="secondary-button">Random Values</button>
-                <button type="button" id="test-modal-submit" class="primary-button">Create Order</button>
-            </div>
-        </div>
     </div>
 
     <script type="module" src="src/main.js"></script>
