@@ -11,6 +11,7 @@
 This feature allows users to discover top traders, select one to copy, and automatically replicate their trades in real-time. Everything runs in the browser - no server required.
 
 **Key Capabilities**:
+
 1. Browse leaderboard of top 20 traders by weekly ROI
 2. Configure copy trading parameters (trade value, leverage)
 3. Auto-copy trades via WebSocket monitoring
@@ -23,17 +24,20 @@ This feature allows users to discover top traders, select one to copy, and autom
 ### Step 1: Verify Prerequisites (2 minutes)
 
 **Browser Requirements**:
+
 - Modern browser with WebSocket support
 - JavaScript enabled
 - No ad blockers interfering with external API calls
 
 **Hyperliquid Account Requirements**:
+
 - Funded account with ≥$12 USDC per trade
 - API key generated from https://app.hyperliquid.xyz/API
   - ⚠️ **Security Note**: API key has full trading permissions
   - Keep private, never share, store securely
 
 **Find a Trader** (Optional):
+
 - Browse leaderboard at https://app.hyperliquid.xyz/leaderboard
 - Or let the app show you top traders
 
@@ -67,12 +71,14 @@ open apps/copy-trader/index.html
 ### Step 3: Select a Trader (2 minutes)
 
 **Automatic Discovery**:
+
 1. Page loads → leaderboard fetches automatically
 2. Top 20 traders displayed, sorted by weekly ROI
 3. Review metrics: address, account value, ROI
 4. **Click a row** → trader address auto-fills in form
 
 **Manual Entry** (if leaderboard unavailable):
+
 1. Paste trader wallet address in "Trader Address" field
 2. Format: 40 hex characters (e.g., `0x87f9...2cf`)
 
@@ -83,21 +89,25 @@ open apps/copy-trader/index.html
 Fill in the configuration form:
 
 **1. Trader Address** (already filled if clicked leaderboard)
+
 - Example: `0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf`
 - Validation: 40 hex characters, optional 0x prefix
 
 **2. Your API Key**
+
 - Get from https://app.hyperliquid.xyz/API
 - Format: 64 hex characters
 - Example: `0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890`
 - ⚠️ **Never share this key** - full trading access
 
 **3. Trade Value** (USD per trade)
+
 - Minimum: $12 USDC
 - Example: $50 (will be converted to coin amount at trader's entry price)
 - Formula: `amount = trade_value / trader_entry_price`
 
 **4. Max Leverage** (risk control)
+
 - Range: 1x to 50x
 - Example: 10x
 - System respects minimum of:
@@ -114,6 +124,7 @@ Fill in the configuration form:
 4. Bot starts monitoring trader's wallet
 
 **What Happens Next**:
+
 - Trader opens position → Your account copies within 5 seconds
 - Order appears in "Recent Orders" list
 - Leverage set automatically per symbol (respecting limits)
@@ -124,11 +135,13 @@ Fill in the configuration form:
 ### Step 6: Monitor Activity (Ongoing)
 
 **Recent Orders Display**:
+
 - Shows last 6 orders (FIFO)
 - Columns: Symbol, Side (Buy/Sell), Amount, Timestamp
 - Green (+) = Buy, Red (-) = Sell
 
 **Console Logging**:
+
 - Open browser DevTools (F12 or Cmd+Option+I)
 - View detailed logs in Console tab
 - All errors, order details, connection status
@@ -183,6 +196,7 @@ Based on spec.md acceptance scenarios:
 **Symptoms**: Empty table, error message displayed
 
 **Solutions**:
+
 1. Check browser DevTools Console for API errors
 2. Verify network connection
 3. Try manual trader address entry (leaderboard is optional)
@@ -195,6 +209,7 @@ Based on spec.md acceptance scenarios:
 **Symptoms**: Button remains grayed out after filling form
 
 **Solutions**:
+
 1. Validate each field:
    - Trader Address: 40 hex chars
    - API Key: 64 hex chars
@@ -210,10 +225,11 @@ Based on spec.md acceptance scenarios:
 **Symptoms**: WebSocket connected, but no orders in list
 
 **Possible Causes**:
+
 1. **Trader not actively trading** (most common)
    - Solution: Wait or select different trader
 2. **Historical trades ignored** (by design)
-   - Only copies trades *after* activation timestamp
+   - Only copies trades _after_ activation timestamp
    - Prevents copying stale/old positions
 3. **Invalid API key**
    - Check Console for authentication errors
@@ -225,6 +241,7 @@ Based on spec.md acceptance scenarios:
 **Symptoms**: Console shows "Order failed" errors
 
 **Common Reasons**:
+
 1. **Insufficient USDC balance**
    - Check account has ≥ trade value in USDC
    - Solution: Deposit more USDC or reduce trade value
@@ -242,6 +259,7 @@ Based on spec.md acceptance scenarios:
 **Symptoms**: Console shows WebSocket errors, no new orders
 
 **Recovery**:
+
 - System auto-reconnects after 5 seconds
 - Activation timestamp resets (prevents copying stale trades)
 - Order history preserved in current session
@@ -252,6 +270,7 @@ Based on spec.md acceptance scenarios:
 ## Architecture Overview
 
 **No Server Architecture**:
+
 ```
 Browser Tab
 ├── index.html                   # UI structure
@@ -265,12 +284,14 @@ Browser Tab
 ```
 
 **External Dependencies**:
+
 - CCXT v4.3.66+ (CDN import for browser)
 - Hyperliquid APIs:
   - Leaderboard: `https://stats-data.hyperliquid.xyz/Mainnet/leaderboard`
   - Trading: via CCXT (WebSocket + REST)
 
 **Data Flow**:
+
 ```
 1. Page Load → Fetch Leaderboard
 2. User Selects Trader → Populate Form
@@ -331,6 +352,7 @@ import { validateAddress, validateApiKey } from './services/validation.js';
 ### After MVP Validation
 
 **Phase 2 Enhancements** (documented in spec.md, deferred for now):
+
 1. **Vault Discovery**: Browse professional vault leaders
 2. **Performance Tracking**: Monitor trader's ROI over time with charts
 3. **Multi-Trader Portfolio**: Copy multiple traders with allocation %
@@ -379,18 +401,21 @@ import { validateAddress, validateApiKey } from './services/validation.js';
 ## Support & Resources
 
 **Documentation**:
+
 - Feature Spec: `/specs/002-hyperliquid-copy-trading/spec.md`
 - Implementation Plan: `/specs/002-hyperliquid-copy-trading/plan.md`
 - Research Notes: `/specs/002-hyperliquid-copy-trading/research.md`
 - Data Model: `/specs/002-hyperliquid-copy-trading/data-model.md`
 
 **External Resources**:
+
 - CCXT Docs: https://docs.ccxt.com/
 - Hyperliquid Docs: https://hyperliquid.gitbook.io/hyperliquid-docs/
 - Hyperliquid Leaderboard: https://app.hyperliquid.xyz/leaderboard
 - Hyperliquid API Keys: https://app.hyperliquid.xyz/API
 
 **Debugging**:
+
 - Browser DevTools Console (F12 or Cmd+Option+I)
 - Check leaderboard API: `curl https://stats-data.hyperliquid.xyz/Mainnet/leaderboard`
 - CCXT browser examples: https://github.com/ccxt/ccxt/tree/master/examples/js

@@ -45,12 +45,14 @@ node scripts/filter-leaderboard.js
 ```
 
 **Filter criteria:**
+
 - Account value > $50,000 (substantial capital)
 - Trading volume > 0 (active traders, not dormant)
 - Sorted by monthly ROI (current month performance)
 - Top 20 only (deployment-optimized)
 
 **File sizes:**
+
 - `data/leaderboard.json`: 20MB (not committed to git)
 - `data/leaderboard-top20.json`: 4.3KB (committed, production-ready)
 
@@ -92,6 +94,7 @@ apps/copy-trader/
 ## Security
 
 ⚠️ **Critical**: API key has full trading permissions
+
 - Never share your API key
 - Never commit API key to git
 - Close browser tab when not using (stops copy trading)

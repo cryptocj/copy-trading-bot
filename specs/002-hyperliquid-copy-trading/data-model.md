@@ -17,6 +17,7 @@ Represents a trader from the Hyperliquid public leaderboard API.
 **Source**: `GET https://stats-data.hyperliquid.xyz/Mainnet/leaderboard`
 
 **Structure**:
+
 ```javascript
 {
   address: string,          // Ethereum wallet address (40-char hex)
@@ -29,6 +30,7 @@ Represents a trader from the Hyperliquid public leaderboard API.
 ```
 
 **Validation Rules**:
+
 - `address` MUST be 40 hex characters (case-insensitive)
 - `accountValue` MUST be > 0
 - `weeklyROI` is decimal percentage (not percentage points)
@@ -37,6 +39,7 @@ Represents a trader from the Hyperliquid public leaderboard API.
 **State Transitions**: N/A (read-only, fetched once on page load)
 
 **Storage**:
+
 ```javascript
 // Global variable in main.js
 let leaderboardTraders = []; // Array of LeaderboardTrader objects
@@ -51,6 +54,7 @@ User-provided configuration for copy trading session.
 **Source**: Form inputs in UI
 
 **Structure**:
+
 ```javascript
 {
   traderAddress: string,    // Monitored trader's wallet address (40-char hex)
@@ -61,12 +65,14 @@ User-provided configuration for copy trading session.
 ```
 
 **Validation Rules**:
+
 - `traderAddress`: 40 hex characters, optional 0x prefix
 - `userApiKey`: 64 hex characters, optional 0x prefix
 - `tradeValue`: >= 12 (minimum $12 USDC per spec FR-003)
 - `maxLeverage`: integer between 1 and 50 inclusive (per spec FR-004)
 
 **State Transitions**:
+
 ```
 EMPTY (initial)
   → VALID (all fields pass validation)
@@ -75,13 +81,14 @@ EMPTY (initial)
 ```
 
 **Storage**:
+
 ```javascript
 // Global variable in main.js
 let config = {
   traderAddress: '',
   userApiKey: '',
   tradeValue: 0,
-  maxLeverage: 1
+  maxLeverage: 1,
 };
 
 let isCopyTradingActive = false; // Tracks active state
@@ -96,6 +103,7 @@ Represents a successfully executed copy trade displayed in the UI.
 **Source**: Created when CCXT `createLimitOrder()` succeeds
 
 **Structure**:
+
 ```javascript
 {
   symbol: string,           // Trading pair (e.g., "BTC/USDT")
@@ -107,6 +115,7 @@ Represents a successfully executed copy trade displayed in the UI.
 ```
 
 **Validation Rules**:
+
 - `symbol` format: `BASE/QUOTE` (e.g., "BTC/USDT", "ETH/USDT")
 - `side` MUST be either "buy" or "sell"
 - `amount` MUST be > 0
@@ -116,17 +125,19 @@ Represents a successfully executed copy trade displayed in the UI.
 **State Transitions**: N/A (immutable once created, only added/removed from list)
 
 **Storage**:
+
 ```javascript
 // Global variable in main.js
 let orderList = []; // Array of CopiedOrder, max length 6 (FIFO)
 ```
 
 **FIFO Behavior**:
+
 ```javascript
 function addOrder(order) {
-  orderList.unshift(order);  // Add to front
+  orderList.unshift(order); // Add to front
   if (orderList.length > 6) {
-    orderList.pop();           // Remove oldest
+    orderList.pop(); // Remove oldest
   }
   renderOrderList();
 }
@@ -141,6 +152,7 @@ Runtime state for active copy trading monitoring.
 **Source**: Created when user clicks "Start Copy Trading"
 
 **Structure**:
+
 ```javascript
 {
   monitorExchange: ccxt.pro.hyperliquid,  // WebSocket connection for watching trades
@@ -154,6 +166,7 @@ Runtime state for active copy trading monitoring.
 **Validation Rules**: N/A (internal runtime state)
 
 **State Transitions**:
+
 ```
 NULL (before start)
   → INITIALIZING (creating CCXT instances)
@@ -163,12 +176,14 @@ NULL (before start)
 ```
 
 **Storage**:
+
 ```javascript
 // Global variable in main.js
 let session = null; // ActiveTradingSession | null
 ```
 
 **Lifecycle**:
+
 ```javascript
 // Start
 session = {
@@ -176,7 +191,7 @@ session = {
   executeExchange: new ccxt.hyperliquid({ apiKey, secret }),
   activationTimestamp: Date.now(),
   leverageCache: new Map(),
-  isRunning: true
+  isRunning: true,
 };
 
 // Stop
@@ -204,6 +219,7 @@ ActiveTradingSession (1) --- (0..N) CopiedOrder
 ```
 
 **Diagram**:
+
 ```
 ┌─────────────────────┐
 │ LeaderboardTrader   │
@@ -334,15 +350,19 @@ Re-enable form inputs
 ### Size Estimates
 
 **LeaderboardTrader** (20 traders):
+
 - 20 objects × ~200 bytes each = **~4 KB**
 
 **CopyTradingConfiguration** (1 object):
+
 - 4 strings (addresses, key) + 2 numbers = **~500 bytes**
 
 **CopiedOrder** (6 orders max):
+
 - 6 objects × ~150 bytes each = **~900 bytes**
 
 **ActiveTradingSession** (1 object):
+
 - 2 CCXT instances + Map + primitives = **~50 KB** (CCXT library overhead)
 
 **Total Peak Memory**: ~55 KB (negligible for modern browsers)
@@ -352,6 +372,7 @@ Re-enable form inputs
 **On Tab Close**: All memory automatically released by browser
 
 **On Stop Copy Trading**:
+
 ```javascript
 async function stopCopyTrading() {
   if (session) {
@@ -368,6 +389,7 @@ async function stopCopyTrading() {
 ```
 
 **On Error**:
+
 ```javascript
 window.addEventListener('error', (event) => {
   console.error('Global error:', event.error);
@@ -383,12 +405,12 @@ window.addEventListener('error', (event) => {
 
 ### Required Validations (from spec FRs)
 
-| Field          | FR     | Validation Rule                              | Error Message                              |
-| -------------- | ------ | -------------------------------------------- | ------------------------------------------ |
-| traderAddress  | FR-006 | 40 hex chars, optional 0x                    | "Invalid address format (40 hex chars)"    |
-| userApiKey     | FR-007 | 64 hex chars, optional 0x                    | "Invalid API key format (64 hex chars)"    |
-| tradeValue     | FR-008 | >= 12 (number)                               | "Minimum trade value is $12 USDC"          |
-| maxLeverage    | FR-009 | 1-50 (integer)                               | "Leverage must be between 1x and 50x"      |
+| Field         | FR     | Validation Rule           | Error Message                           |
+| ------------- | ------ | ------------------------- | --------------------------------------- |
+| traderAddress | FR-006 | 40 hex chars, optional 0x | "Invalid address format (40 hex chars)" |
+| userApiKey    | FR-007 | 64 hex chars, optional 0x | "Invalid API key format (64 hex chars)" |
+| tradeValue    | FR-008 | >= 12 (number)            | "Minimum trade value is $12 USDC"       |
+| maxLeverage   | FR-009 | 1-50 (integer)            | "Leverage must be between 1x and 50x"   |
 
 ### Validation Functions
 

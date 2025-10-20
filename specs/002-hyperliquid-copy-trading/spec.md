@@ -86,6 +86,7 @@ A user wants to see the last few copied orders to verify the system is working c
 ### Functional Requirements
 
 **Trader Discovery** (US1):
+
 - **FR-001**: System MUST fetch leaderboard data from public API on interface load
 - **FR-002**: System MUST display top 20 traders sorted by weekly ROI (descending)
 - **FR-003**: System MUST show trader address, account value, and weekly ROI for each trader
@@ -93,6 +94,7 @@ A user wants to see the last few copied orders to verify the system is working c
 - **FR-005**: System MUST provide manual address entry option if leaderboard fetch fails
 
 **Configuration & Validation** (US2):
+
 - **FR-006**: System MUST validate trader wallet address format (40-char hex, optional 0x prefix)
 - **FR-007**: System MUST validate API key format (64-char hex, optional 0x prefix)
 - **FR-008**: System MUST enforce minimum trade value of $12 USDC
@@ -101,6 +103,7 @@ A user wants to see the last few copied orders to verify the system is working c
 - **FR-011**: System MUST re-enable inputs when stopped
 
 **Trade Monitoring & Execution** (US3):
+
 - **FR-012**: System MUST monitor trader wallet using real-time WebSocket connection
 - **FR-013**: System MUST ignore trades with timestamps before activation time
 - **FR-014**: System MUST calculate trade amount as: trade_value ÷ trader_entry_price
@@ -109,11 +112,13 @@ A user wants to see the last few copied orders to verify the system is working c
 - **FR-017**: System MUST set cross margin mode with leverage before first trade per symbol
 
 **Order Display** (US4):
+
 - **FR-018**: System MUST display last 6 orders only (FIFO)
 - **FR-019**: System MUST show symbol, side (buy/sell), and timestamp per order
 - **FR-020**: System MUST visually distinguish buy (+/green) vs sell (-/red) orders
 
 **Error Handling & Reliability**:
+
 - **FR-021**: System MUST log all errors to browser console
 - **FR-022**: System MUST reconnect on network failure and reset activation timestamp
 - **FR-023**: System MUST close connections gracefully when stopped
@@ -158,6 +163,7 @@ A user wants to see the last few copied orders to verify the system is working c
 ## Future Enhancements (Out of MVP Scope)
 
 After MVP validation, consider:
+
 - **Vault discovery**: Browse and copy professional vault leaders
 - **Performance tracking**: Monitor trader's ROI/PnL over time with charts
 - **Multi-trader portfolio**: Copy multiple traders with allocation %

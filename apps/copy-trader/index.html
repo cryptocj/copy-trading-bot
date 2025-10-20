@@ -19,12 +19,18 @@
         <div class="two-column-layout">
             <!-- Left Column: Leaderboard -->
             <section class="leaderboard-section">
-                <h2>Top 20 Traders (Monthly ROI)</h2>
-                <p style="color:#888; font-size:14px; margin-bottom:10px;">
-                    📊 Active traders with $50K+ accounts, sorted by monthly ROI. Click a trader to view order history.
-                </p>
-                <div id="leaderboard-error" class="error-message" style="display:none;"></div>
-                <div class="table-container">
+                <div class="section-header">
+                    <h2>Top 20 Traders (Monthly ROI)</h2>
+                    <button class="collapse-toggle" id="leaderboard-toggle" aria-label="Toggle leaderboard">
+                        <span class="collapse-icon">−</span>
+                    </button>
+                </div>
+                <div class="collapsible-content" id="leaderboard-content">
+                    <p style="color:#888; font-size:14px; margin-bottom:10px;">
+                        📊 Active traders with $50K+ accounts, sorted by monthly ROI. Click a trader to view order history.
+                    </p>
+                    <div id="leaderboard-error" class="error-message" style="display:none;"></div>
+                    <div class="table-container">
                     <table id="leaderboard-table">
                         <thead>
                             <tr>
@@ -40,19 +46,26 @@
                         </tbody>
                     </table>
                 </div>
+                </div>
             </section>
 
             <!-- Right Column: Order History -->
             <section class="history-section">
-                <h2>Order History</h2>
-                <div id="history-placeholder" style="text-align:center; padding:60px 20px; color:#666;">
-                    👈 Select a trader from the leaderboard to view their order history
+                <div class="section-header">
+                    <h2>Order History</h2>
+                    <button class="collapse-toggle" id="history-toggle" aria-label="Toggle order history">
+                        <span class="collapse-icon">−</span>
+                    </button>
                 </div>
-                <div id="history-loading" style="display:none; text-align:center; padding:40px;">
-                    Loading order history...
-                </div>
-                <div id="history-error" class="error-message" style="display:none;"></div>
-                <div id="history-content" style="display:none;">
+                <div class="collapsible-content" id="history-content-wrapper">
+                    <div id="history-placeholder" style="text-align:center; padding:60px 20px; color:#666;">
+                        👈 Select a trader from the leaderboard to view their order history
+                    </div>
+                    <div id="history-loading" style="display:none; text-align:center; padding:40px;">
+                        Loading order history...
+                    </div>
+                    <div id="history-error" class="error-message" style="display:none;"></div>
+                    <div id="history-content" style="display:none;">
                     <div style="margin-bottom:15px; color:#888;">
                         <strong>Trader:</strong> <span id="history-address"></span>
                         <span style="margin-left:20px; color:#666;">Aggregated orders (fills combined)</span>
@@ -76,6 +89,7 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
                 </div>
             </section>
         </div>
@@ -124,7 +138,12 @@
 
         <!-- User Story 4: Recent Orders Display -->
         <section class="orders-section">
-            <h2>Recent Orders (Last 6)</h2>
+            <div class="section-header">
+                <h2>Recent Orders (Last 6)</h2>
+                <button type="button" id="test-order-button" class="test-button" title="Create a test order for UI testing">
+                    🧪 Test Order
+                </button>
+            </div>
             <div class="table-container">
                 <table id="orders-table">
                     <thead>
@@ -142,6 +161,51 @@
                 </table>
             </div>
         </section>
+    </div>
+
+    <!-- Test Order Modal -->
+    <div id="test-order-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🧪 Create Test Order</h3>
+                <button class="modal-close" id="test-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="test-symbol">Symbol</label>
+                    <select id="test-symbol">
+                        <option value="BTC/USD:USD">BTC/USD:USD</option>
+                        <option value="ETH/USD:USD">ETH/USD:USD</option>
+                        <option value="SOL/USD:USD">SOL/USD:USD</option>
+                        <option value="ARB/USD:USD">ARB/USD:USD</option>
+                        <option value="AVAX/USD:USD">AVAX/USD:USD</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="test-side">Side</label>
+                    <select id="test-side">
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="test-amount">Amount</label>
+                    <input type="number" id="test-amount" placeholder="e.g., 1.5" step="0.0001" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="test-price">Price (USD)</label>
+                    <input type="number" id="test-price" placeholder="e.g., 45000" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="test-leverage">Leverage (optional, display only)</label>
+                    <input type="number" id="test-leverage" placeholder="e.g., 10" step="1" min="1" max="50">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="test-modal-random" class="secondary-button">Random Values</button>
+                <button type="button" id="test-modal-submit" class="primary-button">Create Order</button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="src/main.js"></script>

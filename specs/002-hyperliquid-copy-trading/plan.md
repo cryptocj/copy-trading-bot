@@ -18,15 +18,16 @@ Build a browser-based copy trading interface that allows users to discover top-p
 **Target Platform**: Modern browsers (Chrome, Firefox, Safari, Edge) with WebSocket support
 **Project Type**: Browser-based single-page application (HTML + vanilla JS)
 **Performance Goals**:
+
 - Leaderboard load: <3 seconds
 - Trade copy latency: <5 seconds from trader execution
 - Order list update: <1 second
-**Constraints**:
+  **Constraints**:
 - No server-side persistence (browser-only operation)
 - Single trader monitoring per session
 - Cross margin mode only (no isolated margin)
 - Limit orders only (no market orders)
-**Scale/Scope**:
+  **Scale/Scope**:
 - 20 traders displayed in leaderboard
 - 6 recent orders displayed (FIFO)
 - Single active copy trading session

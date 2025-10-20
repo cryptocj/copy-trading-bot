@@ -26,10 +26,10 @@
 
 **Purpose**: Create browser app directory structure and basic files
 
-- [X] T001 Create directory structure for copy-trader app in apps/copy-trader/
-- [X] T002 Create index.html with basic structure (leaderboard table, config form, order list) in apps/copy-trader/
-- [X] T003 Create main.css with basic layout styles in apps/copy-trader/styles/
-- [X] T004 Create README.md with project description in apps/copy-trader/
+- [x] T001 Create directory structure for copy-trader app in apps/copy-trader/
+- [x] T002 Create index.html with basic structure (leaderboard table, config form, order list) in apps/copy-trader/
+- [x] T003 Create main.css with basic layout styles in apps/copy-trader/styles/
+- [x] T004 Create README.md with project description in apps/copy-trader/
 
 **Checkpoint**: Directory structure created, HTML skeleton in place ✓
 
@@ -41,9 +41,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [X] T005 [P] Create validation.js with address/API key validators in apps/copy-trader/src/services/
-- [X] T006 [P] Create format.js with number/timestamp formatting in apps/copy-trader/src/utils/
-- [X] T007 Create main.js with CCXT CDN import and app initialization in apps/copy-trader/src/
+- [x] T005 [P] Create validation.js with address/API key validators in apps/copy-trader/src/services/
+- [x] T006 [P] Create format.js with number/timestamp formatting in apps/copy-trader/src/utils/
+- [x] T007 Create main.js with CCXT CDN import and app initialization in apps/copy-trader/src/
 
 **Checkpoint**: Foundation ready - validation and formatting utilities available ✓
 
@@ -57,17 +57,18 @@
 
 ### Implementation for User Story 1
 
-- [X] T008 [P] [US1] Create leaderboard.js service in apps/copy-trader/src/services/
-- [X] T009 [US1] Implement fetchLeaderboard() function with API call to stats-data.hyperliquid.xyz
-- [X] T010 [US1] Implement parseLeaderboardData() to extract weekly ROI and format traders
-- [X] T011 [US1] Implement renderLeaderboardTable() to create table HTML with trader rows
-- [X] T012 [US1] Add click event listener to table rows in main.js to populate trader address
-- [X] T013 [US1] Add error handling for leaderboard fetch failures (show error, enable manual entry)
-- [X] T014 [US1] Call fetchLeaderboard() on page load in main.js
+- [x] T008 [P] [US1] Create leaderboard.js service in apps/copy-trader/src/services/
+- [x] T009 [US1] Implement fetchLeaderboard() function with API call to stats-data.hyperliquid.xyz
+- [x] T010 [US1] Implement parseLeaderboardData() to extract weekly ROI and format traders
+- [x] T011 [US1] Implement renderLeaderboardTable() to create table HTML with trader rows
+- [x] T012 [US1] Add click event listener to table rows in main.js to populate trader address
+- [x] T013 [US1] Add error handling for leaderboard fetch failures (show error, enable manual entry)
+- [x] T014 [US1] Call fetchLeaderboard() on page load in main.js
 
 **Checkpoint**: US1 complete - leaderboard displays, click handler works ✓
 
 **Manual Testing Checklist**:
+
 - [ ] AS-1: Leaderboard displays top 20 traders within 3 seconds
 - [ ] AS-2: Click trader row → address auto-fills in "Trader Address" input
 - [ ] AS-3: Leaderboard API fails → error message shows, manual entry still works
@@ -82,19 +83,20 @@
 
 ### Implementation for User Story 2
 
-- [X] T015 [P] [US2] Add form input elements to index.html (trader address, API key, trade value, max leverage)
-- [X] T016 [P] [US2] Add Start/Stop buttons to index.html with initial disabled state
-- [X] T017 [US2] Implement validateTradeValue() in validation.js (minimum $12)
-- [X] T018 [US2] Implement validateLeverage() in validation.js (1-50 range)
-- [X] T019 [US2] Add blur event listeners for all form inputs in main.js (real-time validation)
-- [X] T020 [US2] Implement enableStartButton() function in main.js (enable when all fields valid)
-- [X] T021 [US2] Implement setFormDisabled() function in main.js (disable/enable form inputs)
-- [X] T022 [US2] Add click handler for Start button in main.js (calls startCopyTrading)
-- [X] T023 [US2] Add click handler for Stop button in main.js (calls stopCopyTrading)
+- [x] T015 [P] [US2] Add form input elements to index.html (trader address, API key, trade value, max leverage)
+- [x] T016 [P] [US2] Add Start/Stop buttons to index.html with initial disabled state
+- [x] T017 [US2] Implement validateTradeValue() in validation.js (minimum $12)
+- [x] T018 [US2] Implement validateLeverage() in validation.js (1-50 range)
+- [x] T019 [US2] Add blur event listeners for all form inputs in main.js (real-time validation)
+- [x] T020 [US2] Implement enableStartButton() function in main.js (enable when all fields valid)
+- [x] T021 [US2] Implement setFormDisabled() function in main.js (disable/enable form inputs)
+- [x] T022 [US2] Add click handler for Start button in main.js (calls startCopyTrading)
+- [x] T023 [US2] Add click handler for Stop button in main.js (calls stopCopyTrading)
 
 **Checkpoint**: US2 complete - form validation works, Start/Stop buttons functional ✓
 
 **Manual Testing Checklist**:
+
 - [ ] AS-1: Valid inputs → Start button enables
 - [ ] AS-2: Invalid/missing fields → validation errors show, Start button stays disabled
 - [ ] AS-3: Click Stop → monitoring stops, form re-enables
@@ -109,23 +111,24 @@
 
 ### Implementation for User Story 3
 
-- [X] T024 [P] [US3] Create trading.js service in apps/copy-trader/src/services/
-- [X] T025 [US3] Implement startCopyTrading() function that initializes CCXT instances
-- [X] T026 [US3] Create monitorExchange (ccxt.pro.hyperliquid) with WebSocket connection
-- [X] T027 [US3] Create executeExchange (ccxt.hyperliquid) with REST connection
-- [X] T028 [US3] Implement monitoringLoop() function with watchMyTrades() call
-- [X] T029 [US3] Add timestamp filtering to ignore historical trades (before activation)
-- [X] T030 [US3] Implement calculateTradeAmount() function (tradeValue / price)
-- [X] T031 [US3] Implement fetchMarketInfo() to get symbol leverage limits
-- [X] T032 [US3] Implement setLeverageIfNeeded() with leverageCache check
-- [X] T033 [US3] Implement executeCopyTrade() function that creates limit orders
-- [X] T034 [US3] Add error handling for order execution failures (log, continue monitoring)
-- [X] T035 [US3] Implement stopCopyTrading() function that closes connections and clears state
-- [X] T036 [US3] Add reconnection logic for network failures (reset timestamp)
+- [x] T024 [P] [US3] Create trading.js service in apps/copy-trader/src/services/
+- [x] T025 [US3] Implement startCopyTrading() function that initializes CCXT instances
+- [x] T026 [US3] Create monitorExchange (ccxt.pro.hyperliquid) with WebSocket connection
+- [x] T027 [US3] Create executeExchange (ccxt.hyperliquid) with REST connection
+- [x] T028 [US3] Implement monitoringLoop() function with watchMyTrades() call
+- [x] T029 [US3] Add timestamp filtering to ignore historical trades (before activation)
+- [x] T030 [US3] Implement calculateTradeAmount() function (tradeValue / price)
+- [x] T031 [US3] Implement fetchMarketInfo() to get symbol leverage limits
+- [x] T032 [US3] Implement setLeverageIfNeeded() with leverageCache check
+- [x] T033 [US3] Implement executeCopyTrade() function that creates limit orders
+- [x] T034 [US3] Add error handling for order execution failures (log, continue monitoring)
+- [x] T035 [US3] Implement stopCopyTrading() function that closes connections and clears state
+- [x] T036 [US3] Add reconnection logic for network failures (reset timestamp)
 
 **Checkpoint**: US3 complete - trades copy automatically, leverage managed correctly ✓
 
 **Manual Testing Checklist**:
+
 - [ ] AS-1: Trader opens LONG BTC/USDT at $40k, user trade value $50 → user opens LONG with 0.00125 BTC
 - [ ] AS-2: Trader uses 20x leverage, user max is 10x → user position uses 10x
 - [ ] AS-3: Trader closes position → user position closes automatically
@@ -140,18 +143,19 @@
 
 ### Implementation for User Story 4
 
-- [X] T037 [P] [US4] Add order list container to index.html with table structure
-- [X] T038 [P] [US4] Add CSS styling for order list in main.css (buy/sell colors)
-- [X] T039 [US4] Implement addOrder() function in main.js with FIFO logic (max 6 orders)
-- [X] T040 [US4] Implement renderOrderList() function to update table HTML
-- [X] T041 [US4] Implement formatOrderSide() in format.js (buy = green +, sell = red -)
-- [X] T042 [US4] Implement formatTimestamp() in format.js (readable date/time)
-- [X] T043 [US4] Call addOrder() from executeCopyTrade() after successful order creation
-- [X] T044 [US4] Initialize empty orderList array in main.js global state
+- [x] T037 [P] [US4] Add order list container to index.html with table structure
+- [x] T038 [P] [US4] Add CSS styling for order list in main.css (buy/sell colors)
+- [x] T039 [US4] Implement addOrder() function in main.js with FIFO logic (max 6 orders)
+- [x] T040 [US4] Implement renderOrderList() function to update table HTML
+- [x] T041 [US4] Implement formatOrderSide() in format.js (buy = green +, sell = red -)
+- [x] T042 [US4] Implement formatTimestamp() in format.js (readable date/time)
+- [x] T043 [US4] Call addOrder() from executeCopyTrade() after successful order creation
+- [x] T044 [US4] Initialize empty orderList array in main.js global state
 
 **Checkpoint**: US4 complete - order list displays last 6 orders with proper formatting ✓
 
 **Manual Testing Checklist**:
+
 - [ ] AS-1: 3 orders execute → all 3 display with symbol, side, timestamp
 - [ ] AS-2: 7 orders execute → only 6 most recent display (oldest removed)
 - [ ] AS-3: Order fails → error logged to console, list doesn't update
@@ -264,6 +268,7 @@ Task T038: "Add order list CSS"
 10. ✓ Complete Phase 7: Polish (T045-T052)
 
 **Time Estimate for Core MVP (US2 + US3)**: 4-6 hours
+
 - Setup: 30 min (T001-T004)
 - Foundational: 1 hour (T005-T007)
 - US2 Configuration: 1-2 hours (T015-T023)
@@ -286,6 +291,7 @@ If implementing all at once (P1 stories in priority order):
 7. Complete Phase 7: Polish → Final validation
 
 **Time Estimate for Full**: 6-8 hours
+
 - Includes all 4 user stories
 - Includes manual testing for each story
 - Includes final polish and validation
@@ -364,6 +370,7 @@ open apps/copy-trader/index.html
 ## Task Completion Tracking
 
 **Total Tasks**: 52
+
 - Setup: 4 tasks
 - Foundational: 3 tasks
 - US1 (Leaderboard): 7 tasks
@@ -373,11 +380,13 @@ open apps/copy-trader/index.html
 - Polish: 8 tasks
 
 **Parallel Opportunities**: 6 tasks can be parallelized
+
 - T005 + T006 (utilities)
 - T015 + T016 (HTML changes)
 - T037 + T038 (HTML/CSS)
 
 **Independent Test Criteria**:
+
 - ✅ US1: Leaderboard loads → click row → address populates
 - ✅ US2: Fill form → Start enables → click Start → form disables
 - ✅ US3: Start copy → trader trades → matching order executes

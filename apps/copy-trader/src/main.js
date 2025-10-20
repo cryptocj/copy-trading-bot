@@ -52,6 +52,8 @@ const STORAGE_KEYS = {
   MAX_LEVERAGE: 'copyTrading.maxLeverage',
   API_KEY: 'copyTrading.apiKey',
   SAVE_API_KEY: 'copyTrading.saveApiKey',
+  LEADERBOARD_COLLAPSED: 'copyTrading.leaderboardCollapsed',
+  HISTORY_COLLAPSED: 'copyTrading.historyCollapsed',
 };
 
 // DOM elements (will be initialized after DOM loads)
@@ -84,9 +86,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Buttons
     startButton: document.getElementById('start-button'),
     stopButton: document.getElementById('stop-button'),
+    testOrderButton: document.getElementById('test-order-button'),
 
     // Orders
     ordersBody: document.getElementById('orders-body'),
+
+    // Collapsible sections
+    leaderboardToggle: document.getElementById('leaderboard-toggle'),
+    leaderboardContent: document.getElementById('leaderboard-content'),
+    historyToggle: document.getElementById('history-toggle'),
+    historyContentWrapper: document.getElementById('history-content-wrapper'),
 
     // Trade History Panel
     historyPlaceholder: document.getElementById('history-placeholder'),
@@ -95,6 +104,17 @@ document.addEventListener('DOMContentLoaded', () => {
     historyContent: document.getElementById('history-content'),
     historyAddress: document.getElementById('history-address'),
     historyBody: document.getElementById('history-body'),
+
+    // Test Order Modal
+    testOrderModal: document.getElementById('test-order-modal'),
+    testModalClose: document.getElementById('test-modal-close'),
+    testModalRandom: document.getElementById('test-modal-random'),
+    testModalSubmit: document.getElementById('test-modal-submit'),
+    testSymbol: document.getElementById('test-symbol'),
+    testSide: document.getElementById('test-side'),
+    testAmount: document.getElementById('test-amount'),
+    testPrice: document.getElementById('test-price'),
+    testLeverage: document.getElementById('test-leverage'),
   };
 
   // Initialize validation listeners
@@ -105,6 +125,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize history panel listeners
   setupHistoryPanelListeners();
+
+  // Initialize collapsible sections
+  setupCollapsibleSections();
+
+  // Initialize test order modal
+  setupTestOrderModal();
 
   // Load saved settings from localStorage
   loadSavedSettings();
@@ -322,6 +348,7 @@ function checkFormValidity() {
 function setupButtonListeners() {
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
+  elements.testOrderButton.addEventListener('click', createTestOrder);
 }
 
 /**
@@ -461,6 +488,81 @@ async function stopCopyTrading() {
 }
 
 /**
+ * Open test order modal
+ */
+function createTestOrder() {
+  // Fill with random values by default
+  fillRandomTestValues();
+
+  // Show modal
+  elements.testOrderModal.style.display = 'flex';
+}
+
+/**
+ * Close test order modal
+ */
+function closeTestOrderModal() {
+  elements.testOrderModal.style.display = 'none';
+}
+
+/**
+ * Fill test order form with random values
+ */
+function fillRandomTestValues() {
+  // Random symbol
+  const symbols = ['BTC/USD:USD', 'ETH/USD:USD', 'SOL/USD:USD', 'ARB/USD:USD', 'AVAX/USD:USD'];
+  elements.testSymbol.value = symbols[Math.floor(Math.random() * symbols.length)];
+
+  // Random side
+  elements.testSide.value = Math.random() > 0.5 ? 'buy' : 'sell';
+
+  // Random amount (0.1 to 10)
+  elements.testAmount.value = (Math.random() * 10 + 0.1).toFixed(4);
+
+  // Random price (1000 to 51000)
+  elements.testPrice.value = (Math.random() * 50000 + 1000).toFixed(2);
+
+  // Random leverage (1 to 20)
+  elements.testLeverage.value = Math.floor(Math.random() * 20 + 1);
+}
+
+/**
+ * Submit test order from modal
+ */
+function submitTestOrder() {
+  const symbol = elements.testSymbol.value;
+  const side = elements.testSide.value;
+  const amount = parseFloat(elements.testAmount.value);
+  const price = parseFloat(elements.testPrice.value);
+  const leverage = elements.testLeverage.value ? parseInt(elements.testLeverage.value) : null;
+
+  // Validation
+  if (!amount || amount <= 0) {
+    alert('Please enter a valid amount');
+    return;
+  }
+  if (!price || price <= 0) {
+    alert('Please enter a valid price');
+    return;
+  }
+
+  const testOrder = {
+    symbol,
+    side,
+    amount: amount.toFixed(4),
+    price: price.toFixed(2),
+    timestamp: Date.now(),
+    leverage, // Store for display/logging
+  };
+
+  addOrder(testOrder);
+  console.log('🧪 Test order created:', testOrder);
+
+  // Close modal
+  closeTestOrderModal();
+}
+
+/**
  * Add order to display list (US4)
  * FIFO: max 6 orders, remove oldest when exceeding
  * @param {{ symbol: string, side: string, amount: number, price: number, timestamp: number }} order
@@ -497,6 +599,90 @@ function renderOrderList() {
     .join('');
 
   elements.ordersBody.innerHTML = html;
+}
+
+/**
+ * Setup collapsible sections with localStorage persistence
+ */
+function setupCollapsibleSections() {
+  // Restore saved collapsed states
+  const leaderboardCollapsed = localStorage.getItem(STORAGE_KEYS.LEADERBOARD_COLLAPSED) === 'true';
+  const historyCollapsed = localStorage.getItem(STORAGE_KEYS.HISTORY_COLLAPSED) === 'true';
+
+  if (leaderboardCollapsed) {
+    toggleSection('leaderboard', true);
+  }
+  if (historyCollapsed) {
+    toggleSection('history', true);
+  }
+
+  // Add event listeners
+  elements.leaderboardToggle.addEventListener('click', () => {
+    const isCollapsed = elements.leaderboardContent.classList.contains('collapsed');
+    toggleSection('leaderboard', !isCollapsed);
+    localStorage.setItem(STORAGE_KEYS.LEADERBOARD_COLLAPSED, (!isCollapsed).toString());
+  });
+
+  elements.historyToggle.addEventListener('click', () => {
+    const isCollapsed = elements.historyContentWrapper.classList.contains('collapsed');
+    toggleSection('history', !isCollapsed);
+    localStorage.setItem(STORAGE_KEYS.HISTORY_COLLAPSED, (!isCollapsed).toString());
+  });
+}
+
+/**
+ * Toggle section collapsed state
+ * @param {string} section - 'leaderboard' or 'history'
+ * @param {boolean} collapsed - Whether to collapse or expand
+ */
+function toggleSection(section, collapsed) {
+  if (section === 'leaderboard') {
+    const icon = elements.leaderboardToggle.querySelector('.collapse-icon');
+    if (collapsed) {
+      elements.leaderboardContent.classList.add('collapsed');
+      icon.textContent = '+';
+    } else {
+      elements.leaderboardContent.classList.remove('collapsed');
+      icon.textContent = '−';
+    }
+  } else if (section === 'history') {
+    const icon = elements.historyToggle.querySelector('.collapse-icon');
+    if (collapsed) {
+      elements.historyContentWrapper.classList.add('collapsed');
+      icon.textContent = '+';
+    } else {
+      elements.historyContentWrapper.classList.remove('collapsed');
+      icon.textContent = '−';
+    }
+  }
+}
+
+/**
+ * Setup test order modal listeners
+ */
+function setupTestOrderModal() {
+  // Close button
+  elements.testModalClose.addEventListener('click', closeTestOrderModal);
+
+  // Close on background click
+  elements.testOrderModal.addEventListener('click', (e) => {
+    if (e.target === elements.testOrderModal) {
+      closeTestOrderModal();
+    }
+  });
+
+  // Random values button
+  elements.testModalRandom.addEventListener('click', fillRandomTestValues);
+
+  // Submit button
+  elements.testModalSubmit.addEventListener('click', submitTestOrder);
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && elements.testOrderModal.style.display === 'flex') {
+      closeTestOrderModal();
+    }
+  });
 }
 
 /**
