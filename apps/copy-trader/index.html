@@ -12,40 +12,36 @@
     <div class="container">
         <header>
             <h1>Hyperliquid Copy Trading</h1>
-            <p class="subtitle">Discover top traders and automatically copy their positions</p>
+            <p class="subtitle">Monitor top wallets and automatically copy their positions</p>
         </header>
 
-        <!-- User Story 1: Two-Column Layout (Leaderboard + History) -->
+        <!-- Two-Column Layout: Wallets + Order History -->
         <div class="two-column-layout">
-            <!-- Left Column: Leaderboard -->
-            <section class="leaderboard-section">
+            <!-- Left Column: Monitoring Wallets -->
+            <section class="wallets-section">
                 <div class="section-header">
-                    <h2>Top 20 Traders (Monthly ROI)</h2>
-                    <button class="collapse-toggle" id="leaderboard-toggle" aria-label="Toggle leaderboard">
+                    <h2>👁️ Monitoring Wallets</h2>
+                    <button class="collapse-toggle" id="wallets-toggle" aria-label="Toggle monitoring wallets">
                         <span class="collapse-icon">−</span>
                     </button>
                 </div>
-                <div class="collapsible-content" id="leaderboard-content">
+                <div class="collapsible-content" id="wallets-content">
                     <p style="color:#888; font-size:14px; margin-bottom:10px;">
-                        📊 Active traders with $50K+ accounts, sorted by monthly ROI. Click a trader to view order history.
+                        🔍 Pre-configured wallet addresses for monitoring. Click a wallet to view order history and auto-fill the trader address.
                     </p>
-                    <div id="leaderboard-error" class="error-message" style="display:none;"></div>
                     <div class="table-container">
-                    <table id="leaderboard-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Trader</th>
-                                <th>Account</th>
-                                <th>ROI</th>
-                                <th>PnL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-body">
-                            <!-- Populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
+                        <table id="wallets-table">
+                            <thead>
+                                <tr>
+                                    <th>Label</th>
+                                    <th>Wallet Address</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wallets-body">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -59,7 +55,7 @@
                 </div>
                 <div class="collapsible-content" id="history-content-wrapper">
                     <div id="history-placeholder" style="text-align:center; padding:60px 20px; color:#666;">
-                        👈 Select a trader from the leaderboard to view their order history
+                        👆 Select a wallet to view their order history
                     </div>
                     <div id="history-loading" style="display:none; text-align:center; padding:40px;">
                         Loading order history...
@@ -67,7 +63,7 @@
                     <div id="history-error" class="error-message" style="display:none;"></div>
                     <div id="history-content" style="display:none;">
                     <div style="margin-bottom:15px; color:#888;">
-                        <strong>Trader:</strong> <span id="history-address"></span>
+                        <strong>Wallet:</strong> <span id="history-address"></span>
                         <span style="margin-left:20px; color:#666;">Aggregated orders (fills combined)</span>
                     </div>
                     <div class="table-container">

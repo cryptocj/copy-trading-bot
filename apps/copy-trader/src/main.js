@@ -13,25 +13,12 @@ import {
   validateTradeValue,
   validateLeverage,
 } from './services/validation.js';
-import {
-  formatNumber,
-  formatTimestamp,
-  truncateAddress,
-} from './utils/format.js';
-import {
-  fetchLeaderboard,
-  renderLeaderboardTable,
-  showLeaderboardError,
-  hideLeaderboardError,
-} from './services/leaderboard.js';
+import { truncateAddress } from './utils/format.js';
 import {
   startCopyTrading as startTradingService,
   stopCopyTrading as stopTradingService,
 } from './services/trading.js';
-import {
-  fetchTradeHistory,
-  renderTradeHistoryTable,
-} from './services/tradeHistory.js';
+import { fetchTradeHistory, renderTradeHistoryTable } from './services/tradeHistory.js';
 
 // Global state
 let config = {
@@ -43,7 +30,15 @@ let config = {
 
 let isCopyTradingActive = false;
 let orderList = []; // Max 6 orders (FIFO)
-let leaderboardTraders = [];
+
+// Monitoring wallets (pre-configured)
+const monitoringWallets = [
+  { label: 'DeepSeek', address: '0xC20aC4Dc4188660cBF555448AF52694CA62b0734' },
+  { label: 'Grok', address: '0x56D652e62998251b56C8398FB11fcFe464c08F84' },
+  { label: 'Claude', address: '0x59fA085d106541A834017b97060bcBBb0aa82869' },
+  { label: 'GPT', address: '0x67293D914eAFb26878534571add81F6Bd2D9fE06' },
+  { label: 'Gemini', address: '0x1b7A7D099a670256207a30dD0AE13D35f278010f' },
+];
 
 // localStorage keys
 const STORAGE_KEYS = {
@@ -52,8 +47,8 @@ const STORAGE_KEYS = {
   MAX_LEVERAGE: 'copyTrading.maxLeverage',
   API_KEY: 'copyTrading.apiKey',
   SAVE_API_KEY: 'copyTrading.saveApiKey',
-  LEADERBOARD_COLLAPSED: 'copyTrading.leaderboardCollapsed',
   HISTORY_COLLAPSED: 'copyTrading.historyCollapsed',
+  WALLETS_COLLAPSED: 'copyTrading.walletsCollapsed',
 };
 
 // DOM elements (will be initialized after DOM loads)
@@ -67,10 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Cache DOM elements
   elements = {
-    // Leaderboard
-    leaderboardBody: document.getElementById('leaderboard-body'),
-    leaderboardError: document.getElementById('leaderboard-error'),
-
     // Form inputs
     traderAddressInput: document.getElementById('trader-address'),
     apiKeyInput: document.getElementById('api-key'),
@@ -92,8 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ordersBody: document.getElementById('orders-body'),
 
     // Collapsible sections
-    leaderboardToggle: document.getElementById('leaderboard-toggle'),
-    leaderboardContent: document.getElementById('leaderboard-content'),
+    walletsToggle: document.getElementById('wallets-toggle'),
+    walletsContent: document.getElementById('wallets-content'),
     historyToggle: document.getElementById('history-toggle'),
     historyContentWrapper: document.getElementById('history-content-wrapper'),
 
@@ -115,6 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
     testAmount: document.getElementById('test-amount'),
     testPrice: document.getElementById('test-price'),
     testLeverage: document.getElementById('test-leverage'),
+
+    // Monitoring Wallets
+    walletsBody: document.getElementById('wallets-body'),
   };
 
   // Initialize validation listeners
@@ -132,11 +126,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize test order modal
   setupTestOrderModal();
 
+  // Render monitoring wallets table
+  renderWalletsTable();
+
   // Load saved settings from localStorage
   loadSavedSettings();
-
-  // Load leaderboard on page load (US1)
-  loadLeaderboard();
 
   // Expose utility functions to console for debugging
   window.copyTrading = {
@@ -243,7 +237,7 @@ function saveSettings() {
  * Clear all saved settings
  */
 function clearSavedSettings() {
-  Object.values(STORAGE_KEYS).forEach(key => {
+  Object.values(STORAGE_KEYS).forEach((key) => {
     localStorage.removeItem(key);
   });
   console.log('All saved settings cleared');
@@ -352,62 +346,6 @@ function setupButtonListeners() {
 }
 
 /**
- * Load leaderboard data and render table (US1)
- */
-async function loadLeaderboard() {
-  console.log('Loading leaderboard...');
-
-  try {
-    const traders = await fetchLeaderboard();
-
-    if (traders.length === 0) {
-      showLeaderboardError(
-        elements.leaderboardError,
-        'Failed to load leaderboard. You can still enter a trader address manually below.'
-      );
-    } else {
-      hideLeaderboardError(elements.leaderboardError);
-    }
-
-    // Store traders in global state
-    leaderboardTraders.length = 0;
-    leaderboardTraders.push(...traders);
-
-    // Render table with click handlers
-    renderLeaderboardTable(traders, elements.leaderboardBody, handleTraderSelect, showHistoryPanel);
-
-    console.log(`Leaderboard loaded: ${traders.length} traders`);
-  } catch (error) {
-    console.error('Error loading leaderboard:', error);
-    showLeaderboardError(
-      elements.leaderboardError,
-      'Failed to load leaderboard. You can still enter a trader address manually below.'
-    );
-  }
-}
-
-/**
- * Handle trader selection from leaderboard (US1)
- * @param {string} address - Selected trader's wallet address
- */
-function handleTraderSelect(address) {
-  console.log('Trader selected:', address);
-
-  // Auto-fill trader address input
-  elements.traderAddressInput.value = address;
-
-  // Trigger validation
-  const result = validateAddress(address);
-  displayValidationError('trader-address', result);
-  if (result.valid) {
-    config.traderAddress = result.address;
-  }
-
-  // Check form validity to enable/disable Start button
-  checkFormValidity();
-}
-
-/**
  * Enable or disable all form inputs
  * @param {boolean} disabled - Whether to disable inputs
  */
@@ -472,7 +410,10 @@ async function stopCopyTrading() {
     console.log('✅ Copy trading stopped successfully');
   } catch (error) {
     // ExchangeClosedByUser is expected when stopping, not an error
-    if (error.constructor?.name === 'ExchangeClosedByUser' || error.message?.includes('closedByUser')) {
+    if (
+      error.constructor?.name === 'ExchangeClosedByUser' ||
+      error.message?.includes('closedByUser')
+    ) {
       console.log('✅ Copy trading stopped successfully');
     } else {
       console.error('❌ Error stopping copy trading:', error);
@@ -590,9 +531,9 @@ function renderOrderList() {
         <tr>
             <td>${order.symbol}</td>
             <td class="${order.side}">${order.side.toUpperCase()}</td>
-            <td>${formatNumber(order.amount, 6)}</td>
-            <td>$${formatNumber(order.price, 2)}</td>
-            <td>${formatTimestamp(order.timestamp)}</td>
+            <td>${Number(order.amount).toFixed(6)}</td>
+            <td>$${Number(order.price).toFixed(2)}</td>
+            <td>${new Date(order.timestamp).toLocaleString()}</td>
         </tr>
     `
     )
@@ -606,52 +547,52 @@ function renderOrderList() {
  */
 function setupCollapsibleSections() {
   // Restore saved collapsed states
-  const leaderboardCollapsed = localStorage.getItem(STORAGE_KEYS.LEADERBOARD_COLLAPSED) === 'true';
   const historyCollapsed = localStorage.getItem(STORAGE_KEYS.HISTORY_COLLAPSED) === 'true';
+  const walletsCollapsed = localStorage.getItem(STORAGE_KEYS.WALLETS_COLLAPSED) === 'true';
 
-  if (leaderboardCollapsed) {
-    toggleSection('leaderboard', true);
-  }
   if (historyCollapsed) {
     toggleSection('history', true);
   }
+  if (walletsCollapsed) {
+    toggleSection('wallets', true);
+  }
 
   // Add event listeners
-  elements.leaderboardToggle.addEventListener('click', () => {
-    const isCollapsed = elements.leaderboardContent.classList.contains('collapsed');
-    toggleSection('leaderboard', !isCollapsed);
-    localStorage.setItem(STORAGE_KEYS.LEADERBOARD_COLLAPSED, (!isCollapsed).toString());
-  });
-
   elements.historyToggle.addEventListener('click', () => {
     const isCollapsed = elements.historyContentWrapper.classList.contains('collapsed');
     toggleSection('history', !isCollapsed);
     localStorage.setItem(STORAGE_KEYS.HISTORY_COLLAPSED, (!isCollapsed).toString());
   });
+
+  elements.walletsToggle.addEventListener('click', () => {
+    const isCollapsed = elements.walletsContent.classList.contains('collapsed');
+    toggleSection('wallets', !isCollapsed);
+    localStorage.setItem(STORAGE_KEYS.WALLETS_COLLAPSED, (!isCollapsed).toString());
+  });
 }
 
 /**
  * Toggle section collapsed state
- * @param {string} section - 'leaderboard' or 'history'
+ * @param {string} section - 'history' or 'wallets'
  * @param {boolean} collapsed - Whether to collapse or expand
  */
 function toggleSection(section, collapsed) {
-  if (section === 'leaderboard') {
-    const icon = elements.leaderboardToggle.querySelector('.collapse-icon');
-    if (collapsed) {
-      elements.leaderboardContent.classList.add('collapsed');
-      icon.textContent = '+';
-    } else {
-      elements.leaderboardContent.classList.remove('collapsed');
-      icon.textContent = '−';
-    }
-  } else if (section === 'history') {
+  if (section === 'history') {
     const icon = elements.historyToggle.querySelector('.collapse-icon');
     if (collapsed) {
       elements.historyContentWrapper.classList.add('collapsed');
       icon.textContent = '+';
     } else {
       elements.historyContentWrapper.classList.remove('collapsed');
+      icon.textContent = '−';
+    }
+  } else if (section === 'wallets') {
+    const icon = elements.walletsToggle.querySelector('.collapse-icon');
+    if (collapsed) {
+      elements.walletsContent.classList.add('collapsed');
+      icon.textContent = '+';
+    } else {
+      elements.walletsContent.classList.remove('collapsed');
       icon.textContent = '−';
     }
   }
@@ -738,12 +679,54 @@ async function showHistoryPanel(address) {
   }
 }
 
+/**
+ * Render monitoring wallets table (similar to leaderboard)
+ */
+function renderWalletsTable() {
+  const html = monitoringWallets
+    .map((wallet) => {
+      const displayAddress = truncateAddress(wallet.address);
+      return `
+        <tr data-address="${wallet.address}">
+          <td>${wallet.label}</td>
+          <td title="${wallet.address}">${displayAddress}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  elements.walletsBody.innerHTML = html;
+
+  // Add row click event (similar to leaderboard selection)
+  const rows = elements.walletsBody.querySelectorAll('tr');
+  rows.forEach((row) => {
+    row.addEventListener('click', () => {
+      // Remove selected class from all wallet rows
+      rows.forEach((r) => r.classList.remove('selected'));
+      // Add selected class to clicked row
+      row.classList.add('selected');
+
+      // Auto-fill trader address
+      const address = row.getAttribute('data-address');
+      elements.traderAddressInput.value = address;
+      config.traderAddress = address;
+
+      // Trigger validation
+      const result = validateAddress(address);
+      displayValidationError('trader-address', result);
+      checkFormValidity();
+
+      // Load order history (same as leaderboard)
+      showHistoryPanel(address);
+    });
+  });
+}
+
 // Export functions for use in other modules
 export {
   config,
   isCopyTradingActive,
   orderList,
-  leaderboardTraders,
   elements,
   addOrder,
   renderOrderList,

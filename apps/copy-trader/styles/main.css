@@ -104,23 +104,18 @@ section {
 /* Two-Column Layout */
 .two-column-layout {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     margin-bottom: 30px;
 }
 
-.two-column-layout .leaderboard-section {
-    flex: 1;
-    min-width: 0;
-    margin-bottom: 0;
-}
-
+.two-column-layout .wallets-section,
 .two-column-layout .history-section {
     flex: 1;
     min-width: 0;
     margin-bottom: 0;
 }
 
-/* Leaderboard Styles */
+/* Table Styles */
 .table-container {
     overflow-x: auto;
 }
@@ -145,19 +140,6 @@ th {
 td {
     padding: 12px;
     border-bottom: 1px solid #2a3550;
-}
-
-#leaderboard-table tbody tr {
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-#leaderboard-table tbody tr:hover {
-    background-color: #1a2137;
-}
-
-#leaderboard-table tbody tr.selected {
-    background-color: #2a3550;
 }
 
 /* Form Styles */
@@ -399,6 +381,20 @@ select:focus {
     border-color: #4a9eff;
 }
 
+/* Wallets Table (similar to leaderboard) */
+#wallets-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#wallets-table tbody tr:hover {
+    background-color: #1a2137;
+}
+
+#wallets-table tbody tr.selected {
+    background-color: #2a3550;
+}
+
 /* Orders Table Styles */
 #orders-table .buy {
     color: #2a9d5f;
@@ -425,7 +421,7 @@ select:focus {
         flex-direction: column;
     }
 
-    .two-column-layout .leaderboard-section,
+    .two-column-layout .wallets-section,
     .two-column-layout .history-section {
         margin-bottom: 30px;
     }
