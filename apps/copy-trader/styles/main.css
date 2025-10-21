@@ -497,15 +497,34 @@ button {
     padding: 30px;
     border-radius: 8px;
     border: 1px solid #2a3550;
-    max-width: 500px;
+    max-width: 600px;
     width: 90%;
+    max-height: 90vh;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-content h3 {
     color: #4a9eff;
     margin-top: 0;
     margin-bottom: 20px;
+    flex-shrink: 0;
+}
+
+.modal-body {
+    overflow-y: auto;
+    flex: 1;
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    flex-shrink: 0;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding-top: 10px;
+    border-top: 1px solid #2a3550;
 }
 
 .button-primary {

@@ -815,18 +815,20 @@ async function startCopyTrading() {
   try {
     // Show confirmation dialog before starting
     console.log('Requesting user confirmation...');
-    const confirmed = await confirmCopyTradingSession({
+    const result = await confirmCopyTradingSession({
       traderAddress: config.traderAddress,
       copyBalance: config.copyBalance,
       apiKey: config.userApiKey
     });
 
-    if (!confirmed) {
+    if (!result.confirmed) {
       console.log('❌ Copy trading cancelled by user');
       return;
     }
 
     console.log('✅ User confirmed, starting copy trading...');
+    console.log(`📊 Scaling factor: ${result.scalingFactor.toFixed(4)} (${(result.scalingFactor * 100).toFixed(1)}%)`);
+    console.log(`📊 Initial positions to open: ${result.initialPositions.length}`);
 
     // Ensure current configuration is saved and tracked as last monitored wallet
     console.log('💾 Saving current configuration before starting...');
@@ -838,10 +840,17 @@ async function startCopyTrading() {
     elements.stopButton.disabled = false;
     setFormDisabled(true);
 
-    // Start trading service with order callback (US3 + US4 integration)
-    await startTradingService(config, (order) => {
-      addOrder(order); // Add order to display list (US4)
-    });
+    // Start trading service with order callback, scaling factor, and initial positions (US3 + US4 integration)
+    await startTradingService(
+      {
+        ...config,
+        scalingFactor: result.scalingFactor,
+        initialPositions: result.initialPositions
+      },
+      (order) => {
+        addOrder(order); // Add order to display list (US4)
+      }
+    );
 
     console.log('✅ Copy trading started successfully');
     console.log(`📡 Now monitoring wallet: ${config.traderAddress}`);
@@ -1571,38 +1580,31 @@ async function confirmCopyTradingSession(sessionConfig) {
       <div style="margin-top:20px;">
         ${scalingInfoHtml}
 
-        <h4 style="color:#4a9eff; margin-bottom:10px; font-size:1em;">Initial Positions to Copy (${positions.length})</h4>
-        <div style="background-color:#0f1420; border-radius:6px; border:1px solid #2a3550; overflow:hidden;">
-          <table style="width:100%; border-collapse:collapse; font-size:0.85em;">
-            <thead style="background-color:#1a2137;">
-              <tr>
-                <th style="padding:8px; text-align:left; color:#888;">Symbol</th>
-                <th style="padding:8px; text-align:left; color:#888;">Side</th>
-                <th style="padding:8px; text-align:left; color:#888;">Size</th>
-                <th style="padding:8px; text-align:left; color:#888;">Price</th>
-                <th style="padding:8px; text-align:left; color:#888;">Leverage</th>
-                <th style="padding:8px; text-align:left; color:#888;">Market Value</th>
-                <th style="padding:8px; text-align:left; color:#888;">Required Margin</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${positionsTableHtml}
-              ${totalRowHtml}
-            </tbody>
-          </table>
-        </div>
+        <div style="background-color:#0f1420; padding:15px; border-radius:6px; border:1px solid #2a3550;">
+          <h4 style="color:#4a9eff; margin:0 0 12px 0; font-size:1em;">📊 Initial Positions Summary</h4>
+          <div style="display:grid; grid-template-columns: 160px 1fr; gap:10px; font-size:0.9em;">
+            <div style="color:#888;">Positions to Copy:</div>
+            <div style="color:#e0e0e0; font-weight:600;">${positions.length} position${positions.length !== 1 ? 's' : ''}</div>
 
-        <div style="margin-top:10px; padding:12px; background-color:#1a2332; border-radius:4px; border-left:3px solid ${feasibilityColor};">
-          <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; font-size:0.9em;">
-            <div style="color:#888;">Status:</div>
-            <div style="color:${feasibilityColor}; font-weight:600;">${feasibilityIcon} ${feasibilityText}</div>
+            <div style="color:#888;">Total Market Value:</div>
+            <div style="color:#4a9eff; font-weight:600;">$${totalMarketValue.toFixed(2)}</div>
+
+            <div style="color:#888;">Required Margin:</div>
+            <div style="color:#e0e0e0; font-weight:600;">$${totalEstimatedCost.toFixed(2)}</div>
 
             <div style="color:#888;">Balance Utilization:</div>
             <div style="color:${utilizationColor}; font-weight:600;">${utilizationPercent.toFixed(1)}%</div>
+
+            <div style="color:#888;">Status:</div>
+            <div style="color:${feasibilityColor}; font-weight:600;">${feasibilityIcon} ${feasibilityText}</div>
           </div>
         </div>
 
         ${warningsHtml}
+
+        <div style="margin-top:10px; padding:10px; background-color:#1a2332; border-radius:4px; border-left:3px solid #4a9eff;">
+          <span style="color:#4a9eff; font-size:0.85em;">💡 View full position details in the right panel</span>
+        </div>
       </div>
     `;
   } else {
@@ -1637,18 +1639,26 @@ async function confirmCopyTradingSession(sessionConfig) {
     </div>
   `;
 
-  // Return promise for user response
+  // Return promise for user response with scaling factor and initial positions
   return new Promise((resolve) => {
-    // Handle confirm
+    // Handle confirm - return confirmation, scaling factor, and positions
     const handleConfirm = () => {
       cleanup();
-      resolve(true);
+      resolve({
+        confirmed: true,
+        scalingFactor: positionCalculation?.scalingFactor || 1.0,
+        initialPositions: positionCalculation?.positions || []
+      });
     };
 
     // Handle cancel
     const handleCancel = () => {
       cleanup();
-      resolve(false);
+      resolve({
+        confirmed: false,
+        scalingFactor: 1.0,
+        initialPositions: []
+      });
     };
 
     // Cleanup function

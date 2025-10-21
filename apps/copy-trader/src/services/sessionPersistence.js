@@ -43,6 +43,8 @@ export const SESSION_STORAGE_KEYS = {
  * @property {string} monitoredWallet - Current monitored wallet address
  * @property {number} lastUpdate - Last update timestamp
  * @property {string} tabId - Unique tab identifier for multi-tab coordination
+ * @property {number} scalingFactor - Position scaling factor (0.0-1.0)
+ * @property {boolean} initialPositionsOpened - Flag indicating if initial positions were already opened
  */
 
 /**
@@ -63,6 +65,8 @@ export function createEmptySessionState() {
     monitoredWallet: '',
     lastUpdate: Date.now(),
     tabId: generateTabId(),
+    scalingFactor: 1.0,
+    initialPositionsOpened: false,
   };
 }
 

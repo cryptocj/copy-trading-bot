@@ -191,6 +191,43 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
 }
 
 /**
+ * Scale a single trade amount using the same rules as initial position calculation
+ * - Detects precision from trader's original amount
+ * - Applies scaling factor
+ * - Preserves original precision
+ *
+ * @param {number} traderAmount - Trader's original trade amount
+ * @param {number} scalingFactor - Scaling factor (0.0 to 1.0)
+ * @returns {number} - Scaled amount with preserved precision
+ * @example
+ * scaleTrade(0.12, 0.833) → 0.10 (preserves 2 decimals)
+ * scaleTrade(28000, 0.5) → 14000 (preserves 0 decimals)
+ */
+export function scaleTrade(traderAmount, scalingFactor) {
+  // Validate inputs
+  if (typeof traderAmount !== 'number' || traderAmount <= 0) {
+    throw new Error('traderAmount must be a positive number');
+  }
+
+  if (typeof scalingFactor !== 'number' || scalingFactor <= 0 || scalingFactor > 1) {
+    throw new Error('scalingFactor must be between 0 and 1');
+  }
+
+  // If no scaling needed (factor = 1.0), return original
+  if (scalingFactor === 1.0) {
+    return traderAmount;
+  }
+
+  // Detect precision from trader's original amount
+  const precision = getDecimalPrecision(traderAmount);
+
+  // Scale and round to original precision
+  const scaledAmount = roundToDecimals(traderAmount * scalingFactor, precision);
+
+  return scaledAmount;
+}
+
+/**
  * Format position calculation result for display
  * Converts calculation result into human-readable strings
  *
