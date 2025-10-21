@@ -57,9 +57,10 @@ export async function fetchWalletBalance(exchange, userAddress = null) {
 }
 
 /**
- * Fetch positions directly from Hyperliquid API (for monitored wallets)
+ * Fetch LATEST open positions directly from Hyperliquid API (for monitored wallets)
+ * Always fetches fresh data - no caching
  * @param {string} userAddress - User wallet address
- * @returns {Promise<Array>} - Array of position objects
+ * @returns {Promise<Array>} - Array of CURRENT open position objects
  */
 async function fetchPositionsDirectAPI(userAddress) {
     const response = await fetch(HYPERLIQUID_API_URL, {
@@ -68,7 +69,7 @@ async function fetchPositionsDirectAPI(userAddress) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            type: 'clearinghouseState',
+            type: 'clearinghouseState', // Returns current state (latest positions)
             user: userAddress,
         }),
     });
@@ -83,7 +84,7 @@ async function fetchPositionsDirectAPI(userAddress) {
     const assetPositions = data.assetPositions || [];
 
     return assetPositions
-        .filter(pos => parseFloat(pos.position.szi) !== 0) // Filter open positions
+        .filter(pos => parseFloat(pos.position.szi) !== 0) // Filter OPEN positions only (szi !== 0 means position is open)
         .map(pos => {
             const szi = parseFloat(pos.position.szi);
             const isLong = szi > 0;

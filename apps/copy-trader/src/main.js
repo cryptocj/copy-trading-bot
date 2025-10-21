@@ -13,6 +13,7 @@ import {
   validateCopyBalance,
 } from './services/validation.js';
 import { truncateAddress, formatNumber } from './utils/format.js';
+import { calculateInitialPositions } from './utils/positionCalculator.js';
 import {
   startCopyTrading as startTradingService,
   stopCopyTrading as stopTradingService,
@@ -79,8 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
     copyBalanceError: document.getElementById('copy-balance-error'),
 
     // Buttons
+    testCalculationButton: document.getElementById('test-calculation-button'),
     startButton: document.getElementById('start-button'),
     stopButton: document.getElementById('stop-button'),
+    calculationTestResults: document.getElementById('calculation-test-results'),
 
     // Orders
     ordersBody: document.getElementById('orders-body'),
@@ -577,9 +580,214 @@ function checkFormValidity() {
 }
 
 /**
+ * Test position calculation with current form values
+ */
+async function testPositionCalculation() {
+  console.log('Test Position Calculation button clicked');
+
+  // Validate trader address
+  const traderAddress = elements.traderAddressInput.value.trim();
+  const addressValidation = validateAddress(traderAddress);
+  if (!addressValidation.valid) {
+    elements.calculationTestResults.style.display = 'block';
+    elements.calculationTestResults.innerHTML = `
+      <div class="error-message">
+        ❌ Please enter a valid trader address: ${addressValidation.error || 'Invalid format'}
+      </div>
+    `;
+    return;
+  }
+
+  // Validate copy balance
+  const copyBalance = parseFloat(elements.copyBalanceInput.value);
+  if (isNaN(copyBalance) || copyBalance < 50) {
+    elements.calculationTestResults.style.display = 'block';
+    elements.calculationTestResults.innerHTML = `
+      <div class="error-message">
+        ❌ Please enter a valid copy balance (minimum $50)
+      </div>
+    `;
+    return;
+  }
+
+  // Show loading state
+  elements.calculationTestResults.style.display = 'block';
+  elements.calculationTestResults.innerHTML = `
+    <div style="text-align:center; padding:40px; color:#888;">
+      Loading trader positions...
+    </div>
+  `;
+
+  try {
+    // Fetch trader's positions
+    const traderPositions = await fetchPositionsForAddress(traderAddress);
+
+    if (!traderPositions || traderPositions.length === 0) {
+      elements.calculationTestResults.innerHTML = `
+        <div style="padding:15px; background-color:#1a2332; border-radius:4px; border-left:3px solid #888; text-align:center;">
+          <span style="color:#888;">No open positions found for this trader</span>
+        </div>
+      `;
+      return;
+    }
+
+    // Calculate what positions would be opened
+    const calculation = calculateInitialPositions(traderPositions, copyBalance);
+    console.log('Position calculation:', calculation);
+
+    // Build results display
+    const { positions, totalEstimatedCost, totalMarketValue, feasible, warnings, utilizationPercent, wasScaled, scalingFactor, originalTotalCost, originalTotalValue } = calculation;
+
+    // Show scaling info if positions were scaled
+    let scalingInfoHtml = '';
+    if (wasScaled) {
+      scalingInfoHtml = `
+        <div style="margin-bottom:15px; padding:12px; background-color:#2a3550; border-radius:4px; border-left:3px solid #ffaa00;">
+          <div style="color:#ffaa00; font-weight:600; margin-bottom:8px;">📉 Positions Scaled Down</div>
+          <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; font-size:0.9em;">
+            <div style="color:#888;">Scaling Factor:</div>
+            <div style="color:#e0e0e0; font-weight:600;">${(scalingFactor * 100).toFixed(1)}%</div>
+
+            <div style="color:#888;">Original Required:</div>
+            <div style="color:#888;">$${originalTotalCost.toFixed(2)}</div>
+
+            <div style="color:#888;">Scaled to Fit:</div>
+            <div style="color:#4a9eff; font-weight:600;">$${totalEstimatedCost.toFixed(2)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Build position table with comparison if scaled
+    const positionsTableHtml = positions.map((pos, index) => {
+      const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
+      const originalPos = traderPositions[index];
+
+      if (wasScaled && originalPos) {
+        // Show comparison: Original → Scaled
+        return `
+          <tr style="border-bottom:1px solid #2a3550;">
+            <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
+            <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
+            <td style="padding:8px; color:#e0e0e0;">
+              <div style="color:#888; font-size:0.85em;">${originalPos.size.toFixed(4)}</div>
+              <div style="color:#4a9eff; font-weight:600;">→ ${pos.size.toFixed(4)}</div>
+            </td>
+            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px; color:#888;">${pos.leverage}x</td>
+            <td style="padding:8px; color:#e0e0e0;">
+              <div style="color:#888; font-size:0.85em;">$${(originalPos.size * originalPos.entryPrice).toFixed(2)}</div>
+              <div style="color:#4a9eff; font-weight:600;">→ $${pos.marketValue.toFixed(2)}</div>
+            </td>
+            <td style="padding:8px; color:#4a9eff; font-weight:600;">
+              <div style="color:#888; font-size:0.85em;">$${((originalPos.size * originalPos.entryPrice) / pos.leverage).toFixed(2)}</div>
+              <div style="color:#4a9eff; font-weight:600;">→ $${pos.estimatedCost.toFixed(2)}</div>
+            </td>
+          </tr>
+        `;
+      } else {
+        // Show single row when not scaled
+        return `
+          <tr style="border-bottom:1px solid #2a3550;">
+            <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
+            <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
+            <td style="padding:8px; color:#e0e0e0;">${pos.size.toFixed(4)}</td>
+            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px; color:#888;">${pos.leverage}x</td>
+            <td style="padding:8px; color:#e0e0e0;">$${pos.marketValue.toFixed(2)}</td>
+            <td style="padding:8px; color:#4a9eff; font-weight:600;">$${pos.estimatedCost.toFixed(2)}</td>
+          </tr>
+        `;
+      }
+    }).join('');
+
+    const totalRowHtml = `
+      <tr style="background-color:#1a2137; font-weight:700;">
+        <td colspan="5" style="padding:8px; color:#888; text-align:right;">TOTAL:</td>
+        <td style="padding:8px; color:#e0e0e0;">$${totalMarketValue.toFixed(2)}</td>
+        <td style="padding:8px; color:#4a9eff;">$${totalEstimatedCost.toFixed(2)}</td>
+      </tr>
+    `;
+
+    const feasibilityColor = '#2a9d5f'; // Always green after scaling
+    const feasibilityIcon = '✅';
+    const feasibilityText = wasScaled ? 'Feasible (Scaled)' : 'Feasible';
+    const utilizationColor = utilizationPercent > 80 ? '#ffaa00' : '#2a9d5f';
+
+    let warningsHtml = '';
+    if (warnings.length > 0) {
+      warningsHtml = `
+        <div style="margin-top:10px; padding:10px; background-color:#3a1a1a; border-radius:4px; border-left:3px solid #ff4a4a;">
+          <div style="color:#ff4a4a; font-weight:600; margin-bottom:5px;">⚠️ Warnings:</div>
+          ${warnings.map(warning => `<div style="color:#ffaa00; font-size:0.85em; margin-left:20px;">• ${warning}</div>`).join('')}
+        </div>
+      `;
+    }
+
+    elements.calculationTestResults.innerHTML = `
+      <h3 style="color:#4a9eff; margin-top:0; margin-bottom:15px; font-size:1.1em;">📊 Position Calculation Test Results</h3>
+
+      <div style="margin-bottom:15px; padding:12px; background-color:#1a2332; border-radius:4px; border-left:3px solid #4a9eff;">
+        <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; font-size:0.9em;">
+          <div style="color:#888;">Trader Address:</div>
+          <div style="color:#e0e0e0; word-break:break-all; font-family:monospace; font-size:0.85em;">${traderAddress}</div>
+
+          <div style="color:#888;">Copy Balance:</div>
+          <div style="color:#4a9eff; font-weight:600;">$${copyBalance.toFixed(2)}</div>
+        </div>
+      </div>
+
+      ${scalingInfoHtml}
+
+      <h4 style="color:#4a9eff; margin-bottom:10px; font-size:1em;">Initial Positions to Copy (${positions.length})</h4>
+      <div style="background-color:#0a0e1a; border-radius:6px; border:1px solid #2a3550; overflow:hidden;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.85em;">
+          <thead style="background-color:#1a2137;">
+            <tr>
+              <th style="padding:8px; text-align:left; color:#888;">Symbol</th>
+              <th style="padding:8px; text-align:left; color:#888;">Side</th>
+              <th style="padding:8px; text-align:left; color:#888;">Size</th>
+              <th style="padding:8px; text-align:left; color:#888;">Price</th>
+              <th style="padding:8px; text-align:left; color:#888;">Leverage</th>
+              <th style="padding:8px; text-align:left; color:#888;">Market Value</th>
+              <th style="padding:8px; text-align:left; color:#888;">Required Margin</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${positionsTableHtml}
+            ${totalRowHtml}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:10px; padding:12px; background-color:#1a2332; border-radius:4px; border-left:3px solid ${feasibilityColor};">
+        <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; font-size:0.9em;">
+          <div style="color:#888;">Status:</div>
+          <div style="color:${feasibilityColor}; font-weight:600;">${feasibilityIcon} ${feasibilityText}</div>
+
+          <div style="color:#888;">Balance Utilization:</div>
+          <div style="color:${utilizationColor}; font-weight:600;">${utilizationPercent.toFixed(1)}%</div>
+        </div>
+      </div>
+
+      ${warningsHtml}
+    `;
+
+  } catch (error) {
+    console.error('Position calculation test failed:', error);
+    elements.calculationTestResults.innerHTML = `
+      <div class="error-message">
+        ❌ Failed to load trader positions: ${error.message}
+      </div>
+    `;
+  }
+}
+
+/**
  * Setup button click listeners
  */
 function setupButtonListeners() {
+  elements.testCalculationButton.addEventListener('click', testPositionCalculation);
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
   elements.refreshWalletButton.addEventListener('click', refreshWalletInfo);
@@ -883,7 +1091,10 @@ async function fetchBalanceForAddress(address) {
 }
 
 /**
- * Fetch positions for a specific address
+ * Fetch LATEST open positions for a specific address
+ * Always fetches fresh data from Hyperliquid API - no caching
+ * @param {string} address - Wallet address to query
+ * @returns {Promise<Array>} Array of current open position objects
  */
 async function fetchPositionsForAddress(address) {
   try {
@@ -1226,43 +1437,208 @@ function renderPositions(positions, container) {
  * @returns {Promise<boolean>} True if confirmed, false if cancelled
  */
 async function confirmCopyTradingSession(sessionConfig) {
-  return new Promise((resolve) => {
-    const modal = document.getElementById('trade-confirm-modal');
-    const detailsDiv = document.getElementById('trade-confirm-details');
-    const confirmButton = document.getElementById('trade-confirm-execute');
-    const cancelButton = document.getElementById('trade-confirm-cancel');
+  const modal = document.getElementById('trade-confirm-modal');
+  const detailsDiv = document.getElementById('trade-confirm-details');
+  const confirmButton = document.getElementById('trade-confirm-execute');
+  const cancelButton = document.getElementById('trade-confirm-cancel');
 
-    // Mask API key (show first 6 and last 4 characters)
-    const maskedApiKey = sessionConfig.apiKey.length > 10
-      ? `${sessionConfig.apiKey.substring(0, 6)}...${sessionConfig.apiKey.substring(sessionConfig.apiKey.length - 4)}`
-      : '******';
+  // Mask API key (show first 6 and last 4 characters)
+  const maskedApiKey = sessionConfig.apiKey.length > 10
+    ? `${sessionConfig.apiKey.substring(0, 6)}...${sessionConfig.apiKey.substring(sessionConfig.apiKey.length - 4)}`
+    : '******';
 
-    // Populate modal with session configuration
-    detailsDiv.innerHTML = `
-      <div style="background-color:#0f1420; padding:20px; border-radius:6px; border:1px solid #2a3550;">
-        <div style="display:grid; grid-template-columns: 140px 1fr; gap:12px; font-size:0.95em;">
-          <div style="color:#888;">Trader Address:</div>
-          <div style="color:#e0e0e0; font-weight:600; word-break:break-all;">${sessionConfig.traderAddress}</div>
+  // Show loading state
+  detailsDiv.innerHTML = `
+    <div style="text-align:center; padding:40px; color:#888;">
+      Loading trader positions...
+    </div>
+  `;
+  modal.style.display = 'flex';
 
-          <div style="color:#888;">Copy Balance:</div>
-          <div style="color:#4a9eff; font-weight:600;">$${sessionConfig.copyBalance.toFixed(2)}</div>
+  // Fetch trader's current positions
+  let traderPositions = [];
+  let positionCalculation = null;
 
-          <div style="color:#888;">API Key:</div>
-          <div style="color:#888; font-family:monospace;">${maskedApiKey}</div>
+  try {
+    traderPositions = await fetchPositionsForAddress(sessionConfig.traderAddress);
+    console.log('Trader positions loaded:', traderPositions);
 
-          <div style="color:#888;">Max Leverage:</div>
-          <div style="color:#e0e0e0;">20x (per symbol)</div>
+    // Calculate what positions would be opened
+    if (traderPositions.length > 0) {
+      positionCalculation = calculateInitialPositions(traderPositions, sessionConfig.copyBalance);
+      console.log('Position calculation:', positionCalculation);
+    }
+  } catch (error) {
+    console.error('Failed to load trader positions:', error);
+  }
+
+  // Build positions display HTML with calculation results
+  let positionsHtml = '';
+  if (positionCalculation && positionCalculation.positions.length > 0) {
+    const { positions, totalEstimatedCost, totalMarketValue, feasible, warnings, utilizationPercent, wasScaled, scalingFactor, originalTotalCost, originalTotalValue } = positionCalculation;
+
+    // Show scaling info if positions were scaled
+    let scalingInfoHtml = '';
+    if (wasScaled) {
+      scalingInfoHtml = `
+        <div style="margin-bottom:15px; padding:12px; background-color:#2a3550; border-radius:4px; border-left:3px solid #ffaa00;">
+          <div style="color:#ffaa00; font-weight:600; margin-bottom:8px;">📉 Positions Scaled Down</div>
+          <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; font-size:0.9em;">
+            <div style="color:#888;">Scaling Factor:</div>
+            <div style="color:#e0e0e0; font-weight:600;">${(scalingFactor * 100).toFixed(1)}%</div>
+
+            <div style="color:#888;">Original Required:</div>
+            <div style="color:#888;">$${originalTotalCost.toFixed(2)}</div>
+
+            <div style="color:#888;">Scaled to Fit:</div>
+            <div style="color:#4a9eff; font-weight:600;">$${totalEstimatedCost.toFixed(2)}</div>
+          </div>
         </div>
-      </div>
-      <div style="margin-top:15px; padding:12px; background-color:#1a2332; border-left:3px solid #ffa726; border-radius:4px;">
-        <span style="color:#ffa726; font-weight:600;">⚠️ Warning:</span>
-        <span style="color:#bbb; font-size:0.9em;"> All detected trades will be automatically copied. Make sure you trust this trader.</span>
-      </div>
+      `;
+    }
+
+    // Build position table with comparison if scaled
+    const positionsTableHtml = positions.map((pos, index) => {
+      const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
+      const originalPos = traderPositions[index];
+
+      if (wasScaled && originalPos) {
+        // Show comparison: Original → Scaled
+        return `
+          <tr style="border-bottom:1px solid #2a3550;">
+            <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
+            <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
+            <td style="padding:8px; color:#e0e0e0;">
+              <div style="color:#888; font-size:0.85em;">${originalPos.size.toFixed(4)}</div>
+              <div style="color:#4a9eff; font-weight:600;">→ ${pos.size.toFixed(4)}</div>
+            </td>
+            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px; color:#888;">${pos.leverage}x</td>
+            <td style="padding:8px; color:#e0e0e0;">
+              <div style="color:#888; font-size:0.85em;">$${(originalPos.size * originalPos.entryPrice).toFixed(2)}</div>
+              <div style="color:#4a9eff; font-weight:600;">→ $${pos.marketValue.toFixed(2)}</div>
+            </td>
+            <td style="padding:8px; color:#4a9eff; font-weight:600;">
+              <div style="color:#888; font-size:0.85em;">$${((originalPos.size * originalPos.entryPrice) / pos.leverage).toFixed(2)}</div>
+              <div style="color:#4a9eff; font-weight:600;">→ $${pos.estimatedCost.toFixed(2)}</div>
+            </td>
+          </tr>
+        `;
+      } else {
+        // Show single row when not scaled
+        return `
+          <tr style="border-bottom:1px solid #2a3550;">
+            <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
+            <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
+            <td style="padding:8px; color:#e0e0e0;">${pos.size.toFixed(4)}</td>
+            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px; color:#888;">${pos.leverage}x</td>
+            <td style="padding:8px; color:#e0e0e0;">$${pos.marketValue.toFixed(2)}</td>
+            <td style="padding:8px; color:#4a9eff; font-weight:600;">$${pos.estimatedCost.toFixed(2)}</td>
+          </tr>
+        `;
+      }
+    }).join('');
+
+    // Total row
+    const totalRowHtml = `
+      <tr style="background-color:#1a2137; font-weight:700;">
+        <td colspan="5" style="padding:8px; color:#888; text-align:right;">TOTAL:</td>
+        <td style="padding:8px; color:#e0e0e0;">$${totalMarketValue.toFixed(2)}</td>
+        <td style="padding:8px; color:#4a9eff;">$${totalEstimatedCost.toFixed(2)}</td>
+      </tr>
     `;
 
-    // Show modal
-    modal.style.display = 'flex';
+    // Feasibility status (always green after scaling)
+    const feasibilityColor = '#2a9d5f'; // Always green after scaling
+    const feasibilityIcon = '✅';
+    const feasibilityText = wasScaled ? 'Feasible (Scaled)' : 'Feasible';
 
+    const utilizationColor = utilizationPercent > 80 ? '#ffaa00' : '#2a9d5f';
+
+    // Warnings section
+    let warningsHtml = '';
+    if (warnings.length > 0) {
+      warningsHtml = `
+        <div style="margin-top:10px; padding:10px; background-color:#3a1a1a; border-radius:4px; border-left:3px solid #ff4a4a;">
+          <div style="color:#ff4a4a; font-weight:600; margin-bottom:5px;">⚠️ Warnings:</div>
+          ${warnings.map(warning => `<div style="color:#ffaa00; font-size:0.85em; margin-left:20px;">• ${warning}</div>`).join('')}
+        </div>
+      `;
+    }
+
+    positionsHtml = `
+      <div style="margin-top:20px;">
+        ${scalingInfoHtml}
+
+        <h4 style="color:#4a9eff; margin-bottom:10px; font-size:1em;">Initial Positions to Copy (${positions.length})</h4>
+        <div style="background-color:#0f1420; border-radius:6px; border:1px solid #2a3550; overflow:hidden;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.85em;">
+            <thead style="background-color:#1a2137;">
+              <tr>
+                <th style="padding:8px; text-align:left; color:#888;">Symbol</th>
+                <th style="padding:8px; text-align:left; color:#888;">Side</th>
+                <th style="padding:8px; text-align:left; color:#888;">Size</th>
+                <th style="padding:8px; text-align:left; color:#888;">Price</th>
+                <th style="padding:8px; text-align:left; color:#888;">Leverage</th>
+                <th style="padding:8px; text-align:left; color:#888;">Market Value</th>
+                <th style="padding:8px; text-align:left; color:#888;">Required Margin</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${positionsTableHtml}
+              ${totalRowHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:10px; padding:12px; background-color:#1a2332; border-radius:4px; border-left:3px solid ${feasibilityColor};">
+          <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; font-size:0.9em;">
+            <div style="color:#888;">Status:</div>
+            <div style="color:${feasibilityColor}; font-weight:600;">${feasibilityIcon} ${feasibilityText}</div>
+
+            <div style="color:#888;">Balance Utilization:</div>
+            <div style="color:${utilizationColor}; font-weight:600;">${utilizationPercent.toFixed(1)}%</div>
+          </div>
+        </div>
+
+        ${warningsHtml}
+      </div>
+    `;
+  } else {
+    positionsHtml = `
+      <div style="margin-top:20px; padding:15px; background-color:#1a2332; border-radius:4px; border-left:3px solid #888; text-align:center;">
+        <span style="color:#888; font-size:0.9em;">No open positions found for this trader</span>
+      </div>
+    `;
+  }
+
+  // Populate modal with session configuration and positions
+  detailsDiv.innerHTML = `
+    <div style="background-color:#0f1420; padding:20px; border-radius:6px; border:1px solid #2a3550;">
+      <div style="display:grid; grid-template-columns: 140px 1fr; gap:12px; font-size:0.95em;">
+        <div style="color:#888;">Trader Address:</div>
+        <div style="color:#e0e0e0; font-weight:600; word-break:break-all;">${sessionConfig.traderAddress}</div>
+
+        <div style="color:#888;">Copy Balance:</div>
+        <div style="color:#4a9eff; font-weight:600;">$${sessionConfig.copyBalance.toFixed(2)}</div>
+
+        <div style="color:#888;">API Key:</div>
+        <div style="color:#888; font-family:monospace;">${maskedApiKey}</div>
+
+        <div style="color:#888;">Max Leverage:</div>
+        <div style="color:#e0e0e0;">20x (per symbol)</div>
+      </div>
+    </div>
+    ${positionsHtml}
+    <div style="margin-top:15px; padding:12px; background-color:#1a2332; border-left:3px solid #ffa726; border-radius:4px;">
+      <span style="color:#ffa726; font-weight:600;">⚠️ Warning:</span>
+      <span style="color:#bbb; font-size:0.9em;"> All detected trades will be automatically copied. Make sure you trust this trader.</span>
+    </div>
+  `;
+
+  // Return promise for user response
+  return new Promise((resolve) => {
     // Handle confirm
     const handleConfirm = () => {
       cleanup();
