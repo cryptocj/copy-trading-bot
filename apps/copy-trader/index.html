@@ -146,15 +146,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="trade-value">Trade Value per Position (USD, min $12)</label>
-                    <input type="number" id="trade-value" placeholder="50" min="12" step="1" required>
-                    <span class="validation-error" id="trade-value-error"></span>
-                </div>
-
-                <div class="form-group">
-                    <label for="max-leverage">Max Leverage (1-50x)</label>
-                    <input type="number" id="max-leverage" placeholder="10" min="1" max="50" step="1" required>
-                    <span class="validation-error" id="max-leverage-error"></span>
+                    <label for="copy-balance">Total Balance for Copying (USD, min $50)</label>
+                    <input type="number" id="copy-balance" placeholder="1000" min="50" step="1" required>
+                    <span class="validation-error" id="copy-balance-error"></span>
+                    <small style="color:#888; display:block; margin-top:4px;">
+                        System will copy trader's exact position sizes (when within your balance)
+                    </small>
                 </div>
 
                 <div class="button-group">

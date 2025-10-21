@@ -10,8 +10,7 @@
 import {
   validateAddress,
   validateApiKey,
-  validateTradeValue,
-  validateLeverage,
+  validateCopyBalance,
 } from './services/validation.js';
 import { truncateAddress, formatNumber } from './utils/format.js';
 import {
@@ -20,13 +19,16 @@ import {
 } from './services/trading.js';
 import { fetchTradeHistory, renderTradeHistoryTable } from './services/tradeHistory.js';
 import { fetchWalletInfo, fetchPositions, fetchWalletBalance } from './services/wallet.js';
+import {
+  loadSessionState,
+  initializeTabId,
+} from './services/sessionPersistence.js';
 
 // Global state
 let config = {
   traderAddress: '',
   userApiKey: '',
-  tradeValue: 0,
-  maxLeverage: 1,
+  copyBalance: 0, // Total balance for copying (replaces tradeValue and maxLeverage)
 };
 
 let isCopyTradingActive = false;
@@ -43,9 +45,12 @@ const monitoringWallets = [
 
 // localStorage keys
 const STORAGE_KEYS = {
-  TRADER_ADDRESS: 'copyTrading.traderAddress',
-  TRADE_VALUE: 'copyTrading.tradeValue',
-  MAX_LEVERAGE: 'copyTrading.maxLeverage',
+  // Wallet-specific configuration (per monitored wallet)
+  getTraderAddressKey: (wallet) => `copyTrading.traderAddress.${wallet}`,
+  getCopyBalanceKey: (wallet) => `copyTrading.copyBalance.${wallet}`,
+  LAST_MONITORED_WALLET: 'copyTrading.lastMonitoredWallet', // Track last active wallet
+
+  // Global settings (shared across tabs)
   API_KEY: 'copyTrading.apiKey',
   SAVE_API_KEY: 'copyTrading.saveApiKey',
   HISTORY_COLLAPSED: 'copyTrading.historyCollapsed',
@@ -66,14 +71,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Form inputs
     traderAddressInput: document.getElementById('trader-address'),
     apiKeyInput: document.getElementById('api-key'),
-    tradeValueInput: document.getElementById('trade-value'),
-    maxLeverageInput: document.getElementById('max-leverage'),
+    copyBalanceInput: document.getElementById('copy-balance'),
 
     // Validation errors
     traderAddressError: document.getElementById('trader-address-error'),
     apiKeyError: document.getElementById('api-key-error'),
-    tradeValueError: document.getElementById('trade-value-error'),
-    maxLeverageError: document.getElementById('max-leverage-error'),
+    copyBalanceError: document.getElementById('copy-balance-error'),
 
     // Buttons
     startButton: document.getElementById('start-button'),
@@ -158,53 +161,116 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load saved settings from localStorage
   loadSavedSettings();
 
+  // Restore active session if exists (T015 - US1: Automatic Session Recovery)
+  // Non-blocking: runs in background, UI remains responsive
+  restoreActiveSession().catch((error) => {
+    console.error('Error during session restoration:', error);
+  });
+
   // Expose utility functions to console for debugging
   window.copyTrading = {
     clearSavedSettings,
     saveSettings,
     config,
     viewSavedSettings: () => {
-      console.log('Saved Settings:', {
-        traderAddress: localStorage.getItem(STORAGE_KEYS.TRADER_ADDRESS),
-        tradeValue: localStorage.getItem(STORAGE_KEYS.TRADE_VALUE),
-        maxLeverage: localStorage.getItem(STORAGE_KEYS.MAX_LEVERAGE),
-        apiKeySaved: localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true',
-      });
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📊 COPY TRADING STORAGE OVERVIEW');
+      console.log('═══════════════════════════════════════════════════════');
+
+      const lastWallet = localStorage.getItem(STORAGE_KEYS.LAST_MONITORED_WALLET);
+      console.log(`\n🏷️  Last Monitored Wallet: ${lastWallet || 'none'}`);
+
+      if (lastWallet) {
+        console.log(`\n📋 Current Wallet Configuration:`);
+        console.log(`  - Trader Address: ${localStorage.getItem(STORAGE_KEYS.getTraderAddressKey(lastWallet)) || 'not set'}`);
+        console.log(`  - Copy Balance: $${localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(lastWallet)) || 'not set'}`);
+      }
+
+      // Find all wallet-specific configurations
+      console.log(`\n💼 All Wallet Configurations in Storage:`);
+      const walletConfigs = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('copyTrading.traderAddress.')) {
+          const wallet = key.replace('copyTrading.traderAddress.', '');
+          const balance = localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(wallet));
+          walletConfigs[wallet] = {
+            address: localStorage.getItem(key),
+            balance: balance || 'not set'
+          };
+        }
+      }
+
+      if (Object.keys(walletConfigs).length > 0) {
+        Object.entries(walletConfigs).forEach(([wallet, config], index) => {
+          console.log(`\n  ${index + 1}. Wallet: ${wallet}`);
+          console.log(`     - Address: ${config.address}`);
+          console.log(`     - Balance: $${config.balance}`);
+        });
+      } else {
+        console.log('  No wallet configurations found');
+      }
+
+      console.log(`\n🔐 Global Settings:`);
+      console.log(`  - API Key Saved: ${localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true' ? 'Yes' : 'No'}`);
+      console.log(`  - History Collapsed: ${localStorage.getItem(STORAGE_KEYS.HISTORY_COLLAPSED) === 'true' ? 'Yes' : 'No'}`);
+      console.log(`  - Wallets Collapsed: ${localStorage.getItem(STORAGE_KEYS.WALLETS_COLLAPSED) === 'true' ? 'Yes' : 'No'}`);
+
+      console.log(`\n═══════════════════════════════════════════════════════`);
     },
   };
 
   console.log('App initialized successfully.');
-  console.log('💾 Settings auto-save enabled. Use copyTrading.clearSavedSettings() to clear.');
+  console.log('💾 Settings auto-save enabled with wallet-specific storage.');
+  console.log('🔍 Debug utilities available:');
+  console.log('   - copyTrading.viewSavedSettings() - View all saved configurations');
+  console.log('   - copyTrading.clearSavedSettings() - Clear all saved settings');
 });
 
 /**
  * Load saved settings from localStorage
+ * Now supports wallet-specific configuration storage
  */
 function loadSavedSettings() {
-  console.log('Loading saved settings from localStorage...');
+  console.log('📥 Loading saved settings from localStorage...');
 
-  // Load trader address
-  const savedTraderAddress = localStorage.getItem(STORAGE_KEYS.TRADER_ADDRESS);
-  if (savedTraderAddress) {
-    elements.traderAddressInput.value = savedTraderAddress;
-    config.traderAddress = savedTraderAddress;
+  // Load last monitored wallet
+  const lastWallet = localStorage.getItem(STORAGE_KEYS.LAST_MONITORED_WALLET);
+  console.log(`📋 Last monitored wallet: ${lastWallet || 'none'}`);
+
+  let savedTraderAddress = null;
+  let savedCopyBalance = null;
+
+  // If we have a last monitored wallet, load its specific configuration
+  if (lastWallet) {
+    const traderAddressKey = STORAGE_KEYS.getTraderAddressKey(lastWallet);
+    const copyBalanceKey = STORAGE_KEYS.getCopyBalanceKey(lastWallet);
+
+    savedTraderAddress = localStorage.getItem(traderAddressKey);
+    savedCopyBalance = localStorage.getItem(copyBalanceKey);
+
+    console.log(`🔑 Loading config with keys:`);
+    console.log(`  - traderAddressKey: ${traderAddressKey}`);
+    console.log(`  - copyBalanceKey: ${copyBalanceKey}`);
+    console.log(`  - traderAddress: ${savedTraderAddress || 'not found'}`);
+    console.log(`  - copyBalance: ${savedCopyBalance || 'not found'}`);
+
+    if (savedTraderAddress) {
+      elements.traderAddressInput.value = savedTraderAddress;
+      config.traderAddress = savedTraderAddress;
+    }
+
+    if (savedCopyBalance) {
+      elements.copyBalanceInput.value = savedCopyBalance;
+      config.copyBalance = parseFloat(savedCopyBalance);
+    }
+
+    console.log(`✅ Loaded configuration for wallet: ${lastWallet}`);
+  } else {
+    console.log('⚠️ No last monitored wallet found');
   }
 
-  // Load trade value
-  const savedTradeValue = localStorage.getItem(STORAGE_KEYS.TRADE_VALUE);
-  if (savedTradeValue) {
-    elements.tradeValueInput.value = savedTradeValue;
-    config.tradeValue = parseFloat(savedTradeValue);
-  }
-
-  // Load max leverage
-  const savedMaxLeverage = localStorage.getItem(STORAGE_KEYS.MAX_LEVERAGE);
-  if (savedMaxLeverage) {
-    elements.maxLeverageInput.value = savedMaxLeverage;
-    config.maxLeverage = parseInt(savedMaxLeverage);
-  }
-
-  // Load API key only if user opted in
+  // Load API key only if user opted in (global setting)
   const saveApiKey = localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true';
   const saveApiKeyCheckbox = document.getElementById('save-api-key');
   if (saveApiKeyCheckbox) {
@@ -224,9 +290,9 @@ function loadSavedSettings() {
   checkFormValidity();
 
   console.log('Settings loaded:', {
+    lastMonitoredWallet: lastWallet || 'none',
     traderAddress: savedTraderAddress ? '✓' : '✗',
-    tradeValue: savedTradeValue ? '✓' : '✗',
-    maxLeverage: savedMaxLeverage ? '✓' : '✗',
+    copyBalance: savedCopyBalance ? '✓' : '✗',
     apiKey: saveApiKey && savedApiKey ? '✓' : '✗',
   });
 
@@ -243,21 +309,145 @@ function loadSavedSettings() {
 }
 
 /**
- * Save settings to localStorage
+ * Restore active session from localStorage (T014 - US1: Automatic Session Recovery)
+ * Called on page load to detect and restore active copy trading sessions
+ * Now supports multi-tab with wallet-based storage
  */
-function saveSettings() {
-  // Always save these
-  if (config.traderAddress) {
-    localStorage.setItem(STORAGE_KEYS.TRADER_ADDRESS, config.traderAddress);
-  }
-  if (config.tradeValue) {
-    localStorage.setItem(STORAGE_KEYS.TRADE_VALUE, config.tradeValue.toString());
-  }
-  if (config.maxLeverage) {
-    localStorage.setItem(STORAGE_KEYS.MAX_LEVERAGE, config.maxLeverage.toString());
+async function restoreActiveSession() {
+  console.log('Checking for active session to restore...');
+
+  // Initialize tab ID for multi-tab coordination
+  initializeTabId();
+
+  // Get last monitored wallet to check for active session
+  const lastWallet = localStorage.getItem(STORAGE_KEYS.LAST_MONITORED_WALLET);
+  if (!lastWallet) {
+    console.log('No last monitored wallet, cannot restore session');
+    return;
   }
 
-  // Only save API key if user opted in
+  // Get saved trader address for this wallet
+  const savedTraderAddress = localStorage.getItem(STORAGE_KEYS.getTraderAddressKey(lastWallet));
+  if (!savedTraderAddress) {
+    console.log(`No saved trader address for wallet: ${lastWallet}`);
+    return;
+  }
+
+  // Load saved session state for this wallet
+  const sessionState = loadSessionState(savedTraderAddress);
+  if (!sessionState || !sessionState.isActive) {
+    console.log(`No active session to restore for wallet: ${savedTraderAddress}`);
+    return;
+  }
+
+  console.log('Active session found, attempting restoration...', {
+    startTime: new Date(sessionState.startTime).toLocaleString(),
+    tradeCounter: sessionState.tradeCounter,
+    monitoredWallet: sessionState.monitoredWallet,
+  });
+
+  // Validate session configuration (T016)
+  const { config: savedConfig } = sessionState;
+  if (!savedConfig) {
+    console.error('Session state missing configuration');
+    return;
+  }
+
+  // Validate required fields
+  const addressValidation = validateAddress(savedConfig.traderAddress);
+  const apiKeyValidation = validateApiKey(savedConfig.userApiKey);
+  const copyBalanceValidation = validateCopyBalance(savedConfig.copyBalance);
+
+  if (!addressValidation.valid || !apiKeyValidation.valid || !copyBalanceValidation.valid) {
+    console.error('Session validation failed:', {
+      address: addressValidation.valid,
+      apiKey: apiKeyValidation.valid,
+      copyBalance: copyBalanceValidation.valid,
+    });
+    alert('Cannot restore session: Configuration is invalid. Please reconfigure and start again.');
+    return;
+  }
+
+  // Restore configuration to global config
+  config.traderAddress = savedConfig.traderAddress;
+  config.userApiKey = savedConfig.userApiKey;
+  config.copyBalance = savedConfig.copyBalance;
+
+  // Restore UI form values (T017)
+  elements.traderAddressInput.value = savedConfig.traderAddress;
+  elements.apiKeyInput.value = savedConfig.userApiKey;
+  elements.copyBalanceInput.value = savedConfig.copyBalance;
+
+  try {
+    // Update UI to show restoration in progress
+    elements.startButton.disabled = true;
+    elements.stopButton.disabled = false;
+    setFormDisabled(true);
+    isCopyTradingActive = true;
+
+    console.log('Restoring copy trading session...');
+
+    // Start trading service with resumeState parameter
+    await startTradingService(config, (order) => {
+      addOrder(order); // Add order to display list
+    }, sessionState); // Pass resumeState to restore trade counter and startTime
+
+    console.log('✅ Session restored successfully');
+    console.log(`Session duration: ${Math.floor((Date.now() - sessionState.startTime) / 1000)}s`);
+    console.log(`Trades executed: ${sessionState.tradeCounter}`);
+  } catch (error) {
+    // Handle restoration failure (T018)
+    console.error('❌ Failed to restore session:', error);
+
+    // Revert UI state
+    isCopyTradingActive = false;
+    elements.startButton.disabled = false;
+    elements.stopButton.disabled = true;
+    setFormDisabled(false);
+    checkFormValidity();
+
+    alert(`Failed to restore copy trading session: ${error.message}\n\nPlease start manually.`);
+  }
+}
+
+/**
+ * Save settings to localStorage
+ * Now supports wallet-specific configuration storage
+ */
+function saveSettings() {
+  console.log('💾 Saving settings to localStorage...');
+
+  // Save wallet-specific configuration using traderAddress as key
+  if (config.traderAddress) {
+    // Use traderAddress as the wallet identifier
+    const walletKey = config.traderAddress;
+
+    const traderAddressKey = STORAGE_KEYS.getTraderAddressKey(walletKey);
+    const copyBalanceKey = STORAGE_KEYS.getCopyBalanceKey(walletKey);
+
+    // Save trader address with wallet-specific key
+    localStorage.setItem(traderAddressKey, config.traderAddress);
+
+    // Save copy balance with wallet-specific key
+    if (config.copyBalance) {
+      localStorage.setItem(copyBalanceKey, config.copyBalance.toString());
+    }
+
+    // Track this as the last monitored wallet
+    localStorage.setItem(STORAGE_KEYS.LAST_MONITORED_WALLET, walletKey);
+
+    console.log(`🔑 Saved config with keys:`);
+    console.log(`  - walletKey: ${walletKey}`);
+    console.log(`  - traderAddressKey: ${traderAddressKey}`);
+    console.log(`  - copyBalanceKey: ${copyBalanceKey}`);
+    console.log(`  - traderAddress: ${config.traderAddress}`);
+    console.log(`  - copyBalance: ${config.copyBalance || 'not set'}`);
+    console.log(`✅ Configuration saved for wallet: ${walletKey}`);
+  } else {
+    console.log('⚠️ No trader address to save');
+  }
+
+  // Save global settings (API key - shared across all wallets)
   const saveApiKeyCheckbox = document.getElementById('save-api-key');
   if (saveApiKeyCheckbox && saveApiKeyCheckbox.checked) {
     localStorage.setItem(STORAGE_KEYS.SAVE_API_KEY, 'true');
@@ -272,12 +462,34 @@ function saveSettings() {
 
 /**
  * Clear all saved settings
+ * Clears both global settings and all wallet-specific configurations
  */
 function clearSavedSettings() {
-  Object.values(STORAGE_KEYS).forEach((key) => {
-    localStorage.removeItem(key);
-  });
-  console.log('All saved settings cleared');
+  // Clear global settings
+  localStorage.removeItem(STORAGE_KEYS.API_KEY);
+  localStorage.removeItem(STORAGE_KEYS.SAVE_API_KEY);
+  localStorage.removeItem(STORAGE_KEYS.HISTORY_COLLAPSED);
+  localStorage.removeItem(STORAGE_KEYS.WALLETS_COLLAPSED);
+  localStorage.removeItem(STORAGE_KEYS.LAST_MONITORED_WALLET);
+
+  // Clear all wallet-specific configurations
+  // Search for all keys matching our wallet-specific patterns
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (
+      key.startsWith('copyTrading.traderAddress.') ||
+      key.startsWith('copyTrading.copyBalance.') ||
+      key.startsWith('copyTrading.session.')
+    )) {
+      keysToRemove.push(key);
+    }
+  }
+
+  // Remove all wallet-specific keys
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+
+  console.log('All saved settings cleared (including all wallet configurations)');
 }
 
 /**
@@ -320,22 +532,11 @@ function setupValidationListeners() {
   });
 
   // Trade value validation
-  elements.tradeValueInput.addEventListener('blur', () => {
-    const result = validateTradeValue(elements.tradeValueInput.value);
-    displayValidationError('trade-value', result);
+  elements.copyBalanceInput.addEventListener('blur', () => {
+    const result = validateCopyBalance(elements.copyBalanceInput.value);
+    displayValidationError('copy-balance', result);
     if (result.valid) {
-      config.tradeValue = result.value;
-      saveSettings(); // Auto-save on valid input
-    }
-    checkFormValidity();
-  });
-
-  // Max leverage validation
-  elements.maxLeverageInput.addEventListener('blur', () => {
-    const result = validateLeverage(elements.maxLeverageInput.value);
-    displayValidationError('max-leverage', result);
-    if (result.valid) {
-      config.maxLeverage = result.leverage;
+      config.copyBalance = result.balance;
       saveSettings(); // Auto-save on valid input
     }
     checkFormValidity();
@@ -364,10 +565,9 @@ function displayValidationError(fieldId, result) {
 function checkFormValidity() {
   const addressValid = validateAddress(elements.traderAddressInput.value).valid;
   const apiKeyValid = validateApiKey(elements.apiKeyInput.value).valid;
-  const tradeValueValid = validateTradeValue(elements.tradeValueInput.value).valid;
-  const leverageValid = validateLeverage(elements.maxLeverageInput.value).valid;
+  const copyBalanceValid = validateCopyBalance(elements.copyBalanceInput.value).valid;
 
-  const allValid = addressValid && apiKeyValid && tradeValueValid && leverageValid;
+  const allValid = addressValid && apiKeyValid && copyBalanceValid;
 
   // Enable Start button only if all fields valid and not currently active
   elements.startButton.disabled = !allValid || isCopyTradingActive;
@@ -392,17 +592,23 @@ function setupButtonListeners() {
 function setFormDisabled(disabled) {
   elements.traderAddressInput.disabled = disabled;
   elements.apiKeyInput.disabled = disabled;
-  elements.tradeValueInput.disabled = disabled;
-  elements.maxLeverageInput.disabled = disabled;
+  elements.copyBalanceInput.disabled = disabled;
 }
 
 /**
  * Start copy trading (US2/US3)
  */
 async function startCopyTrading() {
-  console.log('Starting copy trading...', config);
+  console.log('🚀 Starting copy trading...');
+  console.log(`📊 Configuration:`);
+  console.log(`  - Trader Address: ${config.traderAddress}`);
+  console.log(`  - Copy Balance: $${config.copyBalance}`);
 
   try {
+    // Ensure current configuration is saved and tracked as last monitored wallet
+    console.log('💾 Saving current configuration before starting...');
+    saveSettings();
+
     // Update UI state
     isCopyTradingActive = true;
     elements.startButton.disabled = true;
@@ -414,9 +620,10 @@ async function startCopyTrading() {
       addOrder(order); // Add order to display list (US4)
     });
 
-    console.log('Copy trading started successfully');
+    console.log('✅ Copy trading started successfully');
+    console.log(`📡 Now monitoring wallet: ${config.traderAddress}`);
   } catch (error) {
-    console.error('Failed to start copy trading:', error);
+    console.error('❌ Failed to start copy trading:', error);
 
     // Revert UI state on error
     isCopyTradingActive = false;
@@ -826,13 +1033,31 @@ function renderWalletsTable() {
 
       // Auto-fill trader address
       const address = row.getAttribute('data-address');
+      console.log(`👆 Wallet selected: ${address}`);
+
       elements.traderAddressInput.value = address;
       config.traderAddress = address;
+
+      // Load wallet-specific copy balance (if exists)
+      const savedCopyBalance = localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(address));
+      if (savedCopyBalance) {
+        console.log(`📂 Loading saved copy balance for this wallet: $${savedCopyBalance}`);
+        elements.copyBalanceInput.value = savedCopyBalance;
+        config.copyBalance = parseFloat(savedCopyBalance);
+      } else {
+        console.log(`⚠️ No saved copy balance for this wallet, keeping current value: $${config.copyBalance}`);
+      }
 
       // Trigger validation
       const result = validateAddress(address);
       displayValidationError('trader-address', result);
       checkFormValidity();
+
+      // Save settings with wallet-specific configuration
+      if (result.valid) {
+        console.log(`📝 Auto-saving configuration for selected wallet`);
+        saveSettings();
+      }
 
       // Load order history (same as leaderboard)
       showHistoryPanel(address);

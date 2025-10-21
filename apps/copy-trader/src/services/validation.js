@@ -46,39 +46,26 @@ export function validateApiKey(key) {
 }
 
 /**
- * Validate trade value (minimum $12 USDC per spec FR-008)
- * @param {string|number} value - Trade value input
- * @returns {{ valid: boolean, error?: string, value?: number }}
+ * Validate copy balance (minimum $50)
+ * Replaces per-position trade value and leverage with total balance for copying
+ * @param {string|number} balance - Copy balance input
+ * @returns {{ valid: boolean, error?: string, balance?: number }}
  */
-export function validateTradeValue(value) {
-    const num = parseFloat(value);
+export function validateCopyBalance(balance) {
+    const num = parseFloat(balance);
 
     if (isNaN(num)) {
-        return { valid: false, error: 'Trade value must be a number' };
+        return { valid: false, error: 'Copy balance must be a number' };
     }
 
-    if (num < 12) {
-        return { valid: false, error: 'Minimum trade value is $12 USDC' };
+    if (num < 50) {
+        return { valid: false, error: 'Minimum copy balance is $50' };
     }
 
-    return { valid: true, value: num };
-}
-
-/**
- * Validate leverage (1-50x per spec FR-009)
- * @param {string|number} leverage - Leverage input
- * @returns {{ valid: boolean, error?: string, leverage?: number }}
- */
-export function validateLeverage(leverage) {
-    const num = parseInt(leverage);
-
-    if (isNaN(num)) {
-        return { valid: false, error: 'Leverage must be a number' };
+    // Check reasonable maximum (e.g., $1,000,000)
+    if (num > 1000000) {
+        return { valid: false, error: 'Maximum copy balance is $1,000,000' };
     }
 
-    if (num < 1 || num > 50) {
-        return { valid: false, error: 'Leverage must be between 1x and 50x' };
-    }
-
-    return { valid: true, leverage: num };
+    return { valid: true, balance: num };
 }
