@@ -245,6 +245,156 @@ button {
     cursor: not-allowed;
 }
 
+/* Refresh Button */
+.refresh-button {
+    background-color: #1a2137;
+    border: 1px solid #2a3550;
+    border-radius: 4px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #4a9eff;
+    font-weight: 600;
+}
+
+.refresh-button:hover:not(:disabled) {
+    background-color: #2a3550;
+    border-color: #4a9eff;
+}
+
+.refresh-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #666;
+}
+
+/* Wallet Cards */
+.wallet-card {
+    background-color: #0f1420;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #2a3550;
+}
+
+.wallet-card h3 {
+    color: #4a9eff;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.wallet-card h4 {
+    color: #b0b0b0;
+    margin: 15px 0 10px 0;
+    font-size: 1em;
+}
+
+.wallet-balance {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.balance-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background-color: #151b2e;
+    border-radius: 4px;
+}
+
+.balance-label {
+    color: #888;
+    font-size: 0.95em;
+}
+
+.balance-value {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.balance-value.pnl {
+    font-weight: 700;
+}
+
+.balance-value.positive {
+    color: #2a9d5f;
+}
+
+.balance-value.negative {
+    color: #d94848;
+}
+
+.positions-list {
+    border-top: 1px solid #2a3550;
+    padding-top: 15px;
+}
+
+.position-item {
+    padding: 12px;
+    background-color: #151b2e;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border-left: 3px solid #4a9eff;
+}
+
+.position-item.long {
+    border-left-color: #2a9d5f;
+}
+
+.position-item.short {
+    border-left-color: #d94848;
+}
+
+.position-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.position-symbol {
+    font-weight: 600;
+    color: #e0e0e0;
+    font-size: 1.05em;
+}
+
+.position-side {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.position-side.long {
+    color: #2a9d5f;
+}
+
+.position-side.short {
+    color: #d94848;
+}
+
+.position-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    font-size: 0.9em;
+}
+
+.position-detail {
+    display: flex;
+    justify-content: space-between;
+}
+
+.position-detail-label {
+    color: #888;
+}
+
+.position-detail-value {
+    color: #e0e0e0;
+}
+
 /* Wallets Table (similar to leaderboard) */
 #wallets-table tbody tr {
     cursor: pointer;

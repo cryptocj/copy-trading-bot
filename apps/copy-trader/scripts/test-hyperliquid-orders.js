@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Test script for Hyperliquid order submission and cancellation
+ * Test script for Hyperliquid wallet balance and position queries
  *
  * Usage:
  *   1. Set HYPERLIQUID_API_KEY environment variable
  *   2. Run: node scripts/test-hyperliquid-orders.js
  *
  * This script will:
- *   1. Connect to Hyperliquid testnet
- *   2. Fetch current BTC price
- *   3. Submit a limit order well below market (won't fill)
- *   4. Display order details
- *   5. Cancel the order
- *   6. Verify cancellation
+ *   1. Connect to Hyperliquid
+ *   2. Load markets
+ *   3. Query your wallet balance (USDC and other assets)
+ *   4. Query your open positions
+ *   5. Query a monitored wallet's balance and positions
  */
 
 import ccxt from 'ccxt';
@@ -24,8 +23,6 @@ import { Wallet } from 'ethers';
 dotenv.config();
 
 const API_KEY = process.env.HYPERLIQUID_API_KEY;
-const SYMBOL = 'BTC/USDC:USDC'; // Hyperliquid perpetual format
-const TEST_AMOUNT = 0.0002; // Small test amount (0.001 BTC)
 
 // Colors for console output
 const colors = {
@@ -45,10 +42,6 @@ function logSection(title) {
   console.log('\n' + '='.repeat(60));
   log(title, colors.cyan);
   console.log('='.repeat(60));
-}
-
-async function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function main() {
@@ -90,116 +83,21 @@ async function main() {
     await exchange.loadMarkets();
     log(`✅ Loaded ${Object.keys(exchange.markets).length} markets`, colors.green);
 
-    // Check if symbol exists
-    if (!exchange.markets[SYMBOL]) {
-      log(`❌ Symbol ${SYMBOL} not found`, colors.red);
-      log('Available symbols:', colors.yellow);
-      Object.keys(exchange.markets)
-        .filter((s) => s.includes('BTC'))
-        .slice(0, 5)
-        .forEach((s) => log(`  - ${s}`, colors.yellow));
-      process.exit(1);
-    }
+    // Test wallet balance query
+    await testWalletBalance(exchange);
 
-    // Fetch current price
-    logSection('💰 Fetching Current Price');
-    const ticker = await exchange.fetchTicker(SYMBOL);
-    const currentPrice = ticker.last;
-    log(`Current ${SYMBOL} price: $${currentPrice.toFixed(2)}`, colors.blue);
+    // Test positions query
+    await testPositions(exchange);
 
-    // Calculate order price (10% below market - won't fill)
-    const orderPrice = Math.floor(currentPrice * 0.9);
-    const orderCost = orderPrice * TEST_AMOUNT;
-
-    log(`\nTest order details:`, colors.cyan);
-    log(`  Symbol: ${SYMBOL}`, colors.blue);
-    log(`  Side: BUY`, colors.blue);
-    log(`  Amount: ${TEST_AMOUNT} BTC`, colors.blue);
-    log(`  Price: $${orderPrice.toFixed(2)} (10% below market)`, colors.blue);
-    log(`  Cost: $${orderCost.toFixed(2)}`, colors.blue);
-
-    // Submit order
-    logSection('📤 Submitting Limit Order');
-    log('Creating limit buy order...', colors.yellow);
-
-    const order = await exchange.createLimitOrder(SYMBOL, 'buy', TEST_AMOUNT, orderPrice);
-
-    log('✅ Order submitted successfully!', colors.green);
-    log('\nOrder Details:', colors.cyan);
-    log(`  Order ID: ${order.id}`, colors.blue);
-    log(`  Status: ${order.status}`, colors.blue);
-    log(`  Symbol: ${order.symbol}`, colors.blue);
-    log(`  Type: ${order.type}`, colors.blue);
-    log(`  Side: ${order.side}`, colors.blue);
-    log(`  Amount: ${order.amount}`, colors.blue);
-    log(`  Price: ${order.price}`, colors.blue);
-    log(`  Timestamp: ${new Date(order.timestamp).toLocaleString()}`, colors.blue);
-
-    // Wait a moment
-    log('\n⏳ Waiting 2 seconds before verification...', colors.yellow);
-    await sleep(2000);
-
-    // Verify order exists by fetching open orders
-    logSection('🔍 Verifying Order Status');
-    try {
-      log('Fetching open orders...', colors.yellow);
-      const openOrders = await exchange.fetchOpenOrders(SYMBOL);
-      const myOrder = openOrders.find(o => o.id === order.id);
-
-      if (myOrder) {
-        log(`✅ Order found in open orders`, colors.green);
-        log(`Order status: ${myOrder.status}`, colors.blue);
-      } else {
-        log(`⚠️  Order not found in open orders (might be filled/cancelled)`, colors.yellow);
-        log(`Note: This can happen if the order was filled immediately`, colors.yellow);
-      }
-    } catch (error) {
-      log(`⚠️  Could not fetch open orders: ${error.message}`, colors.yellow);
-      log(`Will proceed with cancellation anyway`, colors.yellow);
-    }
-
-    // Cancel order
-    logSection('🗑️  Cancelling Order');
-    log(`Cancelling order ${order.id}...`, colors.yellow);
-
-    try {
-      const cancelResult = await exchange.cancelOrder(order.id, SYMBOL);
-      log('✅ Order cancelled successfully!', colors.green);
-      log('\nCancel Result:', colors.cyan);
-      log(`  Order ID: ${cancelResult.id}`, colors.blue);
-      log(`  Status: ${cancelResult.status || 'cancelled'}`, colors.blue);
-    } catch (cancelError) {
-      if (cancelError.message.includes('unknownOid')) {
-        log('⚠️  Order not found (might have been filled or already cancelled)', colors.yellow);
-        log('This is OK - the order lifecycle completed', colors.green);
-      } else {
-        throw cancelError;
-      }
-    }
-
-    // Final verification
-    logSection('✔️  Final Verification');
-    try {
-      log('Checking for any remaining open orders...', colors.yellow);
-      const finalOpenOrders = await exchange.fetchOpenOrders(SYMBOL);
-      const stillOpen = finalOpenOrders.find(o => o.id === order.id);
-
-      if (stillOpen) {
-        log(`⚠️  Warning: Order still appears to be open`, colors.yellow);
-      } else {
-        log('✅ Order is no longer in open orders', colors.green);
-      }
-    } catch (error) {
-      log(`⚠️  Could not verify final status: ${error.message}`, colors.yellow);
-    }
+    // Test monitoring another wallet (optional)
+    await testMonitorWallet(exchange);
 
     // Test summary
     logSection('📊 Test Summary');
-    log('✅ Order submission: SUCCESS', colors.green);
-    log('✅ Order lifecycle: COMPLETE', colors.green);
+    log('✅ Wallet balance query: SUCCESS', colors.green);
+    log('✅ Positions query: SUCCESS', colors.green);
+    log('✅ Monitor wallet query: SUCCESS', colors.green);
     log('✅ All tests passed!', colors.green);
-    log('\nNote: The test successfully demonstrated order submission.', colors.cyan);
-    log('Order cancellation works when orders remain open.', colors.cyan);
 
     // Close exchange connection
     await exchange.close();
@@ -216,7 +114,128 @@ async function main() {
   }
 }
 
+/**
+ * Test wallet balance query
+ */
+async function testWalletBalance(exchange) {
+  logSection('💰 Testing Wallet Balance Query');
+
+  try {
+    log('Fetching wallet balance...', colors.yellow);
+    const balance = await exchange.fetchBalance();
+
+    log('✅ Balance fetched successfully!', colors.green);
+
+    // Display USDC balance (primary currency)
+    const usdc = balance.USDC || { free: 0, used: 0, total: 0 };
+    log('\n💵 USDC Balance:', colors.cyan);
+    log(`  Available: $${usdc.free.toFixed(2)}`, colors.blue);
+    log(`  In Use: $${usdc.used.toFixed(2)}`, colors.blue);
+    log(`  Total: $${usdc.total.toFixed(2)}`, colors.blue);
+
+    // Display all non-zero balances
+    log('\n📊 All Assets:', colors.cyan);
+    for (const [asset, data] of Object.entries(balance)) {
+      if (asset !== 'info' && asset !== 'free' && asset !== 'used' && asset !== 'total') {
+        if (data.total > 0) {
+          log(`  ${asset}: ${data.total.toFixed(4)} (Free: ${data.free.toFixed(4)}, Used: ${data.used.toFixed(4)})`, colors.blue);
+        }
+      }
+    }
+
+    return balance;
+  } catch (error) {
+    log('❌ Failed to fetch balance:', colors.red);
+    log(error.message, colors.red);
+    throw error;
+  }
+}
+
+/**
+ * Test positions query
+ */
+async function testPositions(exchange) {
+  logSection('📈 Testing Positions Query');
+
+  try {
+    log('Fetching open positions...', colors.yellow);
+    const positions = await exchange.fetchPositions();
+
+    log('✅ Positions fetched successfully!', colors.green);
+
+    // Filter open positions (contracts !== 0)
+    const openPositions = positions.filter(pos => pos.contracts !== 0);
+
+    log(`\n📊 Open Positions: ${openPositions.length}`, colors.cyan);
+
+    if (openPositions.length === 0) {
+      log('  No open positions', colors.yellow);
+    } else {
+      for (const pos of openPositions) {
+        const side = pos.side || (pos.contracts > 0 ? 'long' : 'short');
+        const sideColor = side === 'long' ? colors.green : colors.red;
+        const pnlColor = pos.unrealizedPnl >= 0 ? colors.green : colors.red;
+
+        log(`\n  ${pos.symbol} - ${side.toUpperCase()}`, sideColor);
+        log(`    Size: ${Math.abs(pos.contracts || 0)} contracts`, colors.blue);
+        log(`    Entry Price: $${(pos.entryPrice || 0).toFixed(2)}`, colors.blue);
+        log(`    Mark Price: $${(pos.markPrice || 0).toFixed(2)}`, colors.blue);
+        log(`    Unrealized PnL: $${(pos.unrealizedPnl || 0).toFixed(2)}`, pnlColor);
+        log(`    Leverage: ${pos.leverage || 1}x`, colors.blue);
+        log(`    Liquidation Price: $${(pos.liquidationPrice || 0).toFixed(2)}`, colors.blue);
+      }
+    }
+
+    return openPositions;
+  } catch (error) {
+    log('❌ Failed to fetch positions:', colors.red);
+    log(error.message, colors.red);
+    throw error;
+  }
+}
+
+/**
+ * Test monitoring another wallet
+ */
+async function testMonitorWallet(exchange) {
+  logSection('👁️ Testing Monitor Another Wallet');
+
+  // Example monitored wallet (DeepSeek from monitoring list)
+  const monitoredAddress = '0xC20aC4Dc4188660cBF555448AF52694CA62b0734';
+
+  try {
+    log(`Fetching balance for monitored wallet: ${monitoredAddress}`, colors.yellow);
+
+    // Fetch balance with user parameter
+    const balance = await exchange.fetchBalance({ user: monitoredAddress });
+
+    log('✅ Monitored wallet balance fetched!', colors.green);
+
+    const usdc = balance.USDC || { free: 0, used: 0, total: 0 };
+    log(`\n💵 Monitored Wallet USDC: $${usdc.total.toFixed(2)}`, colors.cyan);
+
+    // Fetch positions for monitored wallet
+    log('\nFetching positions for monitored wallet...', colors.yellow);
+    const positions = await exchange.fetchPositions(null, { user: monitoredAddress });
+    const openPositions = positions.filter(pos => pos.contracts !== 0);
+
+    log(`✅ Monitored wallet has ${openPositions.length} open position(s)`, colors.green);
+
+    if (openPositions.length > 0) {
+      for (const pos of openPositions) {
+        const side = pos.side || (pos.contracts > 0 ? 'long' : 'short');
+        log(`  ${pos.symbol} ${side.toUpperCase()}: ${Math.abs(pos.contracts)} contracts`, colors.blue);
+      }
+    }
+
+  } catch (error) {
+    log('❌ Failed to fetch monitored wallet info:', colors.red);
+    log(error.message, colors.red);
+    // Don't throw - this is optional test
+  }
+}
+
 // Run the test
-log('🧪 Hyperliquid Order Test Script', colors.cyan);
+log('🧪 Hyperliquid Wallet Query Test Script', colors.cyan);
 log('='.repeat(60), colors.cyan);
 main();

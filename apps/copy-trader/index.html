@@ -46,45 +46,76 @@
                 </div>
             </section>
 
-            <!-- Right Column: Order History -->
+            <!-- Right Column: Positions & Order History -->
             <section class="history-section">
                 <div class="section-header">
-                    <h2>Order History</h2>
-                    <button class="collapse-toggle" id="history-toggle" aria-label="Toggle order history">
+                    <h2>Positions & History</h2>
+                    <button class="collapse-toggle" id="history-toggle" aria-label="Toggle positions and history">
                         <span class="collapse-icon">−</span>
                     </button>
                 </div>
                 <div class="collapsible-content" id="history-content-wrapper">
                     <div id="history-placeholder" style="text-align:center; padding:60px 20px; color:#666;">
-                        👆 Select a wallet to view their order history
+                        👆 Select a wallet to view their positions & history
                     </div>
                     <div id="history-loading" style="display:none; text-align:center; padding:40px;">
-                        Loading order history...
+                        Loading...
                     </div>
                     <div id="history-error" class="error-message" style="display:none;"></div>
                     <div id="history-content" style="display:none;">
-                    <div style="margin-bottom:15px; color:#888;">
+                    <div style="margin-bottom:20px; color:#888;">
                         <strong>Wallet:</strong> <span id="history-address"></span>
-                        <span style="margin-left:20px; color:#666;">Aggregated orders (fills combined)</span>
                     </div>
-                    <div class="table-container">
-                        <table id="history-table">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Symbol</th>
-                                    <th>Side</th>
-                                    <th>Direction</th>
-                                    <th>Size</th>
-                                    <th>Avg Price</th>
-                                    <th>PnL</th>
-                                    <th>Fills</th>
-                                </tr>
-                            </thead>
-                            <tbody id="history-body">
-                                <!-- Populated by JavaScript -->
-                            </tbody>
-                        </table>
+
+                    <!-- Balance Section -->
+                    <div id="selected-balance-section" style="margin-bottom:30px;">
+                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">💰 Balance</h3>
+                        <div id="selected-balance-loading" style="display:none; text-align:center; padding:20px; color:#666;">
+                            Loading balance...
+                        </div>
+                        <div id="selected-balance-error" class="error-message" style="display:none;"></div>
+                        <div id="selected-balance-content">
+                            <!-- Balance will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Positions Section (Above History) -->
+                    <div id="selected-positions-section" style="margin-bottom:30px;">
+                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📈 Open Positions</h3>
+                        <div id="selected-positions-loading" style="display:none; text-align:center; padding:20px; color:#666;">
+                            Loading positions...
+                        </div>
+                        <div id="selected-positions-error" class="error-message" style="display:none;"></div>
+                        <div id="selected-positions-content">
+                            <!-- Positions will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Order History Section (Below Positions) -->
+                    <div>
+                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📜 Order History</h3>
+                        <div style="margin-bottom:10px; color:#666; font-size:0.9em;">
+                            Aggregated orders (fills combined)
+                        </div>
+                        <div class="table-container">
+                            <table id="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Direction</th>
+                                        <th>Size</th>
+                                        <th>Avg Price</th>
+                                        <th>PnL</th>
+                                        <th>Fills</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-body">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 </div>
@@ -131,6 +162,58 @@
                     <button type="button" id="stop-button" disabled>Stop Copy Trading</button>
                 </div>
             </form>
+        </section>
+
+        <!-- Wallet Info Section -->
+        <section class="wallet-info-section">
+            <div class="section-header">
+                <h2>💰 My Wallet & Positions</h2>
+                <button class="refresh-button" id="refresh-wallet-button" disabled>
+                    <span>Refresh</span>
+                </button>
+            </div>
+
+            <div id="your-wallet-loading" style="display:none; text-align:center; padding:40px; color:#666;">
+                Loading...
+            </div>
+            <div id="your-wallet-error" class="error-message" style="display:none;"></div>
+            <div id="your-wallet-placeholder" style="text-align:center; padding:40px; color:#666;">
+                Enter API key and click Refresh to view your wallet
+            </div>
+
+            <div id="your-wallet-content" style="display:none;">
+                <!-- Balance Summary -->
+                <div style="background-color:#0f1420; padding:20px; border-radius:6px; margin-bottom:20px; border:1px solid #2a3550;">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:20px;">
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Available</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-free">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">In Use</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-used">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Total Balance</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-total">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Position Value</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-position-value">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Unrealized PnL</div>
+                            <div class="balance-value pnl" style="font-size:1.3em; font-weight:600;" id="your-unrealized-pnl">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Positions Table -->
+                <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📈 Open Positions</h3>
+                <div id="your-positions-body">
+                    <p style="text-align:center; padding:20px; color:#666;">No open positions</p>
+                </div>
+            </div>
         </section>
 
         <!-- User Story 4: Recent Orders Display -->

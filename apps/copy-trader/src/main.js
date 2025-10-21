@@ -13,12 +13,13 @@ import {
   validateTradeValue,
   validateLeverage,
 } from './services/validation.js';
-import { truncateAddress } from './utils/format.js';
+import { truncateAddress, formatNumber } from './utils/format.js';
 import {
   startCopyTrading as startTradingService,
   stopCopyTrading as stopTradingService,
 } from './services/trading.js';
 import { fetchTradeHistory, renderTradeHistoryTable } from './services/tradeHistory.js';
+import { fetchWalletInfo, fetchPositions, fetchWalletBalance } from './services/wallet.js';
 
 // Global state
 let config = {
@@ -95,8 +96,48 @@ document.addEventListener('DOMContentLoaded', () => {
     historyAddress: document.getElementById('history-address'),
     historyBody: document.getElementById('history-body'),
 
+    // Selected Wallet Positions (in history panel)
+    selectedPositionsSection: document.getElementById('selected-positions-section'),
+    selectedPositionsLoading: document.getElementById('selected-positions-loading'),
+    selectedPositionsError: document.getElementById('selected-positions-error'),
+    selectedPositionsContent: document.getElementById('selected-positions-content'),
+
+    // Selected Wallet Balance (in history panel)
+    selectedBalanceSection: document.getElementById('selected-balance-section'),
+    selectedBalanceLoading: document.getElementById('selected-balance-loading'),
+    selectedBalanceError: document.getElementById('selected-balance-error'),
+    selectedBalanceContent: document.getElementById('selected-balance-content'),
+
     // Monitoring Wallets
     walletsBody: document.getElementById('wallets-body'),
+
+    // Wallet Info
+    refreshWalletButton: document.getElementById('refresh-wallet-button'),
+
+    // Your Wallet
+    yourWalletPlaceholder: document.getElementById('your-wallet-placeholder'),
+    yourWalletLoading: document.getElementById('your-wallet-loading'),
+    yourWalletError: document.getElementById('your-wallet-error'),
+    yourWalletContent: document.getElementById('your-wallet-content'),
+    yourBalanceFree: document.getElementById('your-balance-free'),
+    yourBalanceUsed: document.getElementById('your-balance-used'),
+    yourBalanceTotal: document.getElementById('your-balance-total'),
+    yourPositionValue: document.getElementById('your-position-value'),
+    yourUnrealizedPnl: document.getElementById('your-unrealized-pnl'),
+    yourPositionsBody: document.getElementById('your-positions-body'),
+
+    // Monitored Wallet
+    monitoredWalletPlaceholder: document.getElementById('monitored-wallet-placeholder'),
+    monitoredWalletLoading: document.getElementById('monitored-wallet-loading'),
+    monitoredWalletError: document.getElementById('monitored-wallet-error'),
+    monitoredWalletContent: document.getElementById('monitored-wallet-content'),
+    monitoredWalletAddress: document.getElementById('monitored-wallet-address'),
+    monitoredBalanceFree: document.getElementById('monitored-balance-free'),
+    monitoredBalanceUsed: document.getElementById('monitored-balance-used'),
+    monitoredBalanceTotal: document.getElementById('monitored-balance-total'),
+    monitoredPositionValue: document.getElementById('monitored-position-value'),
+    monitoredUnrealizedPnl: document.getElementById('monitored-unrealized-pnl'),
+    monitoredPositionsBody: document.getElementById('monitored-positions-body'),
   };
 
   // Initialize validation listeners
@@ -188,6 +229,17 @@ function loadSavedSettings() {
     maxLeverage: savedMaxLeverage ? '✓' : '✗',
     apiKey: saveApiKey && savedApiKey ? '✓' : '✗',
   });
+
+  // Automatically load user's wallet if API key is saved
+  if (saveApiKey && savedApiKey) {
+    console.log('API key found, automatically loading wallet info...');
+    // Use setTimeout to ensure DOM is fully initialized
+    setTimeout(() => {
+      refreshWalletInfo().catch(error => {
+        console.error('Failed to auto-load wallet:', error);
+      });
+    }, 100);
+  }
 }
 
 /**
@@ -319,6 +371,9 @@ function checkFormValidity() {
 
   // Enable Start button only if all fields valid and not currently active
   elements.startButton.disabled = !allValid || isCopyTradingActive;
+
+  // Enable Refresh Wallet button if API key is valid
+  elements.refreshWalletButton.disabled = !apiKeyValid;
 }
 
 /**
@@ -327,6 +382,7 @@ function checkFormValidity() {
 function setupButtonListeners() {
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
+  elements.refreshWalletButton.addEventListener('click', refreshWalletInfo);
 }
 
 /**
@@ -522,7 +578,7 @@ function setupHistoryPanelListeners() {
 }
 
 /**
- * Show trade history in right panel
+ * Show positions and trade history in right panel
  */
 async function showHistoryPanel(address) {
   console.log('showHistoryPanel called with address:', address);
@@ -538,26 +594,207 @@ async function showHistoryPanel(address) {
   elements.historyAddress.title = address;
 
   try {
-    console.log('Fetching order history...');
-    // Fetch order history (aggregated from fills)
-    const orders = await fetchTradeHistory(address, 200);
-    console.log('Order history fetched:', orders.length, 'orders');
+    console.log('Fetching balance, positions and order history...');
+
+    // Fetch balance, positions and order history in parallel
+    const [balance, positions, orders] = await Promise.all([
+      fetchBalanceForAddress(address),
+      fetchPositionsForAddress(address),
+      fetchTradeHistory(address, 200)
+    ]);
+
+    console.log('Data fetched:', 'balance:', balance, positions.length, 'positions,', orders.length, 'orders');
 
     // Hide loading, show content
     elements.historyLoading.style.display = 'none';
     elements.historyContent.style.display = 'block';
 
+    // Render balance
+    renderSelectedWalletBalance(balance);
+
+    // Render positions
+    renderSelectedWalletPositions(positions);
+
     // Render orders
     renderTradeHistoryTable(orders, elements.historyBody);
 
-    console.log(`Displayed ${orders.length} orders for ${address}`);
+    console.log(`Displayed balance, ${positions.length} positions and ${orders.length} orders for ${address}`);
   } catch (error) {
     console.error('Error in showHistoryPanel:', error);
     // Show error
     elements.historyLoading.style.display = 'none';
     elements.historyError.style.display = 'block';
-    elements.historyError.textContent = `Failed to load order history: ${error.message}`;
+    elements.historyError.textContent = `Failed to load data: ${error.message}`;
   }
+}
+
+/**
+ * Fetch balance for a specific address
+ */
+async function fetchBalanceForAddress(address) {
+  try {
+    // CCXT's fetchBalance works with user parameter (unlike fetchPositions)
+    // Need to create exchange instance with user's API key to query other wallets
+    const { userApiKey } = config;
+    if (!userApiKey) {
+      console.warn('No API key available, cannot fetch balance for monitored wallet');
+      return { total: 0, free: 0, used: 0, assets: {} };
+    }
+
+    const wallet = new ethers.Wallet(userApiKey);
+    const walletAddress = wallet.address;
+
+    const exchange = new ccxt.hyperliquid({
+      privateKey: userApiKey,
+      walletAddress: walletAddress,
+    });
+
+    await exchange.loadMarkets();
+    const balance = await fetchWalletBalance(exchange, address);
+    await exchange.close();
+
+    return balance;
+  } catch (error) {
+    console.error('Failed to fetch balance for address:', error);
+    return { total: 0, free: 0, used: 0, assets: {} };
+  }
+}
+
+/**
+ * Fetch positions for a specific address
+ */
+async function fetchPositionsForAddress(address) {
+  try {
+    // fetchPositions from wallet.js uses direct API when userAddress is provided
+    // We don't need an exchange instance for querying other wallets
+    const positions = await fetchPositions(null, address);
+    return positions;
+  } catch (error) {
+    console.error('Failed to fetch positions for address:', error);
+    return [];
+  }
+}
+
+/**
+ * Render balance for selected wallet in history panel
+ */
+function renderSelectedWalletBalance(balance) {
+  // Hide loading and error
+  elements.selectedBalanceLoading.style.display = 'none';
+  elements.selectedBalanceError.style.display = 'none';
+
+  if (!balance || balance.total === 0) {
+    elements.selectedBalanceContent.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No balance information available</p>';
+    return;
+  }
+
+  // Render balance summary in grid layout
+  const balanceHtml = `
+    <div style="background-color:#0f1420; padding:20px; border-radius:6px; border:1px solid #2a3550;">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:20px;">
+        <div>
+          <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Available</div>
+          <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;">$${formatNumber(balance.free, 2)}</div>
+        </div>
+        <div>
+          <div style="color:#888; font-size:0.9em; margin-bottom:5px;">In Use</div>
+          <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;">$${formatNumber(balance.used, 2)}</div>
+        </div>
+        <div>
+          <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Total Balance</div>
+          <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;">$${formatNumber(balance.total, 2)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  elements.selectedBalanceContent.innerHTML = balanceHtml;
+}
+
+/**
+ * Render positions for selected wallet in history panel (table view)
+ */
+function renderSelectedWalletPositions(positions) {
+  // Hide loading and error
+  elements.selectedPositionsLoading.style.display = 'none';
+  elements.selectedPositionsError.style.display = 'none';
+
+  if (!positions || positions.length === 0) {
+    elements.selectedPositionsContent.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No open positions</p>';
+    return;
+  }
+
+  // Calculate totals
+  const totalPositionValue = positions.reduce((sum, pos) => sum + (pos.size * pos.markPrice), 0);
+  const totalUnrealizedPnl = positions.reduce((sum, pos) => sum + pos.unrealizedPnl, 0);
+
+  // Render summary card
+  const pnlClass = totalUnrealizedPnl >= 0 ? 'positive' : 'negative';
+  const pnlSign = totalUnrealizedPnl >= 0 ? '+' : '';
+
+  const summaryHtml = `
+    <div style="background-color:#0f1420; padding:15px; border-radius:6px; margin-bottom:15px; border:1px solid #2a3550;">
+      <div style="display:flex; justify-content:space-between; gap:20px;">
+        <div>
+          <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Total Position Value</div>
+          <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;">$${formatNumber(totalPositionValue, 2)}</div>
+        </div>
+        <div>
+          <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Unrealized PnL</div>
+          <div class="${pnlClass}" style="font-size:1.3em; font-weight:600;">${pnlSign}$${formatNumber(totalUnrealizedPnl, 2)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Render positions table
+  const tableRowsHtml = positions
+    .map((pos) => {
+      const sideClass = pos.side === 'long' ? 'buy' : 'sell';
+      const pnlClass = pos.unrealizedPnl >= 0 ? 'positive' : 'negative';
+      const pnlSign = pos.unrealizedPnl >= 0 ? '+' : '';
+      const posValue = pos.size * pos.markPrice;
+
+      return `
+        <tr>
+          <td>${pos.symbol.replace('/USDC:USDC', '')}</td>
+          <td><span class="${sideClass}">${pos.side.toUpperCase()}</span></td>
+          <td>${formatNumber(pos.size, 4)}</td>
+          <td>$${formatNumber(pos.entryPrice, 2)}</td>
+          <td>$${formatNumber(pos.markPrice, 2)}</td>
+          <td>$${formatNumber(posValue, 2)}</td>
+          <td><span class="balance-value ${pnlClass}">${pnlSign}$${formatNumber(pos.unrealizedPnl, 2)}</span></td>
+          <td>${pos.leverage}x</td>
+          <td>$${formatNumber(pos.liquidationPrice, 2)}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  const tableHtml = `
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Size</th>
+            <th>Entry Price</th>
+            <th>Mark Price</th>
+            <th>Position Value</th>
+            <th>Unrealized PnL</th>
+            <th>Leverage</th>
+            <th>Liquidation</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRowsHtml}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  elements.selectedPositionsContent.innerHTML = summaryHtml + tableHtml;
 }
 
 /**
@@ -601,6 +838,146 @@ function renderWalletsTable() {
       showHistoryPanel(address);
     });
   });
+}
+
+/**
+ * Refresh wallet info for your wallet
+ */
+async function refreshWalletInfo() {
+  console.log('Refreshing wallet info...');
+
+  const { userApiKey } = config;
+
+  // Validate inputs
+  if (!userApiKey) {
+    alert('Please enter your API key first');
+    return;
+  }
+
+  try {
+    // Derive wallet address from private key
+    const wallet = new ethers.Wallet(userApiKey);
+    const walletAddress = wallet.address;
+
+    // Create exchange instance for querying
+    const exchange = new ccxt.hyperliquid({
+      privateKey: userApiKey,
+      walletAddress: walletAddress,
+    });
+
+    // Load markets once (required by CCXT for fetchBalance and fetchPositions)
+    console.log('Loading markets...');
+    await exchange.loadMarkets();
+    console.log('Markets loaded successfully');
+
+    // Fetch your wallet info
+    await fetchAndDisplayYourWallet(exchange);
+
+  } catch (error) {
+    console.error('Failed to refresh wallet info:', error);
+    alert(`Failed to refresh wallet info: ${error.message}`);
+  }
+}
+
+/**
+ * Fetch and display your wallet info
+ */
+async function fetchAndDisplayYourWallet(exchange) {
+  try {
+    // Show loading
+    elements.yourWalletPlaceholder.style.display = 'none';
+    elements.yourWalletLoading.style.display = 'block';
+    elements.yourWalletError.style.display = 'none';
+    elements.yourWalletContent.style.display = 'none';
+
+    // Fetch wallet info
+    const walletInfo = await fetchWalletInfo(exchange);
+
+    // Hide loading, show content
+    elements.yourWalletLoading.style.display = 'none';
+    elements.yourWalletContent.style.display = 'block';
+
+    // Display balance
+    elements.yourBalanceFree.textContent = `$${formatNumber(walletInfo.balance.free, 2)}`;
+    elements.yourBalanceUsed.textContent = `$${formatNumber(walletInfo.balance.used, 2)}`;
+    elements.yourBalanceTotal.textContent = `$${formatNumber(walletInfo.balance.total, 2)}`;
+    elements.yourPositionValue.textContent = `$${formatNumber(walletInfo.totalPositionValue, 2)}`;
+
+    // Display unrealized PnL with color
+    const pnlElement = elements.yourUnrealizedPnl;
+    const pnl = walletInfo.totalUnrealizedPnl;
+    pnlElement.textContent = `${pnl >= 0 ? '+' : ''}$${formatNumber(pnl, 2)}`;
+    pnlElement.classList.remove('positive', 'negative');
+    pnlElement.classList.add(pnl >= 0 ? 'positive' : 'negative');
+
+    // Render positions
+    renderPositions(walletInfo.positions, elements.yourPositionsBody);
+
+    console.log('Your wallet info displayed successfully');
+  } catch (error) {
+    console.error('Failed to fetch your wallet info:', error);
+    elements.yourWalletLoading.style.display = 'none';
+    elements.yourWalletError.style.display = 'block';
+    elements.yourWalletError.textContent = `Failed to load: ${error.message}`;
+  }
+}
+
+/**
+ * Render positions table (for Your Wallet section)
+ */
+function renderPositions(positions, container) {
+  if (!positions || positions.length === 0) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No open positions</p>';
+    return;
+  }
+
+  const tableRowsHtml = positions
+    .map((pos) => {
+      const sideClass = pos.side === 'long' ? 'buy' : 'sell';
+      const pnlClass = pos.unrealizedPnl >= 0 ? 'positive' : 'negative';
+      const pnlSign = pos.unrealizedPnl >= 0 ? '+' : '';
+      const posValue = pos.size * pos.markPrice;
+
+      return `
+        <tr>
+          <td>${pos.symbol.replace('/USDC:USDC', '')}</td>
+          <td><span class="${sideClass}">${pos.side.toUpperCase()}</span></td>
+          <td>${formatNumber(pos.size, 4)}</td>
+          <td>$${formatNumber(pos.entryPrice, 2)}</td>
+          <td>$${formatNumber(pos.markPrice, 2)}</td>
+          <td>$${formatNumber(posValue, 2)}</td>
+          <td><span class="balance-value ${pnlClass}">${pnlSign}$${formatNumber(pos.unrealizedPnl, 2)}</span></td>
+          <td>${pos.leverage}x</td>
+          <td>$${formatNumber(pos.liquidationPrice, 2)}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  const tableHtml = `
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Size</th>
+            <th>Entry Price</th>
+            <th>Mark Price</th>
+            <th>Position Value</th>
+            <th>Unrealized PnL</th>
+            <th>Leverage</th>
+            <th>Liquidation</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRowsHtml}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = tableHtml;
 }
 
 // Export functions for use in other modules
