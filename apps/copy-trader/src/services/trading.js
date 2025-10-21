@@ -241,12 +241,17 @@ async function executeCopyTrade(trade) {
     const { symbol, side, price, amount } = trade;
 
     try {
-        console.log(`Executing copy trade: ${side} ${amount} ${symbol} @ ${price}`);
+        console.log(`Preparing copy trade: ${side} ${amount} ${symbol} @ ${price}`);
 
         // Set leverage if first time for this symbol
         if (!leverageCache.has(symbol)) {
             await setLeverageIfNeeded(symbol);
         }
+
+        // Get leverage for this symbol (or default)
+        const leverage = leverageCache.get(symbol) || DEFAULT_MAX_LEVERAGE;
+
+        console.log(`Executing order with ${leverage}x leverage...`);
 
         // Execute limit order at trader's exact price
         const order = await executeExchange.createLimitOrder(symbol, side, amount, price);

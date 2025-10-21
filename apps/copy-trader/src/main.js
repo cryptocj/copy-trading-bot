@@ -599,12 +599,27 @@ function setFormDisabled(disabled) {
  * Start copy trading (US2/US3)
  */
 async function startCopyTrading() {
-  console.log('🚀 Starting copy trading...');
+  console.log('🚀 Preparing to start copy trading...');
   console.log(`📊 Configuration:`);
   console.log(`  - Trader Address: ${config.traderAddress}`);
   console.log(`  - Copy Balance: $${config.copyBalance}`);
 
   try {
+    // Show confirmation dialog before starting
+    console.log('Requesting user confirmation...');
+    const confirmed = await confirmCopyTradingSession({
+      traderAddress: config.traderAddress,
+      copyBalance: config.copyBalance,
+      apiKey: config.userApiKey
+    });
+
+    if (!confirmed) {
+      console.log('❌ Copy trading cancelled by user');
+      return;
+    }
+
+    console.log('✅ User confirmed, starting copy trading...');
+
     // Ensure current configuration is saved and tracked as last monitored wallet
     console.log('💾 Saving current configuration before starting...');
     saveSettings();
@@ -1203,6 +1218,83 @@ function renderPositions(positions, container) {
   `;
 
   container.innerHTML = tableHtml;
+}
+
+/**
+ * Show session confirmation modal and wait for user response
+ * @param {{ traderAddress: string, copyBalance: number, apiKey: string }} sessionConfig
+ * @returns {Promise<boolean>} True if confirmed, false if cancelled
+ */
+async function confirmCopyTradingSession(sessionConfig) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('trade-confirm-modal');
+    const detailsDiv = document.getElementById('trade-confirm-details');
+    const confirmButton = document.getElementById('trade-confirm-execute');
+    const cancelButton = document.getElementById('trade-confirm-cancel');
+
+    // Mask API key (show first 6 and last 4 characters)
+    const maskedApiKey = sessionConfig.apiKey.length > 10
+      ? `${sessionConfig.apiKey.substring(0, 6)}...${sessionConfig.apiKey.substring(sessionConfig.apiKey.length - 4)}`
+      : '******';
+
+    // Populate modal with session configuration
+    detailsDiv.innerHTML = `
+      <div style="background-color:#0f1420; padding:20px; border-radius:6px; border:1px solid #2a3550;">
+        <div style="display:grid; grid-template-columns: 140px 1fr; gap:12px; font-size:0.95em;">
+          <div style="color:#888;">Trader Address:</div>
+          <div style="color:#e0e0e0; font-weight:600; word-break:break-all;">${sessionConfig.traderAddress}</div>
+
+          <div style="color:#888;">Copy Balance:</div>
+          <div style="color:#4a9eff; font-weight:600;">$${sessionConfig.copyBalance.toFixed(2)}</div>
+
+          <div style="color:#888;">API Key:</div>
+          <div style="color:#888; font-family:monospace;">${maskedApiKey}</div>
+
+          <div style="color:#888;">Max Leverage:</div>
+          <div style="color:#e0e0e0;">20x (per symbol)</div>
+        </div>
+      </div>
+      <div style="margin-top:15px; padding:12px; background-color:#1a2332; border-left:3px solid #ffa726; border-radius:4px;">
+        <span style="color:#ffa726; font-weight:600;">⚠️ Warning:</span>
+        <span style="color:#bbb; font-size:0.9em;"> All detected trades will be automatically copied. Make sure you trust this trader.</span>
+      </div>
+    `;
+
+    // Show modal
+    modal.style.display = 'flex';
+
+    // Handle confirm
+    const handleConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    // Handle cancel
+    const handleCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    // Cleanup function
+    const cleanup = () => {
+      modal.style.display = 'none';
+      confirmButton.removeEventListener('click', handleConfirm);
+      cancelButton.removeEventListener('click', handleCancel);
+    };
+
+    // Add event listeners
+    confirmButton.addEventListener('click', handleConfirm);
+    cancelButton.addEventListener('click', handleCancel);
+
+    // Close modal on ESC key
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', handleEsc);
+        handleCancel();
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+  });
 }
 
 // Export functions for use in other modules
