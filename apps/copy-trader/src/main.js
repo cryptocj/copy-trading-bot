@@ -29,7 +29,6 @@ import {
   orderList,
   monitoringWallets,
   setCopyTradingActive,
-  addOrderToList,
   clearOrderList,
   getOrderList,
 } from './state/appState.js';
@@ -49,6 +48,10 @@ import {
   setupHistoryPanelListeners,
   showHistoryPanel,
 } from './rendering/history.js';
+import {
+  addOrder,
+  renderOrderList,
+} from './rendering/orders.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -184,7 +187,7 @@ async function restoreActiveSession() {
     await startTradingService(
       config,
       (order) => {
-        addOrder(order); // Add order to display list
+        addOrder(elements, order); // Add order to display list
       },
       sessionState
     ); // Pass resumeState to restore trade counter and startTime
@@ -657,7 +660,7 @@ async function startCopyTrading() {
         initialPositions: result.initialPositions,
       },
       (order) => {
-        addOrder(order); // Add order to display list (US4)
+        addOrder(elements, order); // Add order to display list (US4)
       }
     );
 
@@ -721,36 +724,6 @@ async function stopCopyTrading() {
  * FIFO: max 6 orders, remove oldest when exceeding
  * @param {{ symbol: string, side: string, amount: number, price: number, timestamp: number }} order
  */
-function addOrder(order) {
-  addOrderToList(order);
-  renderOrderList();
-}
-
-/**
- * Render order list in UI (US4)
- */
-function renderOrderList() {
-  if (orderList.length === 0) {
-    elements.ordersBody.innerHTML = '';
-    return;
-  }
-
-  const html = orderList
-    .map(
-      (order) => `
-        <tr>
-            <td>${order.symbol}</td>
-            <td class="${order.side}">${order.side.toUpperCase()}</td>
-            <td>${Number(order.amount).toFixed(6)}</td>
-            <td>$${Number(order.price).toFixed(2)}</td>
-            <td>${new Date(order.timestamp).toLocaleString()}</td>
-        </tr>
-    `
-    )
-    .join('');
-
-  elements.ordersBody.innerHTML = html;
-}
 
 /**
  * Setup collapsible sections with localStorage persistence
@@ -1340,14 +1313,25 @@ function checkFormValidity() {
   checkValidity(elements, isCopyTradingActive);
 }
 
+/**
+ * Wrapper functions for order management (backward compatibility)
+ */
+function addOrderWrapper(order) {
+  addOrder(elements, order);
+}
+
+function renderOrderListWrapper() {
+  renderOrderList(elements);
+}
+
 // Export functions for use in other modules
 export {
   config,
   isCopyTradingActive,
   orderList,
   elements,
-  addOrder,
-  renderOrderList,
+  addOrderWrapper as addOrder,
+  renderOrderListWrapper as renderOrderList,
   setFormDisabled,
   checkFormValidity,
   clearSavedSettings,
