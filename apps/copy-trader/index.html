@@ -183,6 +183,17 @@
                 </div>
 
                 <div class="form-group">
+                    <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
+                        <input type="checkbox" id="use-latest-price" style="margin-right: 8px;">
+                        <span style="font-weight: 600;">📊 Use Latest Market Price (instead of trader's entry price)</span>
+                    </label>
+                    <small style="color:#888; display:block; margin-top:4px;">
+                        ⚪ Disabled: Use trader's exact entry price (may not fill if price moved)<br>
+                        ✅ Enabled: Use current market price with tick offset (better fill rate, may differ from trader's entry)
+                    </small>
+                </div>
+
+                <div class="form-group">
                     <label for="copy-balance">Total Balance for Copying (USD, min $50)</label>
                     <input type="number" id="copy-balance" placeholder="1000" min="50" step="1" required>
                     <span class="validation-error" id="copy-balance-error"></span>

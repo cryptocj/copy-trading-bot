@@ -159,6 +159,49 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
 }
 
 /**
+ * Fetch latest ticker price for a symbol
+ * @param {object} exchange - CCXT exchange instance
+ * @param {string} symbol - Trading symbol
+ * @returns {Promise<{bid: number, ask: number, last: number}>}
+ */
+async function fetchLatestPrice(exchange, symbol) {
+    try {
+        const ticker = await exchange.fetchTicker(symbol);
+        return {
+            bid: ticker.bid || ticker.last,
+            ask: ticker.ask || ticker.last,
+            last: ticker.last,
+        };
+    } catch (error) {
+        console.error(`Failed to fetch latest price for ${symbol}:`, error.message);
+        throw error;
+    }
+}
+
+/**
+ * Calculate order price with tick offset
+ * Buy orders: use bid price (or last - small offset)
+ * Sell orders: use ask price (or last + small offset)
+ * @param {object} priceInfo - {bid, ask, last}
+ * @param {string} side - 'buy' or 'sell'
+ * @param {number} basePrice - Base price for percentage calculation
+ * @returns {number} - Order price with tick offset
+ */
+function calculateOrderPrice(priceInfo, side, basePrice) {
+    const TICK_OFFSET_PERCENT = 0.0001; // 0.01% offset for better fill rate
+
+    if (side === 'buy') {
+        // Buy: use bid price, or last - offset if no bid
+        const tickOffset = basePrice * TICK_OFFSET_PERCENT;
+        return priceInfo.bid || (priceInfo.last - tickOffset);
+    } else {
+        // Sell: use ask price, or last + offset if no ask
+        const tickOffset = basePrice * TICK_OFFSET_PERCENT;
+        return priceInfo.ask || (priceInfo.last + tickOffset);
+    }
+}
+
+/**
  * Open initial positions (copy trader's existing positions)
  * Places orders for all positions calculated from trader's current holdings
  * @param {Array<{symbol: string, side: string, size: number, entryPrice: number, leverage: number}>} positions - Scaled positions to open
@@ -181,16 +224,42 @@ async function openInitialPositions(positions) {
             // Use trader's actual leverage if available, otherwise use default
             const targetLeverage = leverage || DEFAULT_MAX_LEVERAGE;
 
-            console.log(`\n📌 Opening initial position: ${side.toUpperCase()} ${size.toFixed(4)} ${symbol} @ $${entryPrice.toFixed(4)}`);
+            // Determine order price: use latest market price or trader's entry price
+            let orderPrice = entryPrice;
+            const useLatestPrice = session.config.useLatestPrice || false;
+
+            if (useLatestPrice) {
+                try {
+                    console.log(`  📊 Fetching latest market price for ${symbol}...`);
+                    const priceInfo = await fetchLatestPrice(executeExchange, symbol);
+                    orderPrice = calculateOrderPrice(priceInfo, side, entryPrice);
+
+                    console.log(`  💹 Price decision:`, {
+                        traderEntry: entryPrice.toFixed(4),
+                        latestBid: priceInfo.bid?.toFixed(4),
+                        latestAsk: priceInfo.ask?.toFixed(4),
+                        latestLast: priceInfo.last?.toFixed(4),
+                        orderPrice: orderPrice.toFixed(4),
+                        priceChange: (((orderPrice - entryPrice) / entryPrice) * 100).toFixed(2) + '%'
+                    });
+                } catch (priceError) {
+                    console.warn(`  ⚠️ Failed to fetch latest price, using trader's entry price:`, priceError.message);
+                    orderPrice = entryPrice;
+                }
+            }
+
+            console.log(`\n📌 Opening initial position: ${side.toUpperCase()} ${size.toFixed(4)} ${symbol} @ $${orderPrice.toFixed(4)}`);
             console.log(`  📊 Position details from calculation:`, {
                 symbol,
                 side,
                 size,
-                entryPrice,
+                traderEntryPrice: entryPrice,
+                orderPrice: orderPrice,
+                usingLatestPrice: useLatestPrice,
                 traderLeverage: leverage,
                 targetLeverage: targetLeverage,
-                marketValue: (size * entryPrice).toFixed(2),
-                marginRequired: ((size * entryPrice) / targetLeverage).toFixed(2)
+                marketValue: (size * orderPrice).toFixed(2),
+                marginRequired: ((size * orderPrice) / targetLeverage).toFixed(2)
             });
 
             // Set leverage if first time for this symbol OR if leverage changed
@@ -211,9 +280,10 @@ async function openInitialPositions(positions) {
                     symbol,
                     side,
                     size,
-                    entryPrice,
+                    orderPrice,
+                    traderEntryPrice: entryPrice,
                     leverage: actualLeverage,
-                    estimatedCost: ((size * entryPrice) / actualLeverage).toFixed(2)
+                    estimatedCost: ((size * orderPrice) / actualLeverage).toFixed(2)
                 });
 
                 // Simulate successful order
@@ -221,7 +291,7 @@ async function openInitialPositions(positions) {
                     id: `DRY_RUN_${Date.now()}_${symbol}`,
                     status: 'simulated',
                     amount: size,
-                    price: entryPrice,
+                    price: orderPrice,
                     symbol,
                     side
                 };
@@ -234,7 +304,7 @@ async function openInitialPositions(positions) {
                         symbol,
                         side,
                         amount: size,
-                        price: entryPrice,
+                        price: orderPrice,
                         timestamp: Date.now(),
                         dryRun: true
                     });
@@ -243,8 +313,8 @@ async function openInitialPositions(positions) {
                 successCount++;
             } else {
                 // LIVE MODE: Place actual order
-                console.log(`  🚀 LIVE: Placing limit order...`);
-                const order = await executeExchange.createLimitOrder(symbol, side, size, entryPrice);
+                console.log(`  🚀 LIVE: Placing limit order at $${orderPrice.toFixed(4)}...`);
+                const order = await executeExchange.createLimitOrder(symbol, side, size, orderPrice);
 
                 console.log(`  ✅ Order placed successfully:`, {
                     orderId: order.id,
@@ -262,7 +332,7 @@ async function openInitialPositions(positions) {
                         symbol,
                         side,
                         amount: size,
-                        price: entryPrice,
+                        price: orderPrice,
                         timestamp: Date.now()
                     });
                 }

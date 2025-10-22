@@ -25,6 +25,7 @@ let config = {
   traderAddress: '',
   userApiKey: '',
   copyBalance: 0, // Total balance for copying (replaces tradeValue and maxLeverage)
+  useLatestPrice: false, // Use latest market price instead of trader's entry price
 };
 
 let isCopyTradingActive = false;
@@ -85,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadMyWalletButton: document.getElementById('load-my-wallet-button'),
     myWalletAddress: document.getElementById('my-wallet-address'),
     dryRunModeCheckbox: document.getElementById('dry-run-mode'),
+    useLatestPriceCheckbox: document.getElementById('use-latest-price'),
 
     // Orders
     ordersBody: document.getElementById('orders-body'),
@@ -568,6 +570,17 @@ function setupValidationListeners() {
     elements.startButton.textContent = initialButtonText;
   }
 
+  // Use latest price checkbox listener
+  if (elements.useLatestPriceCheckbox) {
+    elements.useLatestPriceCheckbox.addEventListener('change', () => {
+      config.useLatestPrice = elements.useLatestPriceCheckbox.checked;
+      console.log(`📊 Use latest price: ${config.useLatestPrice ? 'enabled' : 'disabled'} - initial positions will use ${config.useLatestPrice ? 'current market price with tick offset' : "trader's entry price"}`);
+    });
+
+    // Set initial state
+    config.useLatestPrice = elements.useLatestPriceCheckbox.checked;
+  }
+
   // Trader address validation
   elements.traderAddressInput.addEventListener('blur', () => {
     const result = validateAddress(elements.traderAddressInput.value);
@@ -725,11 +738,20 @@ async function testPositionCalculation() {
       `;
     }
 
+    // Test calculation doesn't fetch real-time prices (would be too slow for preview)
+    const latestPrices = new Map();
+
     // Build position table with comparison if scaled
     const positionsTableHtml = positions
       .map((pos, index) => {
         const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
         const originalPos = traderPositions[index];
+
+        // Get latest price info for this symbol
+        const priceInfo = latestPrices.get(pos.symbol);
+        const hasLatestPrice = priceInfo && config.useLatestPrice;
+        const displayPrice = hasLatestPrice ? priceInfo.orderPrice : pos.entryPrice;
+        const priceChange = hasLatestPrice ? ((priceInfo.orderPrice - pos.entryPrice) / pos.entryPrice * 100) : 0;
 
         if (wasScaled && originalPos) {
           // Show comparison: Original → Scaled
@@ -741,7 +763,15 @@ async function testPositionCalculation() {
               <div style="color:#888; font-size:0.85em;">${originalPos.size.toFixed(4)}</div>
               <div style="color:#4a9eff; font-weight:600;">→ ${pos.size.toFixed(4)}</div>
             </td>
-            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px;">
+              ${hasLatestPrice ? `
+                <div style="color:#888; font-size:0.75em;">Trader: $${pos.entryPrice.toFixed(4)}</div>
+                <div style="color:#4a9eff; font-weight:600; margin-top:2px;">Order: $${displayPrice.toFixed(4)}</div>
+                <div style="color:${priceChange >= 0 ? '#2a9d5f' : '#d94848'}; font-size:0.75em;">(${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)</div>
+              ` : `
+                <div style="color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</div>
+              `}
+            </td>
             <td style="padding:8px; color:#888;">${pos.leverage}x</td>
             <td style="padding:8px; color:#e0e0e0;">
               <div style="color:#888; font-size:0.85em;">$${(originalPos.size * originalPos.entryPrice).toFixed(2)}</div>
@@ -760,7 +790,15 @@ async function testPositionCalculation() {
             <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
             <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
             <td style="padding:8px; color:#e0e0e0;">${pos.size.toFixed(4)}</td>
-            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px;">
+              ${hasLatestPrice ? `
+                <div style="color:#888; font-size:0.75em;">Trader: $${pos.entryPrice.toFixed(4)}</div>
+                <div style="color:#4a9eff; font-weight:600; margin-top:2px;">Order: $${displayPrice.toFixed(4)}</div>
+                <div style="color:${priceChange >= 0 ? '#2a9d5f' : '#d94848'}; font-size:0.75em;">(${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)</div>
+              ` : `
+                <div style="color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</div>
+              `}
+            </td>
             <td style="padding:8px; color:#888;">${pos.leverage}x</td>
             <td style="padding:8px; color:#e0e0e0;">$${pos.marketValue.toFixed(2)}</td>
             <td style="padding:8px; color:#4a9eff; font-weight:600;">$${pos.estimatedCost.toFixed(2)}</td>
@@ -874,6 +912,64 @@ function setFormDisabled(disabled) {
 }
 
 /**
+ * Fetch latest market prices for all trader positions (for confirmation display)
+ * @param {string} apiKey - User's API key
+ * @returns {Promise<Map<string, {bid: number, ask: number, last: number, orderPrice: number}>>}
+ */
+async function fetchLatestPricesForConfirmation(apiKey) {
+  try {
+    // Initialize exchange
+    const wallet = new ethers.Wallet(apiKey);
+    const exchange = new ccxt.hyperliquid({
+      privateKey: apiKey,
+      walletAddress: wallet.address,
+    });
+
+    await exchange.loadMarkets();
+
+    // Get trader positions
+    const traderPositions = await fetchPositions(exchange, config.traderAddress);
+
+    const pricesMap = new Map();
+
+    // Fetch ticker for each symbol
+    for (const pos of traderPositions) {
+      try {
+        const ticker = await exchange.fetchTicker(pos.symbol);
+        const bid = ticker.bid || ticker.last;
+        const ask = ticker.ask || ticker.last;
+        const last = ticker.last;
+
+        // Calculate order price with tick offset
+        const TICK_OFFSET_PERCENT = 0.0001; // 0.01%
+        const tickOffset = pos.entryPrice * TICK_OFFSET_PERCENT;
+        const orderPrice = pos.side === 'long'
+          ? (bid || (last - tickOffset))  // Buy order
+          : (ask || (last + tickOffset)); // Sell order
+
+        pricesMap.set(pos.symbol, {
+          bid,
+          ask,
+          last,
+          orderPrice,
+          traderEntry: pos.entryPrice
+        });
+
+        console.log(`  ${pos.symbol}: Trader=$${pos.entryPrice.toFixed(2)} → Order=$${orderPrice.toFixed(2)} (${((orderPrice - pos.entryPrice) / pos.entryPrice * 100).toFixed(2)}%)`);
+      } catch (error) {
+        console.warn(`  ⚠️ Failed to fetch price for ${pos.symbol}:`, error.message);
+      }
+    }
+
+    await exchange.close();
+    return pricesMap;
+  } catch (error) {
+    console.error('Failed to fetch latest prices:', error);
+    return new Map();
+  }
+}
+
+/**
  * Start copy trading (US2/US3)
  */
 async function startCopyTrading() {
@@ -881,14 +977,96 @@ async function startCopyTrading() {
   console.log(`📊 Configuration:`);
   console.log(`  - Trader Address: ${config.traderAddress}`);
   console.log(`  - Copy Balance: $${config.copyBalance}`);
+  console.log(`  - Use Latest Price: ${config.useLatestPrice}`);
 
   try {
+    // Check for position conflicts between user and trader
+    console.log('🔍 Checking for existing positions and conflicts...');
+
+    // Get wallet address - use custom saved address if available, otherwise derive from API key
+    const savedMyWalletAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
+    let myWalletAddress;
+
+    if (savedMyWalletAddress) {
+      myWalletAddress = savedMyWalletAddress;
+      console.log('  - Using saved wallet address:', myWalletAddress);
+    } else {
+      const userWallet = new ethers.Wallet(config.userApiKey);
+      myWalletAddress = userWallet.address;
+      console.log('  - Using wallet derived from API key:', myWalletAddress);
+    }
+
+    // Fetch user's current positions using the wallet address
+    const userPositions = await fetchPositionsForAddress(myWalletAddress);
+    console.log('  - Your positions:', userPositions.length);
+
+    // Fetch trader's positions
+    const traderPositions = await fetchPositionsForAddress(config.traderAddress);
+    console.log('  - Trader positions:', traderPositions.length);
+
+    // Check for conflicts and prepare filtered list
+    let positionsToSkip = new Set();
+
+    if (userPositions.length > 0) {
+      console.log('  - Your open positions:', userPositions.map(p => ({ symbol: p.symbol, side: p.side, size: p.size })));
+
+      // Find overlapping symbols
+      const userSymbols = new Set(userPositions.map(p => p.symbol));
+      const traderSymbols = new Set(traderPositions.map(p => p.symbol));
+      const conflicts = [...userSymbols].filter(symbol => traderSymbols.has(symbol));
+
+      if (conflicts.length > 0) {
+        const remainingPositions = traderPositions.length - conflicts.length;
+
+        const proceed = confirm(
+          `⚠️ Position Conflict Detected!\n\n` +
+          `You have ${userPositions.length} open position(s): ${[...userSymbols].join(', ')}\n` +
+          `Trader has ${traderPositions.length} position(s): ${[...traderSymbols].join(', ')}\n\n` +
+          `Conflicting symbols: ${conflicts.join(', ')}\n\n` +
+          `These ${conflicts.length} position(s) will be SKIPPED.\n` +
+          `Remaining ${remainingPositions} position(s) will be copied.\n\n` +
+          `Do you want to continue?`
+        );
+
+        if (!proceed) {
+          console.log('❌ Copy trading cancelled by user');
+          return;
+        }
+
+        // Mark conflicting positions to be skipped
+        positionsToSkip = new Set(conflicts);
+        console.log('⚠️ Will skip conflicting positions:', [...positionsToSkip]);
+      } else {
+        // Warn if user has positions but no conflicts
+        const proceed = confirm(
+          `⚠️ Warning: You have ${userPositions.length} open position(s): ${[...userSymbols].join(', ')}\n\n` +
+          `These don't conflict with trader's positions, but may affect your available balance.\n\n` +
+          `Do you want to continue?`
+        );
+
+        if (!proceed) {
+          console.log('❌ Copy trading cancelled by user');
+          return;
+        }
+      }
+    }
+    console.log('✅ Position check complete - proceeding with copy trading');
+
+    // Fetch latest prices if enabled (before confirmation)
+    let latestPrices = null;
+    if (config.useLatestPrice) {
+      console.log('📊 Fetching latest market prices for confirmation...');
+      latestPrices = await fetchLatestPricesForConfirmation(config.userApiKey);
+    }
+
     // Show confirmation dialog before starting
     console.log('Requesting user confirmation...');
     const result = await confirmCopyTradingSession({
       traderAddress: config.traderAddress,
       copyBalance: config.copyBalance,
       apiKey: config.userApiKey,
+      latestPrices: latestPrices,
+      positionsToSkip: positionsToSkip, // Pass conflicting symbols to skip
     });
 
     if (!result.confirmed) {
@@ -1820,6 +1998,14 @@ async function confirmCopyTradingSession(sessionConfig) {
     traderPositions = await fetchPositionsForAddress(sessionConfig.traderAddress);
     console.log('Trader positions loaded:', traderPositions);
 
+    // Filter out positions to skip (conflicting with user's existing positions)
+    if (sessionConfig.positionsToSkip && sessionConfig.positionsToSkip.size > 0) {
+      const beforeFilter = traderPositions.length;
+      traderPositions = traderPositions.filter(pos => !sessionConfig.positionsToSkip.has(pos.symbol));
+      console.log(`⚠️ Filtered out ${beforeFilter - traderPositions.length} conflicting position(s)`);
+      console.log(`Remaining positions to copy: ${traderPositions.length}`);
+    }
+
     // Calculate what positions would be opened
     if (traderPositions.length > 0) {
       positionCalculation = calculateInitialPositions(traderPositions, sessionConfig.copyBalance);
@@ -1865,11 +2051,20 @@ async function confirmCopyTradingSession(sessionConfig) {
       `;
     }
 
+    // Get latest prices from sessionConfig if available
+    const latestPrices = sessionConfig.latestPrices || new Map();
+
     // Build position table with comparison if scaled
     const positionsTableHtml = positions
       .map((pos, index) => {
         const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
         const originalPos = traderPositions[index];
+
+        // Get latest price info for this symbol
+        const priceInfo = latestPrices.get(pos.symbol);
+        const hasLatestPrice = priceInfo && config.useLatestPrice;
+        const displayPrice = hasLatestPrice ? priceInfo.orderPrice : pos.entryPrice;
+        const priceChange = hasLatestPrice ? ((priceInfo.orderPrice - pos.entryPrice) / pos.entryPrice * 100) : 0;
 
         if (wasScaled && originalPos) {
           // Show comparison: Original → Scaled
@@ -1881,7 +2076,15 @@ async function confirmCopyTradingSession(sessionConfig) {
               <div style="color:#888; font-size:0.85em;">${originalPos.size.toFixed(4)}</div>
               <div style="color:#4a9eff; font-weight:600;">→ ${pos.size.toFixed(4)}</div>
             </td>
-            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px;">
+              ${hasLatestPrice ? `
+                <div style="color:#888; font-size:0.75em;">Trader: $${pos.entryPrice.toFixed(4)}</div>
+                <div style="color:#4a9eff; font-weight:600; margin-top:2px;">Order: $${displayPrice.toFixed(4)}</div>
+                <div style="color:${priceChange >= 0 ? '#2a9d5f' : '#d94848'}; font-size:0.75em;">(${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)</div>
+              ` : `
+                <div style="color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</div>
+              `}
+            </td>
             <td style="padding:8px; color:#888;">${pos.leverage}x</td>
             <td style="padding:8px; color:#e0e0e0;">
               <div style="color:#888; font-size:0.85em;">$${(originalPos.size * originalPos.entryPrice).toFixed(2)}</div>
@@ -1900,7 +2103,15 @@ async function confirmCopyTradingSession(sessionConfig) {
             <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
             <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
             <td style="padding:8px; color:#e0e0e0;">${pos.size.toFixed(4)}</td>
-            <td style="padding:8px; color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</td>
+            <td style="padding:8px;">
+              ${hasLatestPrice ? `
+                <div style="color:#888; font-size:0.75em;">Trader: $${pos.entryPrice.toFixed(4)}</div>
+                <div style="color:#4a9eff; font-weight:600; margin-top:2px;">Order: $${displayPrice.toFixed(4)}</div>
+                <div style="color:${priceChange >= 0 ? '#2a9d5f' : '#d94848'}; font-size:0.75em;">(${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)</div>
+              ` : `
+                <div style="color:#e0e0e0;">$${pos.entryPrice.toFixed(4)}</div>
+              `}
+            </td>
             <td style="padding:8px; color:#888;">${pos.leverage}x</td>
             <td style="padding:8px; color:#e0e0e0;">$${pos.marketValue.toFixed(2)}</td>
             <td style="padding:8px; color:#4a9eff; font-weight:600;">$${pos.estimatedCost.toFixed(2)}</td>
@@ -1996,7 +2207,23 @@ async function confirmCopyTradingSession(sessionConfig) {
         <div style="color:${isDryRunMode() ? '#4a9eff' : '#ffa726'}; font-weight:600;">
           ${isDryRunMode() ? '🧪 DRY RUN (Simulated)' : '🚀 LIVE TRADING'}
         </div>
+
+        <div style="color:#888;">Order Pricing:</div>
+        <div style="color:${config.useLatestPrice ? '#4a9eff' : '#e0e0e0'}; font-weight:600;">
+          ${config.useLatestPrice ? '📊 Latest Market Price' : '📍 Trader\'s Entry Price'}
+        </div>
       </div>
+      ${config.useLatestPrice ? `
+      <div style="margin-top:12px; padding:10px; background-color:#1a2332; border-left:3px solid #4a9eff; border-radius:4px;">
+        <div style="color:#4a9eff; font-size:0.85em; font-weight:600;">📊 Latest Market Price Mode:</div>
+        <div style="color:#bbb; font-size:0.85em; margin-top:4px;">
+          • Exact order prices will be calculated when orders are placed<br>
+          • Buy orders: Use bid price (or last - 0.01% tick offset)<br>
+          • Sell orders: Use ask price (or last + 0.01% tick offset)<br>
+          • Check console logs for actual prices used
+        </div>
+      </div>
+      ` : ''}
     </div>
     ${positionsHtml}
     ${isDryRunMode() ? `
