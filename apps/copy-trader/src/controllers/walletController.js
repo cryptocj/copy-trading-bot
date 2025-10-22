@@ -9,6 +9,7 @@ import { validateAddress } from '../services/validation.js';
 import { displayValidationError, checkFormValidity } from '../validation/formValidation.js';
 import { displayYourWalletInfo, fetchAndDisplayYourWallet, fetchBalanceForAddress, fetchPositionsForAddress } from '../rendering/wallet.js';
 import { showHistoryPanel } from '../rendering/history.js';
+import { fetchAndDisplayRecentOrders } from '../rendering/orders.js';
 
 /**
  * Refresh wallet info for "My Wallet & Positions" section
@@ -40,6 +41,9 @@ export async function refreshWalletInfo(elements, isCopyTradingActive) {
 
       // Display in "My Wallet & Positions" section
       displayYourWalletInfo(elements, balance, positions);
+
+      // Fetch and display recent orders for this wallet
+      await fetchAndDisplayRecentOrders(elements, savedAddress);
 
       console.log(`✅ Wallet ${savedAddress} refreshed successfully`);
     } catch (error) {
@@ -82,6 +86,9 @@ export async function refreshWalletInfo(elements, isCopyTradingActive) {
 
     // Fetch your wallet info
     await fetchAndDisplayYourWallet(elements, exchange);
+
+    // Fetch and display recent orders for this wallet
+    await fetchAndDisplayRecentOrders(elements, walletAddress);
   } catch (error) {
     console.error('Failed to refresh wallet info:', error);
     alert(`Failed to refresh wallet info: ${error.message}`);
@@ -170,6 +177,9 @@ export async function loadMyWalletByAddress(elements) {
 
     // Display in "My Wallet & Positions" section
     displayYourWalletInfo(elements, balance, positions);
+
+    // Fetch and display recent orders for this wallet
+    await fetchAndDisplayRecentOrders(elements, address);
 
     // Save wallet address to localStorage for auto-load on refresh
     localStorage.setItem(STORAGE_KEYS.MY_WALLET_ADDRESS, address);
