@@ -52,6 +52,7 @@ import {
   addOrder,
   renderOrderList,
 } from './rendering/orders.js';
+import { setupCollapsibleSections } from './ui/collapsible.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -75,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupHistoryPanelListeners();
 
   // Initialize collapsible sections
-  setupCollapsibleSections();
+  setupCollapsibleSections(elements);
 
   // Render monitoring wallets table
   renderWalletsTable(elements, (address) => showHistoryPanel(elements, address), () => checkValidity(elements, isCopyTradingActive));
@@ -728,58 +729,6 @@ async function stopCopyTrading() {
 /**
  * Setup collapsible sections with localStorage persistence
  */
-function setupCollapsibleSections() {
-  // Restore saved collapsed states
-  const historyCollapsed = localStorage.getItem(STORAGE_KEYS.HISTORY_COLLAPSED) === 'true';
-  const walletsCollapsed = localStorage.getItem(STORAGE_KEYS.WALLETS_COLLAPSED) === 'true';
-
-  if (historyCollapsed) {
-    toggleSection('history', true);
-  }
-  if (walletsCollapsed) {
-    toggleSection('wallets', true);
-  }
-
-  // Add event listeners
-  elements.historyToggle.addEventListener('click', () => {
-    const isCollapsed = elements.historyContentWrapper.classList.contains('collapsed');
-    toggleSection('history', !isCollapsed);
-    localStorage.setItem(STORAGE_KEYS.HISTORY_COLLAPSED, (!isCollapsed).toString());
-  });
-
-  elements.walletsToggle.addEventListener('click', () => {
-    const isCollapsed = elements.walletsContent.classList.contains('collapsed');
-    toggleSection('wallets', !isCollapsed);
-    localStorage.setItem(STORAGE_KEYS.WALLETS_COLLAPSED, (!isCollapsed).toString());
-  });
-}
-
-/**
- * Toggle section collapsed state
- * @param {string} section - 'history' or 'wallets'
- * @param {boolean} collapsed - Whether to collapse or expand
- */
-function toggleSection(section, collapsed) {
-  if (section === 'history') {
-    const icon = elements.historyToggle.querySelector('.collapse-icon');
-    if (collapsed) {
-      elements.historyContentWrapper.classList.add('collapsed');
-      icon.textContent = '+';
-    } else {
-      elements.historyContentWrapper.classList.remove('collapsed');
-      icon.textContent = '−';
-    }
-  } else if (section === 'wallets') {
-    const icon = elements.walletsToggle.querySelector('.collapse-icon');
-    if (collapsed) {
-      elements.walletsContent.classList.add('collapsed');
-      icon.textContent = '+';
-    } else {
-      elements.walletsContent.classList.remove('collapsed');
-      icon.textContent = '−';
-    }
-  }
-}
 
 /**
  * Setup trade history panel listeners
