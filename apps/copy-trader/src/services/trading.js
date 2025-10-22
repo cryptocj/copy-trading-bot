@@ -20,6 +20,9 @@ import {
 // Import position scaling helper
 import { scaleTrade } from '../utils/positionCalculator.js';
 
+// Import price fetching utilities
+import { fetchLatestPrice, calculateOrderPrice } from './priceService.js';
+
 // Active trading session state
 let session = null;
 
@@ -155,49 +158,6 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
     } catch (error) {
         console.error('Failed to start copy trading:', error);
         throw error;
-    }
-}
-
-/**
- * Fetch latest ticker price for a symbol
- * @param {object} exchange - CCXT exchange instance
- * @param {string} symbol - Trading symbol
- * @returns {Promise<{bid: number, ask: number, last: number}>}
- */
-async function fetchLatestPrice(exchange, symbol) {
-    try {
-        const ticker = await exchange.fetchTicker(symbol);
-        return {
-            bid: ticker.bid || ticker.last,
-            ask: ticker.ask || ticker.last,
-            last: ticker.last,
-        };
-    } catch (error) {
-        console.error(`Failed to fetch latest price for ${symbol}:`, error.message);
-        throw error;
-    }
-}
-
-/**
- * Calculate order price with tick offset
- * Buy orders: use bid price (or last - small offset)
- * Sell orders: use ask price (or last + small offset)
- * @param {object} priceInfo - {bid, ask, last}
- * @param {string} side - 'buy' or 'sell'
- * @param {number} basePrice - Base price for percentage calculation
- * @returns {number} - Order price with tick offset
- */
-function calculateOrderPrice(priceInfo, side, basePrice) {
-    const TICK_OFFSET_PERCENT = 0.0001; // 0.01% offset for better fill rate
-
-    if (side === 'buy') {
-        // Buy: use bid price, or last - offset if no bid
-        const tickOffset = basePrice * TICK_OFFSET_PERCENT;
-        return priceInfo.bid || (priceInfo.last - tickOffset);
-    } else {
-        // Sell: use ask price, or last + offset if no ask
-        const tickOffset = basePrice * TICK_OFFSET_PERCENT;
-        return priceInfo.ask || (priceInfo.last + tickOffset);
     }
 }
 

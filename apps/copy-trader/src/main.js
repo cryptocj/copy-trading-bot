@@ -13,7 +13,6 @@ import {
   stopCopyTrading as stopTradingService,
   isDryRunMode,
 } from './services/trading.js';
-import { fetchWalletInfo, fetchPositions, fetchWalletBalance } from './services/wallet.js';
 import { loadSessionState, initializeTabId } from './services/sessionPersistence.js';
 import {
   STORAGE_KEYS,
@@ -59,6 +58,7 @@ import {
 } from './controllers/walletController.js';
 import { confirmCopyTradingSession } from './controllers/tradingController.js';
 import { testPositionCalculation } from './utils/testCalculation.js';
+import { fetchLatestPricesForConfirmation } from './services/priceService.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -240,64 +240,6 @@ function setFormDisabled(disabled) {
 }
 
 /**
- * Fetch latest market prices for all trader positions (for confirmation display)
- * @param {string} apiKey - User's API key
- * @returns {Promise<Map<string, {bid: number, ask: number, last: number, orderPrice: number}>>}
- */
-async function fetchLatestPricesForConfirmation(apiKey) {
-  try {
-    // Initialize exchange
-    const wallet = new ethers.Wallet(apiKey);
-    const exchange = new ccxt.hyperliquid({
-      privateKey: apiKey,
-      walletAddress: wallet.address,
-    });
-
-    await exchange.loadMarkets();
-
-    // Get trader positions
-    const traderPositions = await fetchPositions(exchange, config.traderAddress);
-
-    const pricesMap = new Map();
-
-    // Fetch ticker for each symbol
-    for (const pos of traderPositions) {
-      try {
-        const ticker = await exchange.fetchTicker(pos.symbol);
-        const bid = ticker.bid || ticker.last;
-        const ask = ticker.ask || ticker.last;
-        const last = ticker.last;
-
-        // Calculate order price with tick offset
-        const TICK_OFFSET_PERCENT = 0.0001; // 0.01%
-        const tickOffset = pos.entryPrice * TICK_OFFSET_PERCENT;
-        const orderPrice = pos.side === 'long'
-          ? (bid || (last - tickOffset))  // Buy order
-          : (ask || (last + tickOffset)); // Sell order
-
-        pricesMap.set(pos.symbol, {
-          bid,
-          ask,
-          last,
-          orderPrice,
-          traderEntry: pos.entryPrice
-        });
-
-        console.log(`  ${pos.symbol}: Trader=$${pos.entryPrice.toFixed(2)} → Order=$${orderPrice.toFixed(2)} (${((orderPrice - pos.entryPrice) / pos.entryPrice * 100).toFixed(2)}%)`);
-      } catch (error) {
-        console.warn(`  ⚠️ Failed to fetch price for ${pos.symbol}:`, error.message);
-      }
-    }
-
-    await exchange.close();
-    return pricesMap;
-  } catch (error) {
-    console.error('Failed to fetch latest prices:', error);
-    return new Map();
-  }
-}
-
-/**
  * Start copy trading (US2/US3)
  */
 async function startCopyTrading() {
@@ -384,7 +326,7 @@ async function startCopyTrading() {
     let latestPrices = null;
     if (config.useLatestPrice) {
       console.log('📊 Fetching latest market prices for confirmation...');
-      latestPrices = await fetchLatestPricesForConfirmation(config.userApiKey);
+      latestPrices = await fetchLatestPricesForConfirmation(config.userApiKey, config.traderAddress);
     }
 
     // Show confirmation dialog before starting
