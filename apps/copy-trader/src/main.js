@@ -49,6 +49,7 @@ const STORAGE_KEYS = {
   SAVE_API_KEY: 'copyTrading.saveApiKey',
   HISTORY_COLLAPSED: 'copyTrading.historyCollapsed',
   WALLETS_COLLAPSED: 'copyTrading.walletsCollapsed',
+  MY_WALLET_ADDRESS: 'copyTrading.myWalletAddress', // Custom wallet address for "My Wallet"
 };
 
 // DOM elements (will be initialized after DOM loads)
@@ -299,15 +300,32 @@ function loadSavedSettings() {
   // Check form validity after loading
   checkFormValidity();
 
+  // Load saved custom wallet address for "My Wallet" section
+  const savedMyWalletAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
+  if (savedMyWalletAddress) {
+    elements.myWalletAddress.value = savedMyWalletAddress;
+    console.log(`📍 Loaded saved wallet address: ${savedMyWalletAddress}`);
+  }
+
   console.log('Settings loaded:', {
     lastMonitoredWallet: lastWallet || 'none',
     traderAddress: savedTraderAddress ? '✓' : '✗',
     copyBalance: savedCopyBalance ? '✓' : '✗',
     apiKey: saveApiKey && savedApiKey ? '✓' : '✗',
+    myWalletAddress: savedMyWalletAddress ? '✓' : '✗',
   });
 
-  // Automatically load user's wallet if API key is saved
-  if (saveApiKey && savedApiKey) {
+  // Automatically load user's wallet if custom address is saved
+  if (savedMyWalletAddress) {
+    console.log('📍 Saved wallet address found, automatically loading wallet info...');
+    // Use setTimeout to ensure DOM is fully initialized
+    setTimeout(() => {
+      refreshWalletInfo().catch((error) => {
+        console.error('Failed to auto-load wallet by address:', error);
+      });
+    }, 100);
+  } else if (saveApiKey && savedApiKey) {
+    // Fall back to API key if no custom address saved
     console.log('API key found, automatically loading wallet info...');
     // Use setTimeout to ensure DOM is fully initialized
     setTimeout(() => {
@@ -1421,6 +1439,43 @@ function renderWalletsTable() {
 async function refreshWalletInfo() {
   console.log('Refreshing wallet info...');
 
+  // Check for saved custom wallet address first
+  const savedAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
+
+  if (savedAddress) {
+    console.log(`🔄 Using saved wallet address: ${savedAddress}`);
+
+    try {
+      // Show loading state
+      elements.yourWalletPlaceholder.style.display = 'none';
+      elements.yourWalletError.style.display = 'none';
+      elements.yourWalletContent.style.display = 'none';
+      elements.yourWalletLoading.style.display = 'block';
+
+      // Fetch balance and positions using saved address
+      const [balance, positions] = await Promise.all([
+        fetchBalanceForAddress(savedAddress),
+        fetchPositionsForAddress(savedAddress),
+      ]);
+
+      // Display in "My Wallet & Positions" section
+      displayYourWalletInfo(balance, positions);
+
+      console.log(`✅ Wallet ${savedAddress} refreshed successfully`);
+    } catch (error) {
+      console.error('Failed to refresh wallet by address:', error);
+
+      // Show error
+      elements.yourWalletPlaceholder.style.display = 'none';
+      elements.yourWalletLoading.style.display = 'none';
+      elements.yourWalletContent.style.display = 'none';
+      elements.yourWalletError.style.display = 'block';
+      elements.yourWalletError.textContent = `Failed to refresh wallet: ${error.message}`;
+    }
+    return;
+  }
+
+  // Fall back to API key derivation if no saved address
   const { userApiKey } = config;
 
   // Validate inputs
@@ -1532,6 +1587,10 @@ async function loadMyWalletByAddress() {
 
     // Display in "My Wallet & Positions" section
     displayYourWalletInfo(balance, positions);
+
+    // Save wallet address to localStorage for auto-load on refresh
+    localStorage.setItem(STORAGE_KEYS.MY_WALLET_ADDRESS, address);
+    console.log(`✅ Saved wallet address to localStorage: ${address}`);
 
     console.log(`Wallet ${address} loaded successfully`);
     console.log(`Balance:`, balance);
