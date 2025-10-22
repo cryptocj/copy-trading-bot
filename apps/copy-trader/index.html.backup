@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperliquid Copy Trading</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4a9eff',
+                        dark: {
+                            900: '#0a0e1a',
+                            800: '#0f1420',
+                            700: '#151b2e',
+                            600: '#1a2137',
+                            500: '#2a3550',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- CCXT and Ethers -->
+    <script src="https://cdn.jsdelivr.net/npm/ccxt@4.5.11/dist/ccxt.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+
+    <!-- Custom Modal Styles -->
+    <style>
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); align-items: center; justify-content: center; }
+        .modal-content { background-color: #151b2e; margin: auto; padding: 0; border-radius: 8px; width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto; border: 1px solid #2a3550; }
+        .modal-body { padding: 24px; }
+        .modal-footer { padding: 16px 24px; background-color: #0f1420; border-top: 1px solid #2a3550; display: flex; justify-content: flex-end; gap: 12px; border-radius: 0 0 8px 8px; }
+        .collapsible-content { max-height: 2000px; overflow: hidden; transition: max-height 0.3s ease-out, opacity 0.3s ease-out; opacity: 1; }
+        .collapsible-content.collapsed { max-height: 0; opacity: 0; }
+        .validation-error { display: block; }
+        .balance-value.pnl { color: #e0e0e0; }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-200">
+    <div class="container">
+        <header>
+            <h1>Hyperliquid Copy Trading</h1>
+            <p class="subtitle">Monitor top wallets and automatically copy their positions</p>
+        </header>
+
+        <!-- Two-Column Layout: Wallets + Order History -->
+        <div class="two-column-layout">
+            <!-- Left Column: Monitoring Wallets -->
+            <section class="wallets-section">
+                <div class="section-header">
+                    <h2>👁️ Monitoring Wallets</h2>
+                    <button class="collapse-toggle" id="wallets-toggle" aria-label="Toggle monitoring wallets">
+                        <span class="collapse-icon">−</span>
+                    </button>
+                </div>
+                <div class="collapsible-content" id="wallets-content">
+                    <p style="color:#888; font-size:14px; margin-bottom:10px;">
+                        🔍 Pre-configured wallet addresses for monitoring. Click a wallet to view order history and auto-fill the trader address.
+                    </p>
+
+                    <!-- Custom Address Input -->
+                    <div style="margin-bottom:20px; padding:15px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
+                        <label for="custom-wallet-address" style="display:block; margin-bottom:8px; color:#b0b0b0; font-weight:500;">
+                            📍 Query Custom Wallet Address
+                        </label>
+                        <div style="display:flex; gap:10px;">
+                            <input
+                                type="text"
+                                id="custom-wallet-address"
+                                placeholder="0x... (Enter any wallet address to query)"
+                                style="flex:1; padding:10px; background-color:#151b2e; border:1px solid #2a3550; border-radius:4px; color:#e0e0e0;"
+                            >
+                            <button
+                                id="load-custom-wallet-button"
+                                class="refresh-button"
+                                style="flex-shrink:0; white-space:nowrap;"
+                            >
+                                Load Wallet
+                            </button>
+                        </div>
+                        <small style="color:#888; display:block; margin-top:5px;">
+                            💡 Enter any Hyperliquid wallet address to view its positions and balance (no API key required)
+                        </small>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="wallets-table">
+                            <thead>
+                                <tr>
+                                    <th>Label</th>
+                                    <th>Wallet Address</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wallets-body">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Positions & Order History -->
+            <section class="history-section">
+                <div class="section-header">
+                    <h2>Positions & History</h2>
+                    <button class="collapse-toggle" id="history-toggle" aria-label="Toggle positions and history">
+                        <span class="collapse-icon">−</span>
+                    </button>
+                </div>
+                <div class="collapsible-content" id="history-content-wrapper">
+                    <div id="history-placeholder" style="text-align:center; padding:60px 20px; color:#666;">
+                        👆 Select a wallet to view their positions & history
+                    </div>
+                    <div id="history-loading" style="display:none; text-align:center; padding:40px;">
+                        Loading...
+                    </div>
+                    <div id="history-error" class="error-message" style="display:none;"></div>
+                    <div id="history-content" style="display:none;">
+                    <div style="margin-bottom:20px; color:#888;">
+                        <strong>Wallet:</strong> <span id="history-address"></span>
+                    </div>
+
+                    <!-- Balance Section -->
+                    <div id="selected-balance-section" style="margin-bottom:30px;">
+                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">💰 Balance</h3>
+                        <div id="selected-balance-loading" style="display:none; text-align:center; padding:20px; color:#666;">
+                            Loading balance...
+                        </div>
+                        <div id="selected-balance-error" class="error-message" style="display:none;"></div>
+                        <div id="selected-balance-content">
+                            <!-- Balance will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Positions Section (Above History) -->
+                    <div id="selected-positions-section" style="margin-bottom:30px;">
+                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📈 Open Positions</h3>
+                        <div id="selected-positions-loading" style="display:none; text-align:center; padding:20px; color:#666;">
+                            Loading positions...
+                        </div>
+                        <div id="selected-positions-error" class="error-message" style="display:none;"></div>
+                        <div id="selected-positions-content">
+                            <!-- Positions will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Order History Section (Below Positions) -->
+                    <div>
+                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📜 Order History</h3>
+                        <div style="margin-bottom:10px; color:#666; font-size:0.9em;">
+                            Aggregated orders (fills combined)
+                        </div>
+                        <div class="table-container">
+                            <table id="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Direction</th>
+                                        <th>Size</th>
+                                        <th>Avg Price</th>
+                                        <th>PnL</th>
+                                        <th>Fills</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-body">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- User Story 2: Configuration Form -->
+        <section class="config-section">
+            <h2>Configure Copy Trading</h2>
+            <form id="config-form">
+                <div class="form-group">
+                    <label for="trader-address">Trader Address (40 hex characters)</label>
+                    <input type="text" id="trader-address" placeholder="0x..." required>
+                    <span class="validation-error" id="trader-address-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="api-key">Hyperliquid API Key (from app.hyperliquid.xyz/API)</label>
+                    <input type="password" id="api-key" placeholder="0x..." required>
+                    <span class="validation-error" id="api-key-error"></span>
+                    <div style="margin-top: 8px;">
+                        <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
+                            <input type="checkbox" id="save-api-key" style="margin-right: 8px;">
+                            <span>Remember API key (localStorage - use test account only)</span>
+                        </label>
+                    </div>
+                    <small class="warning">⚠️ API key has full trading permissions. Use a dedicated test account, never your main account.</small>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
+                        <input type="checkbox" id="dry-run-mode" style="margin-right: 8px;" checked>
+                        <span style="font-weight: 600;">🧪 Dry Run Mode (simulate orders without execution)</span>
+                    </label>
+                    <small style="color:#4a9eff; display:block; margin-top:4px;">
+                        ✅ Enabled: Orders are logged but not sent to exchange (safe for testing)<br>
+                        ⚠️ Disabled: Real orders will be placed on Hyperliquid
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
+                        <input type="checkbox" id="use-latest-price" style="margin-right: 8px;">
+                        <span style="font-weight: 600;">📊 Use Latest Market Price (instead of trader's entry price)</span>
+                    </label>
+                    <small style="color:#888; display:block; margin-top:4px;">
+                        ⚪ Disabled: Use trader's exact entry price (may not fill if price moved)<br>
+                        ✅ Enabled: Use current market price with tick offset (better fill rate, may differ from trader's entry)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="copy-balance">Total Balance for Copying (USD, min $50)</label>
+                    <input type="number" id="copy-balance" placeholder="1000" min="50" step="1" required>
+                    <span class="validation-error" id="copy-balance-error"></span>
+                    <small style="color:#888; display:block; margin-top:4px;">
+                        System will copy trader's exact position sizes (when within your balance)
+                    </small>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" id="test-calculation-button" style="background-color:#4a9eff; color:white;">📊 Test Position Calculation</button>
+                    <button type="button" id="start-button" disabled>Start Copy Trading</button>
+                    <button type="button" id="stop-button" disabled>Stop Copy Trading</button>
+                </div>
+            </form>
+
+            <!-- Position Calculation Test Results -->
+            <div id="calculation-test-results" style="display:none; margin-top:20px; padding:20px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
+                <!-- Results will be populated here -->
+            </div>
+        </section>
+
+        <!-- Wallet Info Section -->
+        <section class="wallet-info-section">
+            <div class="section-header">
+                <h2>💰 My Wallet & Positions</h2>
+                <button class="refresh-button" id="refresh-wallet-button" disabled>
+                    <span>Refresh</span>
+                </button>
+            </div>
+
+            <!-- Custom Wallet Address Input -->
+            <div style="margin-bottom:20px; padding:15px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
+                <label for="my-wallet-address" style="display:block; margin-bottom:8px; color:#b0b0b0; font-weight:500;">
+                    📍 Query Wallet by Address
+                </label>
+                <div style="display:flex; gap:10px;">
+                    <input
+                        type="text"
+                        id="my-wallet-address"
+                        placeholder="0x... (Enter wallet address or use API key + Refresh)"
+                        style="flex:1; padding:10px; background-color:#151b2e; border:1px solid #2a3550; border-radius:4px; color:#e0e0e0;"
+                    >
+                    <button
+                        id="load-my-wallet-button"
+                        class="refresh-button"
+                        style="flex-shrink:0; white-space:nowrap;"
+                    >
+                        Load Wallet
+                    </button>
+                </div>
+                <small style="color:#888; display:block; margin-top:5px;">
+                    💡 Enter any wallet address to view balance & positions (no API key required)
+                </small>
+            </div>
+
+            <div id="your-wallet-loading" style="display:none; text-align:center; padding:40px; color:#666;">
+                Loading...
+            </div>
+            <div id="your-wallet-error" class="error-message" style="display:none;"></div>
+            <div id="your-wallet-placeholder" style="text-align:center; padding:40px; color:#666;">
+                Enter wallet address above or use API key + Refresh
+            </div>
+
+            <div id="your-wallet-content" style="display:none;">
+                <!-- Balance Summary -->
+                <div style="background-color:#0f1420; padding:20px; border-radius:6px; margin-bottom:20px; border:1px solid #2a3550;">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:20px;">
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Available</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-free">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">In Use</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-used">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Total Balance</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-total">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Position Value</div>
+                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-position-value">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Unrealized PnL</div>
+                            <div class="balance-value pnl" style="font-size:1.3em; font-weight:600;" id="your-unrealized-pnl">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Positions Table -->
+                <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📈 Open Positions</h3>
+                <div id="your-positions-body">
+                    <p style="text-align:center; padding:20px; color:#666;">No open positions</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Story 4: Recent Orders Display -->
+        <section class="orders-section">
+            <div class="section-header">
+                <h2>Recent Orders (Last 6)</h2>
+            </div>
+            <div class="table-container">
+                <table id="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Amount</th>
+                            <th>Price</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Session Confirmation Modal -->
+    <div id="trade-confirm-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#4a9eff;">Confirm Copy Trading Session</h3>
+            <div class="modal-body">
+                <div id="trade-confirm-details">
+                    <!-- Session details will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="trade-confirm-cancel" class="button-secondary">Cancel</button>
+                <button id="trade-confirm-execute" class="button-primary">Start Copy Trading</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>

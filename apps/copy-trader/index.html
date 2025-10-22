@@ -5,329 +5,355 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hyperliquid Copy Trading</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
-    <link rel="stylesheet" href="styles/main.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4a9eff',
+                        dark: { 900: '#0a0e1a', 800: '#0f1420', 700: '#151b2e', 600: '#1a2137', 500: '#2a3550' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/ccxt@4.5.11/dist/ccxt.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+
+    <style>
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; }
+        .modal-content { background: #151b2e; margin: auto; border-radius: 8px; width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto; border: 1px solid #2a3550; }
+        .modal-body { padding: 24px; }
+        .modal-footer { padding: 16px 24px; background: #0f1420; border-top: 1px solid #2a3550; display: flex; justify-content: flex-end; gap: 12px; border-radius: 0 0 8px 8px; }
+
+        /* Collapsible Styles */
+        .collapsible-content { max-height: 2000px; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: 1; }
+        .collapsible-content.collapsed { max-height: 0; opacity: 0; }
+
+        /* Table Enhancement Styles */
+        tbody tr { transition: background-color 0.15s ease, transform 0.1s ease; }
+        tbody tr:hover { background-color: #1a2137 !important; transform: scale(1.001); }
+        tbody td { padding: 12px 16px; color: #e0e0e0; }
+
+        /* Wallet table row click cursor */
+        #wallets-body tr { cursor: pointer; }
+        #wallets-body tr:hover { background-color: #1f2740 !important; }
+
+        /* Alternating row colors for better readability */
+        tbody tr:nth-child(even) { background-color: #0f1420; }
+        tbody tr:nth-child(odd) { background-color: #151b2e; }
+
+        /* Positions Table Styles */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #2a3550;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            background-color: #0f1420;
+        }
+        .table-container thead {
+            background: linear-gradient(to right, #1a2137, #151b2e);
+        }
+        .table-container thead tr th {
+            padding: 12px 16px;
+            text-align: left;
+            color: #d1d5db;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid #2a3550;
+        }
+        .table-container tbody tr {
+            border-bottom: 1px solid #2a3550;
+        }
+        .table-container tbody tr:hover {
+            background-color: #1a2137 !important;
+        }
+        .table-container tbody td {
+            padding: 12px 16px;
+            color: #e5e7eb;
+            font-size: 0.75rem;
+        }
+
+        /* Side/Direction Color Badges */
+        .buy, .long {
+            color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            display: inline-block;
+        }
+        .sell, .short {
+            color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            display: inline-block;
+        }
+
+        /* PnL Colors */
+        .positive {
+            color: #10b981 !important;
+            font-weight: 600;
+        }
+        .negative {
+            color: #ef4444 !important;
+            font-weight: 600;
+        }
+        .balance-value.positive::before { content: '+'; }
+        .balance-value { font-weight: 600; }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Hyperliquid Copy Trading</h1>
-            <p class="subtitle">Monitor top wallets and automatically copy their positions</p>
+<body class="bg-dark-900 text-gray-200">
+    <div class="container mx-auto px-3 py-4 max-w-[1400px]">
+
+        <!-- Compact Header -->
+        <header class="text-center mb-4 bg-gradient-to-br from-dark-600 to-dark-800 rounded-lg p-4 shadow-lg">
+            <h1 class="text-3xl font-bold text-primary mb-1">📊 Hyperliquid Copy Trading</h1>
+            <p class="text-gray-400 text-sm">Monitor wallets • Copy positions automatically</p>
         </header>
 
-        <!-- Two-Column Layout: Wallets + Order History -->
-        <div class="two-column-layout">
-            <!-- Left Column: Monitoring Wallets -->
-            <section class="wallets-section">
-                <div class="section-header">
-                    <h2>👁️ Monitoring Wallets</h2>
-                    <button class="collapse-toggle" id="wallets-toggle" aria-label="Toggle monitoring wallets">
-                        <span class="collapse-icon">−</span>
+        <!-- Main 2-Column Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+
+            <!-- Monitoring Wallets -->
+            <section class="bg-dark-700 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center p-3 border-b border-dark-500">
+                    <h2 class="text-lg font-semibold text-primary">👁️ Monitoring Wallets</h2>
+                    <button class="collapse-toggle w-7 h-7 flex items-center justify-center bg-dark-600 hover:bg-dark-500 rounded border border-dark-500 hover:border-primary transition-colors" id="wallets-toggle">
+                        <span class="collapse-icon text-primary font-bold text-lg">−</span>
                     </button>
                 </div>
-                <div class="collapsible-content" id="wallets-content">
-                    <p style="color:#888; font-size:14px; margin-bottom:10px;">
-                        🔍 Pre-configured wallet addresses for monitoring. Click a wallet to view order history and auto-fill the trader address.
-                    </p>
+                <div class="collapsible-content p-3" id="wallets-content">
+                    <p class="text-sm text-gray-400 mb-2">🔍 Click wallet to view • Auto-fills trader address</p>
 
-                    <!-- Custom Address Input -->
-                    <div style="margin-bottom:20px; padding:15px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
-                        <label for="custom-wallet-address" style="display:block; margin-bottom:8px; color:#b0b0b0; font-weight:500;">
-                            📍 Query Custom Wallet Address
-                        </label>
-                        <div style="display:flex; gap:10px;">
-                            <input
-                                type="text"
-                                id="custom-wallet-address"
-                                placeholder="0x... (Enter any wallet address to query)"
-                                style="flex:1; padding:10px; background-color:#151b2e; border:1px solid #2a3550; border-radius:4px; color:#e0e0e0;"
-                            >
-                            <button
-                                id="load-custom-wallet-button"
-                                class="refresh-button"
-                                style="flex-shrink:0; white-space:nowrap;"
-                            >
-                                Load Wallet
-                            </button>
+                    <!-- Custom Wallet Input -->
+                    <div class="bg-dark-800 rounded p-2 mb-2 border border-dark-500">
+                        <label class="block text-sm font-medium text-gray-400 mb-1.5">📍 Query Custom Wallet</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="custom-wallet-address" placeholder="0x..." class="flex-1 px-2.5 py-1.5 text-sm bg-dark-700 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                            <button id="load-custom-wallet-button" class="px-3 py-1.5 text-sm font-medium bg-primary hover:bg-blue-600 text-white rounded transition whitespace-nowrap">Load</button>
                         </div>
-                        <small style="color:#888; display:block; margin-top:5px;">
-                            💡 Enter any Hyperliquid wallet address to view its positions and balance (no API key required)
-                        </small>
                     </div>
 
-                    <div class="table-container">
-                        <table id="wallets-table">
-                            <thead>
+                    <!-- Wallets Table -->
+                    <div class="overflow-x-auto rounded-lg border border-dark-500 shadow-sm">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gradient-to-r from-dark-600 to-dark-700">
                                 <tr>
-                                    <th>Label</th>
-                                    <th>Wallet Address</th>
+                                    <th class="px-4 py-3 text-left text-gray-300 font-semibold text-sm uppercase tracking-wide">Label</th>
+                                    <th class="px-4 py-3 text-left text-gray-300 font-semibold text-sm uppercase tracking-wide">Address</th>
                                 </tr>
                             </thead>
-                            <tbody id="wallets-body">
-                                <!-- Populated by JavaScript -->
-                            </tbody>
+                            <tbody id="wallets-body" class="divide-y divide-dark-500 bg-dark-800"></tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-            <!-- Right Column: Positions & Order History -->
-            <section class="history-section">
-                <div class="section-header">
-                    <h2>Positions & History</h2>
-                    <button class="collapse-toggle" id="history-toggle" aria-label="Toggle positions and history">
-                        <span class="collapse-icon">−</span>
+            <!-- Positions & History -->
+            <section class="bg-dark-700 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center p-3 border-b border-dark-500">
+                    <h2 class="text-lg font-semibold text-primary">Positions & History</h2>
+                    <button class="collapse-toggle w-7 h-7 flex items-center justify-center bg-dark-600 hover:bg-dark-500 rounded border border-dark-500 hover:border-primary transition-colors" id="history-toggle">
+                        <span class="collapse-icon text-primary font-bold text-lg">−</span>
                     </button>
                 </div>
-                <div class="collapsible-content" id="history-content-wrapper">
-                    <div id="history-placeholder" style="text-align:center; padding:60px 20px; color:#666;">
-                        👆 Select a wallet to view their positions & history
-                    </div>
-                    <div id="history-loading" style="display:none; text-align:center; padding:40px;">
-                        Loading...
-                    </div>
-                    <div id="history-error" class="error-message" style="display:none;"></div>
-                    <div id="history-content" style="display:none;">
-                    <div style="margin-bottom:20px; color:#888;">
-                        <strong>Wallet:</strong> <span id="history-address"></span>
-                    </div>
+                <div class="collapsible-content p-3" id="history-content-wrapper">
+                    <div id="history-placeholder" class="text-center py-10 text-gray-500 text-sm">👆 Select a wallet</div>
+                    <div id="history-loading" class="hidden text-center py-6 text-sm">Loading...</div>
+                    <div id="history-error" class="hidden text-red-400 text-sm"></div>
+                    <div id="history-content" class="hidden">
+                        <div class="mb-2 text-sm text-gray-400"><strong>Wallet:</strong> <span id="history-address" class="font-mono text-xs"></span></div>
 
-                    <!-- Balance Section -->
-                    <div id="selected-balance-section" style="margin-bottom:30px;">
-                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">💰 Balance</h3>
-                        <div id="selected-balance-loading" style="display:none; text-align:center; padding:20px; color:#666;">
-                            Loading balance...
+                        <div id="selected-balance-section" class="mb-3">
+                            <h3 class="text-sm font-semibold text-primary mb-1.5">💰 Balance</h3>
+                            <div id="selected-balance-loading" class="hidden text-center py-4 text-sm">Loading balance...</div>
+                            <div id="selected-balance-error" class="hidden text-red-400 text-sm"></div>
+                            <div id="selected-balance-content"></div>
                         </div>
-                        <div id="selected-balance-error" class="error-message" style="display:none;"></div>
-                        <div id="selected-balance-content">
-                            <!-- Balance will be populated here -->
-                        </div>
-                    </div>
 
-                    <!-- Positions Section (Above History) -->
-                    <div id="selected-positions-section" style="margin-bottom:30px;">
-                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📈 Open Positions</h3>
-                        <div id="selected-positions-loading" style="display:none; text-align:center; padding:20px; color:#666;">
-                            Loading positions...
+                        <div id="selected-positions-section" class="mb-3">
+                            <h3 class="text-sm font-semibold text-primary mb-1.5">📈 Open Positions</h3>
+                            <div id="selected-positions-loading" class="hidden text-center py-4 text-sm">Loading positions...</div>
+                            <div id="selected-positions-error" class="hidden text-red-400 text-sm"></div>
+                            <div id="selected-positions-content"></div>
                         </div>
-                        <div id="selected-positions-error" class="error-message" style="display:none;"></div>
-                        <div id="selected-positions-content">
-                            <!-- Positions will be populated here -->
-                        </div>
-                    </div>
 
-                    <!-- Order History Section (Below Positions) -->
-                    <div>
-                        <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📜 Order History</h3>
-                        <div style="margin-bottom:10px; color:#666; font-size:0.9em;">
-                            Aggregated orders (fills combined)
-                        </div>
-                        <div class="table-container">
-                            <table id="history-table">
-                                <thead>
-                                    <tr>
-                                        <th>Time</th>
-                                        <th>Symbol</th>
-                                        <th>Side</th>
-                                        <th>Direction</th>
-                                        <th>Size</th>
-                                        <th>Avg Price</th>
-                                        <th>PnL</th>
-                                        <th>Fills</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="history-body">
-                                    <!-- Populated by JavaScript -->
-                                </tbody>
-                            </table>
+                        <div>
+                            <h3 class="text-sm font-semibold text-primary mb-1.5">📜 Order History</h3>
+                            <div class="overflow-x-auto rounded-lg border border-dark-500 shadow-sm">
+                                <table id="history-table" class="w-full text-xs">
+                                    <thead class="bg-gradient-to-r from-dark-600 to-dark-700">
+                                        <tr>
+                                            <th class="px-3 py-2.5 text-left text-gray-300 font-semibold text-xs uppercase tracking-wide">Time</th>
+                                            <th class="px-3 py-2.5 text-left text-gray-300 font-semibold text-xs uppercase tracking-wide">Symbol</th>
+                                            <th class="px-3 py-2.5 text-left text-gray-300 font-semibold text-xs uppercase tracking-wide">Side</th>
+                                            <th class="px-3 py-2.5 text-left text-gray-300 font-semibold text-xs uppercase tracking-wide">Dir</th>
+                                            <th class="px-3 py-2.5 text-right text-gray-300 font-semibold text-xs uppercase tracking-wide">Size</th>
+                                            <th class="px-3 py-2.5 text-right text-gray-300 font-semibold text-xs uppercase tracking-wide">Price</th>
+                                            <th class="px-3 py-2.5 text-right text-gray-300 font-semibold text-xs uppercase tracking-wide">PnL</th>
+                                            <th class="px-3 py-2.5 text-right text-gray-300 font-semibold text-xs uppercase tracking-wide">Fills</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-body" class="divide-y divide-dark-500 bg-dark-800"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                </div>
                 </div>
             </section>
         </div>
 
-        <!-- User Story 2: Configuration Form -->
-        <section class="config-section">
-            <h2>Configure Copy Trading</h2>
-            <form id="config-form">
-                <div class="form-group">
-                    <label for="trader-address">Trader Address (40 hex characters)</label>
-                    <input type="text" id="trader-address" placeholder="0x..." required>
-                    <span class="validation-error" id="trader-address-error"></span>
+        <!-- Configuration Form (Compact) -->
+        <section class="bg-dark-700 rounded-lg shadow-lg p-3 mb-3">
+            <h2 class="text-lg font-semibold text-primary mb-2">Configure Copy Trading</h2>
+            <form id="config-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Trader Address</label>
+                    <input type="text" id="trader-address" placeholder="0x..." required class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                    <span class="validation-error text-xs text-red-400 block mt-0.5" id="trader-address-error"></span>
                 </div>
 
-                <div class="form-group">
-                    <label for="api-key">Hyperliquid API Key (from app.hyperliquid.xyz/API)</label>
-                    <input type="password" id="api-key" placeholder="0x..." required>
-                    <span class="validation-error" id="api-key-error"></span>
-                    <div style="margin-top: 8px;">
-                        <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
-                            <input type="checkbox" id="save-api-key" style="margin-right: 8px;">
-                            <span>Remember API key (localStorage - use test account only)</span>
-                        </label>
-                    </div>
-                    <small class="warning">⚠️ API key has full trading permissions. Use a dedicated test account, never your main account.</small>
-                </div>
-
-                <div class="form-group">
-                    <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
-                        <input type="checkbox" id="dry-run-mode" style="margin-right: 8px;" checked>
-                        <span style="font-weight: 600;">🧪 Dry Run Mode (simulate orders without execution)</span>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">API Key</label>
+                    <input type="password" id="api-key" placeholder="0x..." required class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                    <span class="validation-error text-xs text-red-400 block mt-0.5" id="api-key-error"></span>
+                    <label class="flex items-center mt-1 text-xs cursor-pointer">
+                        <input type="checkbox" id="save-api-key" class="mr-1.5 w-3 h-3">
+                        <span class="text-gray-400">Remember (test only)</span>
                     </label>
-                    <small style="color:#4a9eff; display:block; margin-top:4px;">
-                        ✅ Enabled: Orders are logged but not sent to exchange (safe for testing)<br>
-                        ⚠️ Disabled: Real orders will be placed on Hyperliquid
-                    </small>
                 </div>
 
-                <div class="form-group">
-                    <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
-                        <input type="checkbox" id="use-latest-price" style="margin-right: 8px;">
-                        <span style="font-weight: 600;">📊 Use Latest Market Price (instead of trader's entry price)</span>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Copy Balance ($)</label>
+                    <input type="number" id="copy-balance" placeholder="1000" min="50" step="1" required class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                    <span class="validation-error text-xs text-red-400 block mt-0.5" id="copy-balance-error"></span>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="flex items-center text-sm cursor-pointer">
+                        <input type="checkbox" id="dry-run-mode" class="mr-1.5 w-3.5 h-3.5" checked>
+                        <span class="font-medium">🧪 Dry Run</span>
                     </label>
-                    <small style="color:#888; display:block; margin-top:4px;">
-                        ⚪ Disabled: Use trader's exact entry price (may not fill if price moved)<br>
-                        ✅ Enabled: Use current market price with tick offset (better fill rate, may differ from trader's entry)
-                    </small>
+                    <label class="flex items-center text-sm cursor-pointer">
+                        <input type="checkbox" id="use-latest-price" class="mr-1.5 w-3.5 h-3.5">
+                        <span class="font-medium">📊 Latest Price</span>
+                    </label>
                 </div>
 
-                <div class="form-group">
-                    <label for="copy-balance">Total Balance for Copying (USD, min $50)</label>
-                    <input type="number" id="copy-balance" placeholder="1000" min="50" step="1" required>
-                    <span class="validation-error" id="copy-balance-error"></span>
-                    <small style="color:#888; display:block; margin-top:4px;">
-                        System will copy trader's exact position sizes (when within your balance)
-                    </small>
-                </div>
-
-                <div class="button-group">
-                    <button type="button" id="test-calculation-button" style="background-color:#4a9eff; color:white;">📊 Test Position Calculation</button>
-                    <button type="button" id="start-button" disabled>Start Copy Trading</button>
-                    <button type="button" id="stop-button" disabled>Stop Copy Trading</button>
+                <div class="md:col-span-2 lg:col-span-4 flex gap-2 flex-wrap">
+                    <button type="button" id="test-calculation-button" class="px-3 py-1.5 text-sm font-medium bg-primary hover:bg-blue-600 text-white rounded transition">📊 Test</button>
+                    <button type="button" id="start-button" disabled class="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition">▶ Start</button>
+                    <button type="button" id="stop-button" disabled class="px-3 py-1.5 text-sm font-medium bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition">■ Stop</button>
                 </div>
             </form>
 
-            <!-- Position Calculation Test Results -->
-            <div id="calculation-test-results" style="display:none; margin-top:20px; padding:20px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
-                <!-- Results will be populated here -->
-            </div>
+            <div id="calculation-test-results" class="hidden mt-3 p-3 bg-dark-800 rounded border border-dark-500 text-sm"></div>
         </section>
 
-        <!-- Wallet Info Section -->
-        <section class="wallet-info-section">
-            <div class="section-header">
-                <h2>💰 My Wallet & Positions</h2>
-                <button class="refresh-button" id="refresh-wallet-button" disabled>
-                    <span>Refresh</span>
-                </button>
-            </div>
+        <!-- Bottom Row: My Wallet + Recent Orders -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-            <!-- Custom Wallet Address Input -->
-            <div style="margin-bottom:20px; padding:15px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
-                <label for="my-wallet-address" style="display:block; margin-bottom:8px; color:#b0b0b0; font-weight:500;">
-                    📍 Query Wallet by Address
-                </label>
-                <div style="display:flex; gap:10px;">
-                    <input
-                        type="text"
-                        id="my-wallet-address"
-                        placeholder="0x... (Enter wallet address or use API key + Refresh)"
-                        style="flex:1; padding:10px; background-color:#151b2e; border:1px solid #2a3550; border-radius:4px; color:#e0e0e0;"
-                    >
-                    <button
-                        id="load-my-wallet-button"
-                        class="refresh-button"
-                        style="flex-shrink:0; white-space:nowrap;"
-                    >
-                        Load Wallet
-                    </button>
+            <!-- My Wallet -->
+            <section class="bg-dark-700 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center p-3 border-b border-dark-500">
+                    <h2 class="text-lg font-semibold text-primary">💰 My Wallet</h2>
+                    <button id="refresh-wallet-button" disabled class="px-2.5 py-1 text-xs font-medium bg-primary hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition">Refresh</button>
                 </div>
-                <small style="color:#888; display:block; margin-top:5px;">
-                    💡 Enter any wallet address to view balance & positions (no API key required)
-                </small>
-            </div>
-
-            <div id="your-wallet-loading" style="display:none; text-align:center; padding:40px; color:#666;">
-                Loading...
-            </div>
-            <div id="your-wallet-error" class="error-message" style="display:none;"></div>
-            <div id="your-wallet-placeholder" style="text-align:center; padding:40px; color:#666;">
-                Enter wallet address above or use API key + Refresh
-            </div>
-
-            <div id="your-wallet-content" style="display:none;">
-                <!-- Balance Summary -->
-                <div style="background-color:#0f1420; padding:20px; border-radius:6px; margin-bottom:20px; border:1px solid #2a3550;">
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:20px;">
-                        <div>
-                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Available</div>
-                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-free">$0.00</div>
-                        </div>
-                        <div>
-                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">In Use</div>
-                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-used">$0.00</div>
-                        </div>
-                        <div>
-                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Total Balance</div>
-                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-balance-total">$0.00</div>
-                        </div>
-                        <div>
-                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Position Value</div>
-                            <div style="color:#e0e0e0; font-size:1.3em; font-weight:600;" id="your-position-value">$0.00</div>
-                        </div>
-                        <div>
-                            <div style="color:#888; font-size:0.9em; margin-bottom:5px;">Unrealized PnL</div>
-                            <div class="balance-value pnl" style="font-size:1.3em; font-weight:600;" id="your-unrealized-pnl">$0.00</div>
+                <div class="p-3">
+                    <div class="bg-dark-800 rounded p-2 mb-2 border border-dark-500">
+                        <label class="block text-sm font-medium text-gray-400 mb-1.5">📍 Query by Address</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="my-wallet-address" placeholder="0x..." class="flex-1 px-2.5 py-1.5 text-sm bg-dark-700 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                            <button id="load-my-wallet-button" class="px-3 py-1.5 text-sm font-medium bg-primary hover:bg-blue-600 text-white rounded transition whitespace-nowrap">Load</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Positions Table -->
-                <h3 style="color:#4a9eff; margin-bottom:15px; font-size:1.2em;">📈 Open Positions</h3>
-                <div id="your-positions-body">
-                    <p style="text-align:center; padding:20px; color:#666;">No open positions</p>
-                </div>
-            </div>
-        </section>
+                    <div id="your-wallet-placeholder" class="text-center py-6 text-gray-500 text-sm">Enter address or use API key</div>
+                    <div id="your-wallet-loading" class="hidden text-center py-6 text-sm">Loading...</div>
+                    <div id="your-wallet-error" class="hidden text-red-400 text-sm"></div>
 
-        <!-- User Story 4: Recent Orders Display -->
-        <section class="orders-section">
-            <div class="section-header">
-                <h2>Recent Orders (Last 6)</h2>
-            </div>
-            <div class="table-container">
-                <table id="orders-table">
-                    <thead>
-                        <tr>
-                            <th>Symbol</th>
-                            <th>Side</th>
-                            <th>Amount</th>
-                            <th>Price</th>
-                            <th>Timestamp</th>
-                        </tr>
-                    </thead>
-                    <tbody id="orders-body">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                    <div id="your-wallet-content" class="hidden">
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div class="bg-dark-800 rounded p-2">
+                                <div class="text-xs text-gray-500 mb-0.5">Available</div>
+                                <div class="text-base font-semibold text-gray-200" id="your-balance-free">$0.00</div>
+                            </div>
+                            <div class="bg-dark-800 rounded p-2">
+                                <div class="text-xs text-gray-500 mb-0.5">In Use</div>
+                                <div class="text-base font-semibold text-gray-200" id="your-balance-used">$0.00</div>
+                            </div>
+                            <div class="bg-dark-800 rounded p-2">
+                                <div class="text-xs text-gray-500 mb-0.5">Total</div>
+                                <div class="text-base font-semibold text-gray-200" id="your-balance-total">$0.00</div>
+                            </div>
+                            <div class="bg-dark-800 rounded p-2">
+                                <div class="text-xs text-gray-500 mb-0.5">Position Value</div>
+                                <div class="text-base font-semibold text-gray-200" id="your-position-value">$0.00</div>
+                            </div>
+                            <div class="bg-dark-800 rounded p-2">
+                                <div class="text-xs text-gray-500 mb-0.5">Unrealized PnL</div>
+                                <div class="text-base font-semibold balance-value pnl text-gray-200" id="your-unrealized-pnl">$0.00</div>
+                            </div>
+                        </div>
+
+                        <h3 class="text-sm font-semibold text-primary mb-1.5">📈 Open Positions</h3>
+                        <div id="your-positions-body" class="text-sm text-gray-500 text-center py-3">No positions</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Orders -->
+            <section class="bg-dark-700 rounded-lg shadow-lg">
+                <div class="p-3 border-b border-dark-500">
+                    <h2 class="text-lg font-semibold text-primary">Recent Orders (Last 6)</h2>
+                </div>
+                <div class="p-3">
+                    <div class="overflow-x-auto rounded-lg border border-dark-500 shadow-sm">
+                        <table id="orders-table" class="w-full text-xs">
+                            <thead class="bg-gradient-to-r from-dark-600 to-dark-700">
+                                <tr>
+                                    <th class="px-3 py-2.5 text-left text-gray-300 font-semibold text-xs uppercase tracking-wide">Symbol</th>
+                                    <th class="px-3 py-2.5 text-left text-gray-300 font-semibold text-xs uppercase tracking-wide">Side</th>
+                                    <th class="px-3 py-2.5 text-right text-gray-300 font-semibold text-xs uppercase tracking-wide">Amount</th>
+                                    <th class="px-3 py-2.5 text-right text-gray-300 font-semibold text-xs uppercase tracking-wide">Price</th>
+                                    <th class="px-3 py-2.5 text-left text-gray-300 font-semibold text-xs uppercase tracking-wide">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orders-body" class="divide-y divide-dark-500 bg-dark-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 
-    <!-- Session Confirmation Modal -->
-    <div id="trade-confirm-modal" class="modal" style="display:none;">
+    <!-- Confirmation Modal -->
+    <div id="trade-confirm-modal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top:0; color:#4a9eff;">Confirm Copy Trading Session</h3>
-            <div class="modal-body">
-                <div id="trade-confirm-details">
-                    <!-- Session details will be populated here -->
-                </div>
-            </div>
+            <h3 class="text-xl font-bold text-primary px-6 pt-5 pb-3">Confirm Copy Trading Session</h3>
+            <div class="modal-body"><div id="trade-confirm-details"></div></div>
             <div class="modal-footer">
-                <button id="trade-confirm-cancel" class="button-secondary">Cancel</button>
-                <button id="trade-confirm-execute" class="button-primary">Start Copy Trading</button>
+                <button id="trade-confirm-cancel" class="px-4 py-2 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded transition">Cancel</button>
+                <button id="trade-confirm-execute" class="px-4 py-2 text-base font-medium bg-green-600 hover:bg-green-700 text-white rounded transition">Start Copy Trading</button>
             </div>
         </div>
     </div>
