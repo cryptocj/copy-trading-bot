@@ -13,7 +13,6 @@ import { calculateInitialPositions } from './utils/positionCalculator.js';
 import {
   startCopyTrading as startTradingService,
   stopCopyTrading as stopTradingService,
-  setDryRunMode,
   isDryRunMode,
 } from './services/trading.js';
 import { fetchTradeHistory, renderTradeHistoryTable } from './services/tradeHistory.js';
@@ -37,6 +36,10 @@ import {
   getOrderList,
 } from './state/appState.js';
 import { initializeElements } from './dom/elements.js';
+import {
+  setupValidationListeners as setupValidation,
+  checkFormValidity as checkValidity,
+} from './validation/formValidation.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -51,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   elements = initializeElements();
 
   // Initialize validation listeners
-  setupValidationListeners();
+  setupValidation(elements, () => checkValidity(elements, isCopyTradingActive));
 
   // Initialize button listeners
   setupButtonListeners();
@@ -189,128 +192,10 @@ async function restoreActiveSession() {
     elements.startButton.disabled = false;
     elements.stopButton.disabled = true;
     setFormDisabled(false);
-    checkFormValidity();
+    checkValidity(elements, isCopyTradingActive);
 
     alert(`Failed to restore copy trading session: ${error.message}\n\nPlease start manually.`);
   }
-}
-
-/**
- * Setup validation listeners for all form inputs
- */
-function setupValidationListeners() {
-  // Save API key checkbox listener
-  const saveApiKeyCheckbox = document.getElementById('save-api-key');
-  if (saveApiKeyCheckbox) {
-    saveApiKeyCheckbox.addEventListener('change', () => {
-      saveSettings(config); // Update storage when checkbox changes
-      if (!saveApiKeyCheckbox.checked) {
-        console.log('API key will not be saved (more secure)');
-      } else {
-        console.log('API key will be saved in localStorage (less secure)');
-      }
-    });
-  }
-
-  // Dry-run mode checkbox listener
-  if (elements.dryRunModeCheckbox) {
-    elements.dryRunModeCheckbox.addEventListener('change', () => {
-      const enabled = elements.dryRunModeCheckbox.checked;
-      setDryRunMode(enabled);
-
-      // Update button text to indicate mode
-      const startButtonText = enabled
-        ? 'Start Copy Trading (DRY RUN)'
-        : 'Start Copy Trading (LIVE)';
-      elements.startButton.textContent = startButtonText;
-
-      console.log(`🧪 Dry-run mode ${enabled ? 'enabled' : 'disabled'} - orders will ${enabled ? 'NOT' : ''} be placed on exchange`);
-    });
-
-    // Set initial mode based on checkbox state
-    setDryRunMode(elements.dryRunModeCheckbox.checked);
-    const initialButtonText = elements.dryRunModeCheckbox.checked
-      ? 'Start Copy Trading (DRY RUN)'
-      : 'Start Copy Trading (LIVE)';
-    elements.startButton.textContent = initialButtonText;
-  }
-
-  // Use latest price checkbox listener
-  if (elements.useLatestPriceCheckbox) {
-    elements.useLatestPriceCheckbox.addEventListener('change', () => {
-      config.useLatestPrice = elements.useLatestPriceCheckbox.checked;
-      console.log(`📊 Use latest price: ${config.useLatestPrice ? 'enabled' : 'disabled'} - initial positions will use ${config.useLatestPrice ? 'current market price with tick offset' : "trader's entry price"}`);
-    });
-
-    // Set initial state
-    config.useLatestPrice = elements.useLatestPriceCheckbox.checked;
-  }
-
-  // Trader address validation
-  elements.traderAddressInput.addEventListener('blur', () => {
-    const result = validateAddress(elements.traderAddressInput.value);
-    displayValidationError('trader-address', result);
-    if (result.valid) {
-      config.traderAddress = result.address;
-      saveSettings(config); // Auto-save on valid input
-    }
-    checkFormValidity();
-  });
-
-  // API key validation
-  elements.apiKeyInput.addEventListener('blur', () => {
-    const result = validateApiKey(elements.apiKeyInput.value);
-    displayValidationError('api-key', result);
-    if (result.valid) {
-      config.userApiKey = result.key;
-      saveSettings(config); // Auto-save on valid input
-    }
-    checkFormValidity();
-  });
-
-  // Trade value validation
-  elements.copyBalanceInput.addEventListener('blur', () => {
-    const result = validateCopyBalance(elements.copyBalanceInput.value);
-    displayValidationError('copy-balance', result);
-    if (result.valid) {
-      config.copyBalance = result.balance;
-      saveSettings(config); // Auto-save on valid input
-    }
-    checkFormValidity();
-  });
-}
-
-/**
- * Display validation error message for a field
- * @param {string} fieldId - Field identifier (without '-error' suffix)
- * @param {{ valid: boolean, error?: string }} result - Validation result
- */
-function displayValidationError(fieldId, result) {
-  const errorElement = elements[`${fieldId}Error`];
-  if (!errorElement) return;
-
-  if (result.valid) {
-    errorElement.textContent = '';
-  } else {
-    errorElement.textContent = result.error || 'Invalid input';
-  }
-}
-
-/**
- * Check if all form fields are valid and enable/disable Start button
- */
-function checkFormValidity() {
-  const addressValid = validateAddress(elements.traderAddressInput.value).valid;
-  const apiKeyValid = validateApiKey(elements.apiKeyInput.value).valid;
-  const copyBalanceValid = validateCopyBalance(elements.copyBalanceInput.value).valid;
-
-  const allValid = addressValid && apiKeyValid && copyBalanceValid;
-
-  // Enable Start button only if all fields valid and not currently active
-  elements.startButton.disabled = !allValid || isCopyTradingActive;
-
-  // Enable Refresh Wallet button if API key is valid
-  elements.refreshWalletButton.disabled = !apiKeyValid;
 }
 
 /**
@@ -799,7 +684,7 @@ async function stopCopyTrading() {
     setFormDisabled(false);
 
     // Re-enable form validation
-    checkFormValidity();
+    checkValidity(elements, isCopyTradingActive);
 
     console.log('✅ Copy trading stopped successfully');
   } catch (error) {
@@ -818,7 +703,7 @@ async function stopCopyTrading() {
     elements.startButton.disabled = false;
     elements.stopButton.disabled = true;
     setFormDisabled(false);
-    checkFormValidity();
+    checkValidity(elements, isCopyTradingActive);
   }
 }
 
@@ -1280,7 +1165,7 @@ function renderWalletsTable() {
         // Trigger validation
         const result = validateAddress(address);
         displayValidationError('trader-address', result);
-        checkFormValidity();
+        checkValidity(elements, isCopyTradingActive);
 
         // Save settings with wallet-specific configuration
         if (result.valid) {
@@ -1407,7 +1292,7 @@ async function loadCustomWallet() {
     // Trigger validation
     const result = validateAddress(address);
     displayValidationError('trader-address', result);
-    checkFormValidity();
+    checkValidity(elements, isCopyTradingActive);
 
     console.log(`Custom wallet ${address} loaded successfully`);
   } catch (error) {
@@ -1943,6 +1828,13 @@ async function confirmCopyTradingSession(sessionConfig) {
     };
     document.addEventListener('keydown', handleEsc);
   });
+}
+
+/**
+ * Wrapper function for checkFormValidity for backward compatibility
+ */
+function checkFormValidity() {
+  checkValidity(elements, isCopyTradingActive);
 }
 
 // Export functions for use in other modules
