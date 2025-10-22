@@ -394,24 +394,34 @@ export async function fetchBalanceForAddress(address) {
 
     // Extract balance from marginSummary
     const marginSummary = data.marginSummary || {};
+    const crossMarginSummary = data.crossMarginSummary || {};
     console.log(`[fetchBalance] marginSummary:`, marginSummary);
+    console.log(`[fetchBalance] crossMarginSummary:`, crossMarginSummary);
 
     const accountValue = parseFloat(marginSummary.accountValue || 0);
     const totalMarginUsed = parseFloat(marginSummary.totalMarginUsed || 0);
-    const totalRawUsd = parseFloat(marginSummary.totalRawUsd || 0);
     const withdrawable = parseFloat(data.withdrawable || 0);
+    const crossMargin = parseFloat(crossMarginSummary.totalRawUsd || 0);
 
+    // Hyperliquid balance calculation (works for both isolated and cross margin):
+    // - Total: accountValue = isolated position margins + cross margin + unrealized PnL
+    // - In Use: totalMarginUsed = margin locked in all open positions
+    // - Available: withdrawable = free balance you can withdraw or use for new positions
+    //
+    // Note: For isolated margin accounts, totalRawUsd in marginSummary can be negative
+    // because funds are allocated to isolated position margins, not in cross margin pool
     const balance = {
-      total: totalRawUsd,
+      total: accountValue,
       used: totalMarginUsed,
-      free: totalRawUsd - totalMarginUsed,
+      free: withdrawable,
       accountValue: accountValue,
       withdrawable: withdrawable,
+      crossMargin: crossMargin,
       assets: {
         USDC: {
-          total: totalRawUsd,
+          total: accountValue,
           used: totalMarginUsed,
-          free: totalRawUsd - totalMarginUsed,
+          free: withdrawable,
         },
       },
     };
