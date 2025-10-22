@@ -13,6 +13,8 @@ import { calculateInitialPositions } from './utils/positionCalculator.js';
 import {
   startCopyTrading as startTradingService,
   stopCopyTrading as stopTradingService,
+  setDryRunMode,
+  isDryRunMode,
 } from './services/trading.js';
 import { fetchTradeHistory, renderTradeHistoryTable } from './services/tradeHistory.js';
 import { fetchWalletInfo, fetchPositions, fetchWalletBalance } from './services/wallet.js';
@@ -73,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     apiKeyError: document.getElementById('api-key-error'),
     copyBalanceError: document.getElementById('copy-balance-error'),
 
-    // Buttons
+    // Buttons and controls
     testCalculationButton: document.getElementById('test-calculation-button'),
     startButton: document.getElementById('start-button'),
     stopButton: document.getElementById('stop-button'),
@@ -82,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     customWalletAddress: document.getElementById('custom-wallet-address'),
     loadMyWalletButton: document.getElementById('load-my-wallet-button'),
     myWalletAddress: document.getElementById('my-wallet-address'),
+    dryRunModeCheckbox: document.getElementById('dry-run-mode'),
 
     // Orders
     ordersBody: document.getElementById('orders-body'),
@@ -540,6 +543,29 @@ function setupValidationListeners() {
         console.log('API key will be saved in localStorage (less secure)');
       }
     });
+  }
+
+  // Dry-run mode checkbox listener
+  if (elements.dryRunModeCheckbox) {
+    elements.dryRunModeCheckbox.addEventListener('change', () => {
+      const enabled = elements.dryRunModeCheckbox.checked;
+      setDryRunMode(enabled);
+
+      // Update button text to indicate mode
+      const startButtonText = enabled
+        ? 'Start Copy Trading (DRY RUN)'
+        : 'Start Copy Trading (LIVE)';
+      elements.startButton.textContent = startButtonText;
+
+      console.log(`🧪 Dry-run mode ${enabled ? 'enabled' : 'disabled'} - orders will ${enabled ? 'NOT' : ''} be placed on exchange`);
+    });
+
+    // Set initial mode based on checkbox state
+    setDryRunMode(elements.dryRunModeCheckbox.checked);
+    const initialButtonText = elements.dryRunModeCheckbox.checked
+      ? 'Start Copy Trading (DRY RUN)'
+      : 'Start Copy Trading (LIVE)';
+    elements.startButton.textContent = initialButtonText;
   }
 
   // Trader address validation
@@ -1965,13 +1991,25 @@ async function confirmCopyTradingSession(sessionConfig) {
 
         <div style="color:#888;">Max Leverage:</div>
         <div style="color:#e0e0e0;">10x (per symbol)</div>
+
+        <div style="color:#888;">Trading Mode:</div>
+        <div style="color:${isDryRunMode() ? '#4a9eff' : '#ffa726'}; font-weight:600;">
+          ${isDryRunMode() ? '🧪 DRY RUN (Simulated)' : '🚀 LIVE TRADING'}
+        </div>
       </div>
     </div>
     ${positionsHtml}
-    <div style="margin-top:15px; padding:12px; background-color:#1a2332; border-left:3px solid #ffa726; border-radius:4px;">
-      <span style="color:#ffa726; font-weight:600;">⚠️ Warning:</span>
-      <span style="color:#bbb; font-size:0.9em;"> All detected trades will be automatically copied. Make sure you trust this trader.</span>
+    ${isDryRunMode() ? `
+    <div style="margin-top:15px; padding:12px; background-color:#1a2332; border-left:3px solid #4a9eff; border-radius:4px;">
+      <span style="color:#4a9eff; font-weight:600;">🧪 Dry Run Mode:</span>
+      <span style="color:#bbb; font-size:0.9em;"> Orders will be simulated and logged but NOT sent to the exchange. Safe for testing.</span>
     </div>
+    ` : `
+    <div style="margin-top:15px; padding:12px; background-color:#1a2332; border-left:3px solid #ffa726; border-radius:4px;">
+      <span style="color:#ffa726; font-weight:600;">⚠️ LIVE Mode Warning:</span>
+      <span style="color:#bbb; font-size:0.9em;"> Real orders will be placed on Hyperliquid. All detected trades will be automatically copied. Make sure you trust this trader.</span>
+    </div>
+    `}
   `;
 
   // Return promise for user response with scaling factor and initial positions

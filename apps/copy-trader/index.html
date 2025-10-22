@@ -172,6 +172,17 @@
                 </div>
 
                 <div class="form-group">
+                    <label style="display: inline-flex; align-items: center; font-weight: normal; cursor: pointer;">
+                        <input type="checkbox" id="dry-run-mode" style="margin-right: 8px;" checked>
+                        <span style="font-weight: 600;">🧪 Dry Run Mode (simulate orders without execution)</span>
+                    </label>
+                    <small style="color:#4a9eff; display:block; margin-top:4px;">
+                        ✅ Enabled: Orders are logged but not sent to exchange (safe for testing)<br>
+                        ⚠️ Disabled: Real orders will be placed on Hyperliquid
+                    </small>
+                </div>
+
+                <div class="form-group">
                     <label for="copy-balance">Total Balance for Copying (USD, min $50)</label>
                     <input type="number" id="copy-balance" placeholder="1000" min="50" step="1" required>
                     <span class="validation-error" id="copy-balance-error"></span>

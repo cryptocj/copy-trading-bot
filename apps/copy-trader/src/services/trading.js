@@ -29,8 +29,25 @@ let tradeCounter = 0;
 // Default maximum leverage (10x for safer trading)
 const DEFAULT_MAX_LEVERAGE = 10;
 
-// Dry-run mode flag (set to true to simulate orders without executing)
-const DRY_RUN_MODE = true;
+// Dry-run mode flag (controlled by UI toggle)
+let DRY_RUN_MODE = true;
+
+/**
+ * Set dry-run mode (controlled by UI toggle)
+ * @param {boolean} enabled - Enable/disable dry-run mode
+ */
+export function setDryRunMode(enabled) {
+    DRY_RUN_MODE = enabled;
+    console.log(`🧪 Dry-run mode ${enabled ? 'ENABLED' : 'DISABLED'}`);
+}
+
+/**
+ * Get current dry-run mode status
+ * @returns {boolean}
+ */
+export function isDryRunMode() {
+    return DRY_RUN_MODE;
+}
 
 /**
  * Start copy trading session
