@@ -5,9 +5,11 @@ Browser-based copy trading interface for Hyperliquid DEX. Discover top traders, 
 ## Features
 
 - **Trader Discovery**: Browse top 20 traders by monthly ROI from public leaderboard
-- **Configurable Copy Trading**: Set trade value ($12+ USDC) and max leverage (1-50x)
+- **Configurable Copy Trading**: Set trade value ($12+ USDC), max leverage (1-50x), dry-run mode, and entry price options
 - **Auto-Copy Trades**: Monitor trader via WebSocket and execute matching limit orders
 - **Order Display**: View last 6 copied orders with symbol, side, amount, timestamp
+- **Real-Time Monitoring Status**: Visual indicator shows monitoring status with live updates and trade detection
+- **Session Persistence**: Automatically resume monitoring after page refresh (with proper stop/clear on exit)
 
 ## Quick Start
 
@@ -62,29 +64,40 @@ node scripts/filter-leaderboard.js
 
 1. **Select Trader**: Click a row in the leaderboard to auto-fill trader address
 2. **Configure**: Enter your API key, trade value ($12 minimum), and max leverage (1-50x)
+   - **Dry Run Mode**: Enable to simulate trades without executing real orders (safe testing mode)
+   - **Use Latest Price**: Enable to enter at current market price instead of trader's entry price
 3. **Start**: Click "Start Copy Trading" to begin monitoring
+   - **Monitoring Status**: Visual indicator with pulsing animation shows monitoring is active
+   - **Trade Detection**: Status updates in real-time when trades are detected
 4. **Monitor**: Trader's trades will be copied automatically within 5 seconds
 5. **Stop**: Click "Stop Copy Trading" to disconnect
+   - Monitoring status indicator will disappear
+   - Session will be cleared (even after page refresh)
 
 ## Architecture
 
-- **Browser-Only**: No server, no database, no persistence (state cleared on tab close)
+- **Browser-Only**: No server, no database required
 - **Vanilla JavaScript**: No frameworks, browser-native ESM imports
 - **CCXT v4.3.66+**: WebSocket for monitoring (ccxt.pro), REST API for execution (ccxt)
-- **In-Memory Storage**: All data in browser JavaScript variables
+- **Session Persistence**: localStorage-based session management with automatic recovery after page refresh
+- **In-Memory State**: Active monitoring state managed in browser JavaScript variables
 
 ## Project Structure
 
 ```
 apps/copy-trader/
-├── index.html             # Main UI
+├── index.html             # Main UI with monitoring status indicator
 ├── README.md              # This file
 ├── src/
-│   ├── main.js            # App entry point
+│   ├── main.js            # App entry point + session restoration
+│   ├── dom/
+│   │   └── elements.js    # DOM element references
 │   ├── services/
-│   │   ├── leaderboard.js # Leaderboard API integration
-│   │   ├── trading.js     # CCXT WebSocket + order execution
-│   │   └── validation.js  # Input validation functions
+│   │   ├── leaderboard.js        # Leaderboard API integration
+│   │   ├── trading.js            # CCXT WebSocket + order execution
+│   │   ├── validation.js         # Input validation functions
+│   │   ├── sessionPersistence.js # localStorage session management
+│   │   └── monitoringStatus.js   # Real-time monitoring status UI
 │   └── utils/
 │       └── format.js      # Number/timestamp formatting
 └── styles/
