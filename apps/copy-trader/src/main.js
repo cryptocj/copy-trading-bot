@@ -223,7 +223,6 @@ function setupButtonListeners() {
   elements.testCalculationButton.addEventListener('click', () => testPositionCalculation(elements, config));
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
-  elements.refreshWalletButton.addEventListener('click', () => refreshWalletInfo(elements, isCopyTradingActive));
   elements.loadMyWalletButton.addEventListener('click', () => loadMyWalletByAddress(elements));
 }
 

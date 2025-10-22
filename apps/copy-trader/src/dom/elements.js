@@ -62,9 +62,6 @@ export function initializeElements() {
     // Monitoring Wallets
     walletsBody: document.getElementById('wallets-body'),
 
-    // Wallet Info
-    refreshWalletButton: document.getElementById('refresh-wallet-button'),
-
     // Your Wallet
     yourWalletPlaceholder: document.getElementById('your-wallet-placeholder'),
     yourWalletLoading: document.getElementById('your-wallet-loading'),

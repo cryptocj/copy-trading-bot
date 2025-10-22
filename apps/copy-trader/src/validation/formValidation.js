@@ -126,7 +126,4 @@ export function checkFormValidity(elements, isCopyTradingActive) {
 
   // Enable Start button only if all fields valid and not currently active
   elements.startButton.disabled = !allValid || isCopyTradingActive;
-
-  // Enable Refresh Wallet button if API key is valid
-  elements.refreshWalletButton.disabled = !apiKeyValid;
 }
