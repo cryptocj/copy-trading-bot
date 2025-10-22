@@ -118,6 +118,23 @@
         }
         .balance-value.positive::before { content: '+'; }
         .balance-value { font-weight: 600; }
+
+        /* Monitoring Status Indicator */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        #status-indicator.active {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        #status-indicator.reconnecting {
+            background-color: #ffa726 !important;
+            animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        #status-indicator.error {
+            background-color: #ef4444 !important;
+            animation: none;
+        }
     </style>
 </head>
 <body class="bg-dark-900 text-gray-200">
@@ -261,10 +278,19 @@
                     </div>
                 </div>
 
-                <div class="md:col-span-2 lg:col-span-4 flex gap-2 flex-wrap">
+                <div class="md:col-span-2 lg:col-span-4 flex gap-2 flex-wrap items-center">
                     <button type="button" id="test-calculation-button" class="px-3 py-1.5 text-sm font-medium bg-primary hover:bg-blue-600 text-white rounded transition">📊 Test</button>
                     <button type="button" id="start-button" disabled class="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition">▶ Start</button>
                     <button type="button" id="stop-button" disabled class="px-3 py-1.5 text-sm font-medium bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition">■ Stop</button>
+
+                    <!-- Monitoring Status Indicator -->
+                    <div id="monitoring-status" class="hidden items-center gap-2 px-3 py-1.5 bg-dark-800 rounded border border-dark-500">
+                        <div class="flex items-center gap-1.5">
+                            <div id="status-indicator" class="w-2 h-2 rounded-full bg-green-500"></div>
+                            <span id="status-text" class="text-xs font-medium text-gray-300">Monitoring</span>
+                        </div>
+                        <div class="text-xs text-gray-500" id="status-details">Waiting...</div>
+                    </div>
                 </div>
             </form>
 

@@ -23,6 +23,16 @@ import { scaleTrade } from '../utils/positionCalculator.js';
 // Import price fetching utilities
 import { fetchLatestPrice, calculateOrderPrice } from './priceService.js';
 
+// Import monitoring status service
+import {
+  showMonitoringStatus,
+  hideMonitoringStatus,
+  setStatusActive,
+  setStatusReconnecting,
+  updateLastActivity,
+  recordTradeDetected
+} from './monitoringStatus.js';
+
 // Active trading session state
 let session = null;
 
@@ -151,6 +161,10 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
 
         // Start monitoring loop (async, non-blocking)
         console.log('Starting monitoring loop for new trades...');
+
+        // Show monitoring status indicator (pass trade counter for session restoration)
+        showMonitoringStatus(tradeCounter);
+
         monitoringLoop().catch(error => {
             console.error('Monitoring loop error:', error);
         });
@@ -402,6 +416,9 @@ export async function stopCopyTrading() {
 
     console.log('Stopping copy trading session...');
 
+    // Hide monitoring status indicator
+    hideMonitoringStatus();
+
     // Stop monitoring loop
     session.isRunning = false;
 
@@ -481,6 +498,9 @@ async function monitoringLoop() {
                 user: config.traderAddress
             });
 
+            // Update status to show active monitoring
+            setStatusActive();
+
             for (const trade of trades) {
                 // Skip historical trades (before activation)
                 if (trade.timestamp < activationTimestamp) {
@@ -495,11 +515,22 @@ async function monitoringLoop() {
                     timestamp: trade.timestamp
                 });
 
+                // Update trade counter and status
+                tradeCounter++;
+                recordTradeDetected(tradeCounter);
+
                 // Execute copy trade
                 await executeCopyTrade(trade);
             }
+
+            // Update last activity timestamp
+            updateLastActivity();
+
         } catch (error) {
             console.error('Monitor error:', error);
+
+            // Update status to reconnecting
+            setStatusReconnecting();
 
             // Reset activation timestamp to prevent copying stale trades after reconnect
             if (session) {

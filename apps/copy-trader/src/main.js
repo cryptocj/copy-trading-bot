@@ -58,6 +58,7 @@ import {
 import { confirmCopyTradingSession } from './controllers/tradingController.js';
 import { testPositionCalculation } from './utils/testCalculation.js';
 import { fetchLatestPricesForConfirmation } from './services/priceService.js';
+import { initMonitoringStatus } from './services/monitoringStatus.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -70,6 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Cache DOM elements
   elements = initializeElements();
+
+  // Initialize monitoring status service
+  initMonitoringStatus(elements);
 
   // Initialize validation listeners
   setupValidation(elements, () => checkValidity(elements, isCopyTradingActive));

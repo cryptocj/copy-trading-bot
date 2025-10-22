@@ -30,6 +30,12 @@ export function initializeElements() {
     dryRunModeCheckbox: document.getElementById('dry-run-mode'),
     useLatestPriceCheckbox: document.getElementById('use-latest-price'),
 
+    // Monitoring Status
+    monitoringStatus: document.getElementById('monitoring-status'),
+    statusIndicator: document.getElementById('status-indicator'),
+    statusText: document.getElementById('status-text'),
+    statusDetails: document.getElementById('status-details'),
+
     // Orders
     ordersBody: document.getElementById('orders-body'),
 
