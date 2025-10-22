@@ -53,6 +53,11 @@ import {
   renderOrderList,
 } from './rendering/orders.js';
 import { setupCollapsibleSections } from './ui/collapsible.js';
+import {
+  refreshWalletInfo,
+  loadCustomWallet,
+  loadMyWalletByAddress,
+} from './controllers/walletController.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -82,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderWalletsTable(elements, (address) => showHistoryPanel(elements, address), () => checkValidity(elements, isCopyTradingActive));
 
   // Load saved settings from localStorage
-  loadSavedSettings(elements, config, checkFormValidity, refreshWalletInfo);
+  loadSavedSettings(elements, config, checkFormValidity, () => refreshWalletInfo(elements, isCopyTradingActive));
 
   // Restore active session if exists (T015 - US1: Automatic Session Recovery)
   // Non-blocking: runs in background, UI remains responsive
@@ -459,9 +464,9 @@ function setupButtonListeners() {
   elements.testCalculationButton.addEventListener('click', testPositionCalculation);
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
-  elements.refreshWalletButton.addEventListener('click', refreshWalletInfo);
-  elements.loadCustomWalletButton.addEventListener('click', loadCustomWallet);
-  elements.loadMyWalletButton.addEventListener('click', loadMyWalletByAddress);
+  elements.refreshWalletButton.addEventListener('click', () => refreshWalletInfo(elements, isCopyTradingActive));
+  elements.loadCustomWalletButton.addEventListener('click', () => loadCustomWallet(elements, isCopyTradingActive));
+  elements.loadMyWalletButton.addEventListener('click', () => loadMyWalletByAddress(elements));
 }
 
 /**
@@ -755,177 +760,14 @@ async function stopCopyTrading() {
 /**
  * Refresh wallet info for your wallet
  */
-async function refreshWalletInfo() {
-  console.log('Refreshing wallet info...');
-
-  // Check for saved custom wallet address first
-  const savedAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
-
-  if (savedAddress) {
-    console.log(`🔄 Using saved wallet address: ${savedAddress}`);
-
-    try {
-      // Show loading state
-      elements.yourWalletPlaceholder.style.display = 'none';
-      elements.yourWalletError.style.display = 'none';
-      elements.yourWalletContent.style.display = 'none';
-      elements.yourWalletLoading.style.display = 'block';
-
-      // Fetch balance and positions using saved address
-      const [balance, positions] = await Promise.all([
-        fetchBalanceForAddress(savedAddress),
-        fetchPositionsForAddress(savedAddress),
-      ]);
-
-      // Display in "My Wallet & Positions" section
-      displayYourWalletInfo(elements, balance, positions);
-
-      console.log(`✅ Wallet ${savedAddress} refreshed successfully`);
-    } catch (error) {
-      console.error('Failed to refresh wallet by address:', error);
-
-      // Show error
-      elements.yourWalletPlaceholder.style.display = 'none';
-      elements.yourWalletLoading.style.display = 'none';
-      elements.yourWalletContent.style.display = 'none';
-      elements.yourWalletError.style.display = 'block';
-      elements.yourWalletError.textContent = `Failed to refresh wallet: ${error.message}`;
-    }
-    return;
-  }
-
-  // Fall back to API key derivation if no saved address
-  const { userApiKey } = config;
-
-  // Validate inputs
-  if (!userApiKey) {
-    alert('Please enter your API key first');
-    return;
-  }
-
-  try {
-    // Derive wallet address from private key
-    const wallet = new ethers.Wallet(userApiKey);
-    const walletAddress = wallet.address;
-
-    // Create exchange instance for querying
-    const exchange = new ccxt.hyperliquid({
-      privateKey: userApiKey,
-      walletAddress: walletAddress,
-    });
-
-    // Load markets once (required by CCXT for fetchBalance and fetchPositions)
-    console.log('Loading markets...');
-    await exchange.loadMarkets();
-    console.log('Markets loaded successfully');
-
-    // Fetch your wallet info
-    await fetchAndDisplayYourWallet(elements, exchange);
-  } catch (error) {
-    console.error('Failed to refresh wallet info:', error);
-    alert(`Failed to refresh wallet info: ${error.message}`);
-  }
-}
-
 /**
  * Load custom wallet by address input
  * Query balance and positions without needing API key
  */
-async function loadCustomWallet() {
-  console.log('Loading custom wallet...');
-
-  const address = elements.customWalletAddress.value.trim();
-
-  // Validate address format (basic Ethereum address check)
-  if (!address) {
-    alert('Please enter a wallet address');
-    return;
-  }
-
-  if (!address.match(/^0x[a-fA-F0-9]{40}$/)) {
-    alert('Invalid wallet address format. Must be 40 hex characters starting with 0x');
-    return;
-  }
-
-  try {
-    console.log(`Loading wallet data for ${address}...`);
-
-    // Load wallet data in history panel (balance + positions + orders)
-    await showHistoryPanel(elements, address);
-
-    // Optionally auto-fill trader address input
-    elements.traderAddressInput.value = address;
-    config.traderAddress = address;
-
-    // Trigger validation
-    const result = validateAddress(address);
-    displayValidationError('trader-address', result);
-    checkValidity(elements, isCopyTradingActive);
-
-    console.log(`Custom wallet ${address} loaded successfully`);
-  } catch (error) {
-    console.error('Failed to load custom wallet:', error);
-    alert(`Failed to load wallet: ${error.message}`);
-  }
-}
-
 /**
  * Load wallet by address directly (for "My Wallet & Positions" section)
  * Query balance and positions without needing API key
  */
-async function loadMyWalletByAddress() {
-  console.log('Loading wallet by address...');
-
-  const address = elements.myWalletAddress.value.trim();
-
-  // Validate address format (basic Ethereum address check)
-  if (!address) {
-    alert('Please enter a wallet address');
-    return;
-  }
-
-  if (!address.match(/^0x[a-fA-F0-9]{40}$/)) {
-    alert('Invalid wallet address format. Must be 40 hex characters starting with 0x');
-    return;
-  }
-
-  try {
-    console.log(`Loading wallet data for ${address}...`);
-
-    // Show loading state
-    elements.yourWalletPlaceholder.style.display = 'none';
-    elements.yourWalletError.style.display = 'none';
-    elements.yourWalletContent.style.display = 'none';
-    elements.yourWalletLoading.style.display = 'block';
-
-    // Fetch balance and positions using direct API (no CCXT exchange needed)
-    const [balance, positions] = await Promise.all([
-      fetchBalanceForAddress(address),
-      fetchPositionsForAddress(address),
-    ]);
-
-    // Display in "My Wallet & Positions" section
-    displayYourWalletInfo(balance, positions);
-
-    // Save wallet address to localStorage for auto-load on refresh
-    localStorage.setItem(STORAGE_KEYS.MY_WALLET_ADDRESS, address);
-    console.log(`✅ Saved wallet address to localStorage: ${address}`);
-
-    console.log(`Wallet ${address} loaded successfully`);
-    console.log(`Balance:`, balance);
-    console.log(`Positions:`, positions);
-  } catch (error) {
-    console.error('Failed to load wallet by address:', error);
-
-    // Show error
-    elements.yourWalletPlaceholder.style.display = 'none';
-    elements.yourWalletLoading.style.display = 'none';
-    elements.yourWalletContent.style.display = 'none';
-    elements.yourWalletError.style.display = 'block';
-    elements.yourWalletError.textContent = `Failed to load wallet: ${error.message}`;
-  }
-}
-
 /**
  * Display wallet info in "My Wallet & Positions" section
  * @param {object} balance - Balance object
