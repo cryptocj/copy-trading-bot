@@ -53,7 +53,6 @@ import {
 import { setupCollapsibleSections } from './ui/collapsible.js';
 import {
   refreshWalletInfo,
-  loadCustomWallet,
   loadMyWalletByAddress,
 } from './controllers/walletController.js';
 import { confirmCopyTradingSession } from './controllers/tradingController.js';
@@ -225,7 +224,6 @@ function setupButtonListeners() {
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
   elements.refreshWalletButton.addEventListener('click', () => refreshWalletInfo(elements, isCopyTradingActive));
-  elements.loadCustomWalletButton.addEventListener('click', () => loadCustomWallet(elements, isCopyTradingActive));
   elements.loadMyWalletButton.addEventListener('click', () => loadMyWalletByAddress(elements));
 }
 

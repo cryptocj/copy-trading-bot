@@ -25,8 +25,6 @@ export function initializeElements() {
     startButton: document.getElementById('start-button'),
     stopButton: document.getElementById('stop-button'),
     calculationTestResults: document.getElementById('calculation-test-results'),
-    loadCustomWalletButton: document.getElementById('load-custom-wallet-button'),
-    customWalletAddress: document.getElementById('custom-wallet-address'),
     loadMyWalletButton: document.getElementById('load-my-wallet-button'),
     myWalletAddress: document.getElementById('my-wallet-address'),
     dryRunModeCheckbox: document.getElementById('dry-run-mode'),
