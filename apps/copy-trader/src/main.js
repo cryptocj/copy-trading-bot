@@ -26,26 +26,16 @@ import {
   clearSavedSettings,
   viewSavedSettings,
 } from './services/storage.js';
-
-// Global state
-let config = {
-  traderAddress: '',
-  userApiKey: '',
-  copyBalance: 0, // Total balance for copying (replaces tradeValue and maxLeverage)
-  useLatestPrice: false, // Use latest market price instead of trader's entry price
-};
-
-let isCopyTradingActive = false;
-let orderList = []; // Max 6 orders (FIFO)
-
-// Monitoring wallets (pre-configured)
-const monitoringWallets = [
-  { label: 'DeepSeek', address: '0xC20aC4Dc4188660cBF555448AF52694CA62b0734' },
-  { label: 'Grok', address: '0x56D652e62998251b56C8398FB11fcFe464c08F84' },
-  { label: 'Claude', address: '0x59fA085d106541A834017b97060bcBBb0aa82869' },
-  { label: 'GPT', address: '0x67293D914eAFb26878534571add81F6Bd2D9fE06' },
-  { label: 'Gemini', address: '0x1b7A7D099a670256207a30dD0AE13D35f278010f' },
-];
+import {
+  config,
+  isCopyTradingActive,
+  orderList,
+  monitoringWallets,
+  setCopyTradingActive,
+  addOrderToList,
+  clearOrderList,
+  getOrderList,
+} from './state/appState.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -255,7 +245,7 @@ async function restoreActiveSession() {
     elements.startButton.disabled = true;
     elements.stopButton.disabled = false;
     setFormDisabled(true);
-    isCopyTradingActive = true;
+    setCopyTradingActive(true);
 
     console.log('Restoring copy trading session...');
 
@@ -276,7 +266,7 @@ async function restoreActiveSession() {
     console.error('❌ Failed to restore session:', error);
 
     // Revert UI state
-    isCopyTradingActive = false;
+    setCopyTradingActive(false);
     elements.startButton.disabled = false;
     elements.stopButton.disabled = true;
     setFormDisabled(false);
@@ -841,7 +831,7 @@ async function startCopyTrading() {
     saveSettings(config);
 
     // Update UI state
-    isCopyTradingActive = true;
+    setCopyTradingActive(true);
     elements.startButton.disabled = true;
     elements.stopButton.disabled = false;
     setFormDisabled(true);
@@ -864,7 +854,7 @@ async function startCopyTrading() {
     console.error('❌ Failed to start copy trading:', error);
 
     // Revert UI state on error
-    isCopyTradingActive = false;
+    setCopyTradingActive(false);
     elements.startButton.disabled = false;
     elements.stopButton.disabled = true;
     setFormDisabled(false);
@@ -884,7 +874,7 @@ async function stopCopyTrading() {
     await stopTradingService();
 
     // Update UI state
-    isCopyTradingActive = false;
+    setCopyTradingActive(false);
     elements.startButton.disabled = false;
     elements.stopButton.disabled = true;
     setFormDisabled(false);
@@ -905,7 +895,7 @@ async function stopCopyTrading() {
     }
 
     // Update UI state anyway (stop succeeded even if cleanup had issues)
-    isCopyTradingActive = false;
+    setCopyTradingActive(false);
     elements.startButton.disabled = false;
     elements.stopButton.disabled = true;
     setFormDisabled(false);
@@ -919,10 +909,7 @@ async function stopCopyTrading() {
  * @param {{ symbol: string, side: string, amount: number, price: number, timestamp: number }} order
  */
 function addOrder(order) {
-  orderList.unshift(order); // Add to front
-  if (orderList.length > 6) {
-    orderList.pop(); // Remove oldest
-  }
+  addOrderToList(order);
   renderOrderList();
 }
 
