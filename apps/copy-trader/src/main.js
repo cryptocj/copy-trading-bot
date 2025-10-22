@@ -486,61 +486,6 @@ async function stopCopyTrading() {
 }
 
 /**
- * Add order to display list (US4)
- * FIFO: max 6 orders, remove oldest when exceeding
- * @param {{ symbol: string, side: string, amount: number, price: number, timestamp: number }} order
- */
-
-/**
- * Setup collapsible sections with localStorage persistence
- */
-
-/**
- * Setup trade history panel listeners
- */
-/**
- * Fetch balance for a specific address using Hyperliquid Direct API
- * Works without API key - uses public API endpoint
- */
-/**
- * Fetch LATEST open positions for a specific address
- * Always fetches fresh data from Hyperliquid API - no caching
- * @param {string} address - Wallet address to query
- * @returns {Promise<Array>} Array of current open position objects
- */
-/**
- * Render balance for selected wallet in history panel
- */
-/**
- * Render positions for selected wallet in history panel (table view)
- */
-/**
- * Render monitoring wallets table (similar to leaderboard)
- */
-/**
- * Refresh wallet info for your wallet
- */
-/**
- * Load custom wallet by address input
- * Query balance and positions without needing API key
- */
-/**
- * Load wallet by address directly (for "My Wallet & Positions" section)
- * Query balance and positions without needing API key
- */
-/**
- * Display wallet info in "My Wallet & Positions" section
- * @param {object} balance - Balance object
- * @param {Array} positions - Positions array
- */
-/**
- * Fetch and display your wallet info
- */
-/**
- * Render positions table (for Your Wallet section)
- */
-
-/**
  * Wrapper function for checkFormValidity for backward compatibility
  */
 function checkFormValidity() {
