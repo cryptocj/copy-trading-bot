@@ -275,6 +275,33 @@ export function getSessionDuration(state) {
 }
 
 /**
+ * Update session config fields (for updating settings during active session)
+ * @param {string} monitoredWallet - Monitored wallet address
+ * @param {Object} configUpdates - Config fields to update
+ * @returns {boolean} Success
+ */
+export function updateSessionConfig(monitoredWallet, configUpdates) {
+  try {
+    const sessionState = loadSessionState(monitoredWallet);
+    if (!sessionState || !sessionState.isActive) {
+      console.warn('No active session to update');
+      return false;
+    }
+
+    // Update config fields
+    Object.assign(sessionState.config, configUpdates);
+
+    // Save updated session state
+    saveSessionState(sessionState, monitoredWallet);
+    console.log('[SessionPersistence] Config updated:', configUpdates);
+    return true;
+  } catch (error) {
+    console.error('[SessionPersistence] Failed to update session config:', error);
+    return false;
+  }
+}
+
+/**
  * Multi-tab conflict detection (T009 - implemented in Phase 2)
  * Detects if another tab has an active session
  * @returns {boolean} True if conflict detected

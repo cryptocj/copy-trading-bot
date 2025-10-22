@@ -12,6 +12,7 @@ import {
   startCopyTrading as startTradingService,
   stopCopyTrading as stopTradingService,
   isDryRunMode,
+  setDryRunMode,
 } from './services/trading.js';
 import { loadSessionState, initializeTabId } from './services/sessionPersistence.js';
 import {
@@ -175,14 +176,38 @@ async function restoreActiveSession() {
   }
 
   // Restore configuration to global config
+  console.log('[SessionRestore] savedConfig.isDryRun:', savedConfig.isDryRun);
+  console.log('[SessionRestore] savedConfig.useLatestPrice:', savedConfig.useLatestPrice);
+
   config.traderAddress = savedConfig.traderAddress;
   config.userApiKey = savedConfig.userApiKey;
   config.copyBalance = savedConfig.copyBalance;
+  config.useLatestPrice = savedConfig.useLatestPrice ?? false;
+  config.isDryRun = savedConfig.isDryRun ?? true;
+
+  console.log('[SessionRestore] Restored config.isDryRun:', config.isDryRun);
+  console.log('[SessionRestore] Restored config.useLatestPrice:', config.useLatestPrice);
 
   // Restore UI form values (T017)
   elements.traderAddressInput.value = savedConfig.traderAddress;
   elements.apiKeyInput.value = savedConfig.userApiKey;
   elements.copyBalanceInput.value = savedConfig.copyBalance;
+
+  // Restore checkbox states
+  if (elements.useLatestPriceCheckbox) {
+    elements.useLatestPriceCheckbox.checked = config.useLatestPrice;
+    console.log('[SessionRestore] useLatestPrice checkbox set to:', config.useLatestPrice);
+  }
+  if (elements.dryRunModeCheckbox) {
+    elements.dryRunModeCheckbox.checked = config.isDryRun;
+    console.log('[SessionRestore] isDryRun checkbox set to:', config.isDryRun);
+    // Also update the trading.js module state
+    setDryRunMode(config.isDryRun);
+    // Update button text
+    const buttonText = config.isDryRun ? 'Start Copy Trading (DRY RUN)' : 'Start Copy Trading (LIVE)';
+    elements.startButton.textContent = buttonText;
+    console.log('[SessionRestore] Button text set to:', buttonText);
+  }
 
   try {
     // Update UI to show restoration in progress

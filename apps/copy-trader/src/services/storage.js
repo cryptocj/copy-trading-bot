@@ -8,6 +8,8 @@ export const STORAGE_KEYS = {
   // Wallet-specific configuration (per monitored wallet)
   getTraderAddressKey: (wallet) => `copyTrading.traderAddress.${wallet}`,
   getCopyBalanceKey: (wallet) => `copyTrading.copyBalance.${wallet}`,
+  getIsDryRunKey: (wallet) => `copyTrading.isDryRun.${wallet}`,
+  getUseLatestPriceKey: (wallet) => `copyTrading.useLatestPrice.${wallet}`,
   LAST_MONITORED_WALLET: 'copyTrading.lastMonitoredWallet', // Track last active wallet
 
   // Global settings (shared across tabs)
@@ -39,15 +41,23 @@ export function loadSavedSettings(elements, config, checkFormValidityFn, refresh
   if (lastWallet) {
     const traderAddressKey = STORAGE_KEYS.getTraderAddressKey(lastWallet);
     const copyBalanceKey = STORAGE_KEYS.getCopyBalanceKey(lastWallet);
+    const isDryRunKey = STORAGE_KEYS.getIsDryRunKey(lastWallet);
+    const useLatestPriceKey = STORAGE_KEYS.getUseLatestPriceKey(lastWallet);
 
     savedTraderAddress = localStorage.getItem(traderAddressKey);
     savedCopyBalance = localStorage.getItem(copyBalanceKey);
+    const savedIsDryRun = localStorage.getItem(isDryRunKey);
+    const savedUseLatestPrice = localStorage.getItem(useLatestPriceKey);
 
     console.log(`🔑 Loading config with keys:`);
     console.log(`  - traderAddressKey: ${traderAddressKey}`);
     console.log(`  - copyBalanceKey: ${copyBalanceKey}`);
+    console.log(`  - isDryRunKey: ${isDryRunKey}`);
+    console.log(`  - useLatestPriceKey: ${useLatestPriceKey}`);
     console.log(`  - traderAddress: ${savedTraderAddress || 'not found'}`);
     console.log(`  - copyBalance: ${savedCopyBalance || 'not found'}`);
+    console.log(`  - isDryRun: ${savedIsDryRun || 'not found'}`);
+    console.log(`  - useLatestPrice: ${savedUseLatestPrice || 'not found'}`);
 
     if (savedTraderAddress) {
       elements.traderAddressInput.value = savedTraderAddress;
@@ -57,6 +67,22 @@ export function loadSavedSettings(elements, config, checkFormValidityFn, refresh
     if (savedCopyBalance) {
       elements.copyBalanceInput.value = savedCopyBalance;
       config.copyBalance = parseFloat(savedCopyBalance);
+    }
+
+    // Load isDryRun (default to true if not set)
+    if (savedIsDryRun !== null) {
+      config.isDryRun = savedIsDryRun === 'true';
+      if (elements.dryRunModeCheckbox) {
+        elements.dryRunModeCheckbox.checked = config.isDryRun;
+      }
+    }
+
+    // Load useLatestPrice (default to false if not set)
+    if (savedUseLatestPrice !== null) {
+      config.useLatestPrice = savedUseLatestPrice === 'true';
+      if (elements.useLatestPriceCheckbox) {
+        elements.useLatestPriceCheckbox.checked = config.useLatestPrice;
+      }
     }
 
     console.log(`✅ Loaded configuration for wallet: ${lastWallet}`);
@@ -134,6 +160,8 @@ export function saveSettings(config) {
 
     const traderAddressKey = STORAGE_KEYS.getTraderAddressKey(walletKey);
     const copyBalanceKey = STORAGE_KEYS.getCopyBalanceKey(walletKey);
+    const isDryRunKey = STORAGE_KEYS.getIsDryRunKey(walletKey);
+    const useLatestPriceKey = STORAGE_KEYS.getUseLatestPriceKey(walletKey);
 
     // Save trader address with wallet-specific key
     localStorage.setItem(traderAddressKey, config.traderAddress);
@@ -143,6 +171,12 @@ export function saveSettings(config) {
       localStorage.setItem(copyBalanceKey, config.copyBalance.toString());
     }
 
+    // Save isDryRun with wallet-specific key
+    localStorage.setItem(isDryRunKey, config.isDryRun ? 'true' : 'false');
+
+    // Save useLatestPrice with wallet-specific key
+    localStorage.setItem(useLatestPriceKey, config.useLatestPrice ? 'true' : 'false');
+
     // Track this as the last monitored wallet
     localStorage.setItem(STORAGE_KEYS.LAST_MONITORED_WALLET, walletKey);
 
@@ -150,8 +184,12 @@ export function saveSettings(config) {
     console.log(`  - walletKey: ${walletKey}`);
     console.log(`  - traderAddressKey: ${traderAddressKey}`);
     console.log(`  - copyBalanceKey: ${copyBalanceKey}`);
+    console.log(`  - isDryRunKey: ${isDryRunKey}`);
+    console.log(`  - useLatestPriceKey: ${useLatestPriceKey}`);
     console.log(`  - traderAddress: ${config.traderAddress}`);
     console.log(`  - copyBalance: ${config.copyBalance || 'not set'}`);
+    console.log(`  - isDryRun: ${config.isDryRun}`);
+    console.log(`  - useLatestPrice: ${config.useLatestPrice}`);
     console.log(`✅ Configuration saved for wallet: ${walletKey}`);
   } else {
     console.log('⚠️ No trader address to save');

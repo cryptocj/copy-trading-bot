@@ -4,9 +4,10 @@
  */
 
 import { validateAddress, validateApiKey, validateCopyBalance } from '../services/validation.js';
-import { config } from '../state/appState.js';
+import { config, isCopyTradingActive } from '../state/appState.js';
 import { saveSettings } from '../services/storage.js';
 import { setDryRunMode } from '../services/trading.js';
+import { updateSessionConfig } from '../services/sessionPersistence.js';
 
 /**
  * Setup all validation listeners for form inputs and controls
@@ -32,6 +33,15 @@ export function setupValidationListeners(elements, checkFormValidityFn) {
     elements.dryRunModeCheckbox.addEventListener('change', () => {
       const enabled = elements.dryRunModeCheckbox.checked;
       setDryRunMode(enabled);
+      config.isDryRun = enabled; // Save to config for session persistence
+      console.log('[DryRunCheckbox] Changed to:', enabled, 'config.isDryRun:', config.isDryRun);
+      saveSettings(config); // Persist to localStorage
+      console.log('[DryRunCheckbox] Settings saved, localStorage:', localStorage.getItem('copyTrading.settings'));
+
+      // If copy trading is active, update the session state too
+      if (isCopyTradingActive) {
+        updateSessionConfig(config.traderAddress, { isDryRun: enabled });
+      }
 
       // Update button text to indicate mode
       const startButtonText = enabled
@@ -44,6 +54,7 @@ export function setupValidationListeners(elements, checkFormValidityFn) {
 
     // Set initial mode based on checkbox state
     setDryRunMode(elements.dryRunModeCheckbox.checked);
+    config.isDryRun = elements.dryRunModeCheckbox.checked; // Save to config
     const initialButtonText = elements.dryRunModeCheckbox.checked
       ? 'Start Copy Trading (DRY RUN)'
       : 'Start Copy Trading (LIVE)';
@@ -54,6 +65,13 @@ export function setupValidationListeners(elements, checkFormValidityFn) {
   if (elements.useLatestPriceCheckbox) {
     elements.useLatestPriceCheckbox.addEventListener('change', () => {
       config.useLatestPrice = elements.useLatestPriceCheckbox.checked;
+      saveSettings(config); // Persist to localStorage
+
+      // If copy trading is active, update the session state too
+      if (isCopyTradingActive) {
+        updateSessionConfig(config.traderAddress, { useLatestPrice: config.useLatestPrice });
+      }
+
       console.log(`📊 Use latest price: ${config.useLatestPrice ? 'enabled' : 'disabled'} - initial positions will use ${config.useLatestPrice ? 'current market price with tick offset' : "trader's entry price"}`);
     });
 

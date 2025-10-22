@@ -9,6 +9,7 @@ export const config = {
   userApiKey: '',
   copyBalance: 0, // Total balance for copying (replaces tradeValue and maxLeverage)
   useLatestPrice: false, // Use latest market price instead of trader's entry price
+  isDryRun: true, // Dry-run mode (simulate trades without executing real orders)
 };
 
 // Copy trading session state
