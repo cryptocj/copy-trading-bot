@@ -1964,7 +1964,7 @@ async function confirmCopyTradingSession(sessionConfig) {
         <div style="color:#888; font-family:monospace;">${maskedApiKey}</div>
 
         <div style="color:#888;">Max Leverage:</div>
-        <div style="color:#e0e0e0;">20x (per symbol)</div>
+        <div style="color:#e0e0e0;">10x (per symbol)</div>
       </div>
     </div>
     ${positionsHtml}

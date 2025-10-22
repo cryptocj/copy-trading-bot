@@ -26,8 +26,11 @@ let session = null;
 // Trade counter for this session
 let tradeCounter = 0;
 
-// Default maximum leverage (20x is reasonable for Hyperliquid)
-const DEFAULT_MAX_LEVERAGE = 20;
+// Default maximum leverage (10x for safer trading)
+const DEFAULT_MAX_LEVERAGE = 10;
+
+// Dry-run mode flag (set to true to simulate orders without executing)
+const DRY_RUN_MODE = true;
 
 /**
  * Start copy trading session
@@ -37,10 +40,15 @@ const DEFAULT_MAX_LEVERAGE = 20;
  * @returns {Promise<void>}
  */
 export async function startCopyTrading(config, onOrderExecuted, resumeState = null) {
+    if (DRY_RUN_MODE) {
+        console.log('🧪🧪🧪 DRY RUN MODE ENABLED - NO REAL ORDERS WILL BE PLACED 🧪🧪🧪');
+    }
+
     console.log('Initializing copy trading session...', {
         trader: config.traderAddress,
         copyBalance: config.copyBalance,
-        resuming: !!resumeState
+        resuming: !!resumeState,
+        dryRunMode: DRY_RUN_MODE
     });
 
     try {
@@ -104,7 +112,11 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
         // Open initial positions if provided (copy trader's existing positions)
         // Skip if already opened in previous session (on refresh/resume)
         if (config.initialPositions && config.initialPositions.length > 0 && !initialPositionsOpened) {
-            console.log(`📊 Opening ${config.initialPositions.length} initial positions...`);
+            console.log(`\n📊 Opening ${config.initialPositions.length} initial positions...`);
+            console.log(`📋 Trader's original positions (before scaling):`, config.traderOriginalPositions);
+            console.log(`📐 Scaled positions to open:`, config.initialPositions);
+            console.log(`📊 Scaling factor: ${scalingFactor.toFixed(4)} (${(scalingFactor * 100).toFixed(1)}%)\n`);
+
             const positionsOpened = await openInitialPositions(config.initialPositions);
 
             // Update session state only if positions were successfully opened
@@ -146,48 +158,115 @@ async function openInitialPositions(positions) {
     let failCount = 0;
 
     for (const pos of positions) {
-        const { symbol, side, size, entryPrice } = pos;
+        const { symbol, side, size, entryPrice, leverage } = pos;
 
         try {
+            // Use trader's actual leverage if available, otherwise use default
+            const targetLeverage = leverage || DEFAULT_MAX_LEVERAGE;
+
             console.log(`\n📌 Opening initial position: ${side.toUpperCase()} ${size.toFixed(4)} ${symbol} @ $${entryPrice.toFixed(4)}`);
-
-            // Set leverage if first time for this symbol
-            if (!leverageCache.has(symbol)) {
-                await setLeverageIfNeeded(symbol);
-            }
-
-            // Get leverage for this symbol (or default)
-            const actualLeverage = leverageCache.get(symbol) || DEFAULT_MAX_LEVERAGE;
-            console.log(`  Using ${actualLeverage}x leverage`);
-
-            // Place limit order at trader's entry price
-            const order = await executeExchange.createLimitOrder(symbol, side, size, entryPrice);
-
-            console.log(`  ✅ Order placed successfully:`, {
-                orderId: order.id,
-                status: order.status,
-                amount: order.amount,
-                price: order.price
+            console.log(`  📊 Position details from calculation:`, {
+                symbol,
+                side,
+                size,
+                entryPrice,
+                traderLeverage: leverage,
+                targetLeverage: targetLeverage,
+                marketValue: (size * entryPrice).toFixed(2),
+                marginRequired: ((size * entryPrice) / targetLeverage).toFixed(2)
             });
 
-            // Notify callback
-            if (onOrderExecuted) {
-                onOrderExecuted({
-                    symbol,
-                    side,
-                    amount: size,
-                    price: entryPrice,
-                    timestamp: Date.now()
-                });
+            // Set leverage if first time for this symbol OR if leverage changed
+            const cachedLeverage = leverageCache.get(symbol);
+            if (!cachedLeverage || cachedLeverage !== targetLeverage) {
+                await setLeverageIfNeeded(symbol, targetLeverage);
             }
 
-            successCount++;
+            // Get leverage for this symbol (should match target)
+            const actualLeverage = leverageCache.get(symbol) || targetLeverage;
+            console.log(`  ⚙️ Using ${actualLeverage}x leverage (cached: ${!!cachedLeverage}, matches trader: ${actualLeverage === leverage})`);
+
+            if (DRY_RUN_MODE) {
+                // DRY RUN: Log what would be executed without placing order
+                console.log(`  🧪 DRY RUN: Would place order:`, {
+                    exchange: 'Hyperliquid',
+                    method: 'createLimitOrder',
+                    symbol,
+                    side,
+                    size,
+                    entryPrice,
+                    leverage: actualLeverage,
+                    estimatedCost: ((size * entryPrice) / actualLeverage).toFixed(2)
+                });
+
+                // Simulate successful order
+                const simulatedOrder = {
+                    id: `DRY_RUN_${Date.now()}_${symbol}`,
+                    status: 'simulated',
+                    amount: size,
+                    price: entryPrice,
+                    symbol,
+                    side
+                };
+
+                console.log(`  ✅ DRY RUN: Simulated order:`, simulatedOrder);
+
+                // Notify callback with simulated order
+                if (onOrderExecuted) {
+                    onOrderExecuted({
+                        symbol,
+                        side,
+                        amount: size,
+                        price: entryPrice,
+                        timestamp: Date.now(),
+                        dryRun: true
+                    });
+                }
+
+                successCount++;
+            } else {
+                // LIVE MODE: Place actual order
+                console.log(`  🚀 LIVE: Placing limit order...`);
+                const order = await executeExchange.createLimitOrder(symbol, side, size, entryPrice);
+
+                console.log(`  ✅ Order placed successfully:`, {
+                    orderId: order.id,
+                    status: order.status,
+                    amount: order.amount,
+                    price: order.price,
+                    cost: order.cost,
+                    filled: order.filled,
+                    remaining: order.remaining
+                });
+
+                // Notify callback
+                if (onOrderExecuted) {
+                    onOrderExecuted({
+                        symbol,
+                        side,
+                        amount: size,
+                        price: entryPrice,
+                        timestamp: Date.now()
+                    });
+                }
+
+                successCount++;
+            }
 
             // Increment trade counter
             tradeCounter++;
 
         } catch (error) {
             console.error(`  ❌ Failed to open position for ${symbol}:`, error.message);
+            console.error(`  📋 Error details:`, {
+                symbol,
+                side,
+                size,
+                entryPrice,
+                errorName: error.name,
+                errorMessage: error.message,
+                errorStack: error.stack?.split('\n').slice(0, 3).join('\n')
+            });
             failCount++;
             // Continue with other positions even if one fails
         }
@@ -197,6 +276,54 @@ async function openInitialPositions(positions) {
     }
 
     console.log(`\n📊 Initial positions summary: ${successCount} successful, ${failCount} failed`);
+
+    // In dry-run mode or after successful orders, verify positions
+    if (successCount > 0 && !DRY_RUN_MODE) {
+        console.log(`\n🔍 Verifying opened positions...`);
+        try {
+            // Wait a moment for orders to settle
+            await sleep(2000);
+
+            // Fetch current positions from exchange
+            const currentPositions = await executeExchange.fetchPositions();
+            const openPositions = currentPositions.filter(pos => Math.abs(pos.contracts || 0) > 0);
+
+            console.log(`\n📋 Current open positions on exchange (${openPositions.length}):`,
+                openPositions.map(pos => ({
+                    symbol: pos.symbol,
+                    side: pos.side,
+                    size: pos.contracts,
+                    entryPrice: pos.entryPrice,
+                    leverage: pos.leverage,
+                    unrealizedPnl: pos.unrealizedPnl
+                }))
+            );
+
+            // Compare with expected positions
+            console.log(`\n🔎 Comparing expected vs actual positions:`);
+            for (const expectedPos of positions) {
+                const actualPos = openPositions.find(p => p.symbol === expectedPos.symbol);
+
+                if (!actualPos) {
+                    console.warn(`⚠️ Missing position: ${expectedPos.symbol} ${expectedPos.side} ${expectedPos.size}`);
+                } else {
+                    const sizeMatch = Math.abs(actualPos.contracts - expectedPos.size) < 0.01;
+                    const sideMatch = actualPos.side === expectedPos.side;
+                    const leverageMatch = Math.abs(actualPos.leverage - (expectedPos.leverage || DEFAULT_MAX_LEVERAGE)) <= 1;
+
+                    console.log(`${sizeMatch && sideMatch && leverageMatch ? '✅' : '⚠️'} ${expectedPos.symbol}:`, {
+                        expected: { side: expectedPos.side, size: expectedPos.size, leverage: expectedPos.leverage },
+                        actual: { side: actualPos.side, size: actualPos.contracts, leverage: actualPos.leverage },
+                        matches: { size: sizeMatch, side: sideMatch, leverage: leverageMatch }
+                    });
+                }
+            }
+        } catch (verifyError) {
+            console.error(`❌ Position verification failed:`, verifyError.message);
+        }
+    } else if (DRY_RUN_MODE) {
+        console.log(`\n🧪 DRY RUN: Skipping position verification (no real orders placed)`);
+    }
 
     // Save updated trade counter and mark initial positions as opened (only if successful)
     if (successCount > 0) {
@@ -357,33 +484,55 @@ async function executeCopyTrade(trade) {
         // Apply scaling to trade amount (preserves trader's original precision)
         const scaledAmount = scaleTrade(amount, scalingFactor);
 
-        console.log(`Preparing copy trade: ${side} ${symbol} @ ${price}`);
+        console.log(`\n📡 New trade detected from trader:`);
+        console.log(`  Symbol: ${symbol}`);
+        console.log(`  Side: ${side}`);
+        console.log(`  Price: ${price}`);
         console.log(`  Original amount: ${amount.toFixed(4)}`);
         console.log(`  Scaled amount:   ${scaledAmount.toFixed(4)} (${(scalingFactor * 100).toFixed(1)}%)`);
 
-        // Set leverage if first time for this symbol
+        // Set leverage if first time for this symbol (use default for live trades)
         if (!leverageCache.has(symbol)) {
-            await setLeverageIfNeeded(symbol);
+            await setLeverageIfNeeded(symbol, DEFAULT_MAX_LEVERAGE);
         }
 
         // Get leverage for this symbol (or default)
         const leverage = leverageCache.get(symbol) || DEFAULT_MAX_LEVERAGE;
 
-        console.log(`Executing order with ${leverage}x leverage...`);
+        console.log(`  Leverage: ${leverage}x (cached: ${leverageCache.has(symbol)})`);
 
-        // Execute limit order at trader's exact price with scaled amount
-        const order = await executeExchange.createLimitOrder(symbol, side, scaledAmount, price);
+        if (DRY_RUN_MODE) {
+            // DRY RUN: Log what would be executed
+            console.log(`  🧪 DRY RUN: Would place order:`, {
+                exchange: 'Hyperliquid',
+                method: 'createLimitOrder',
+                symbol,
+                side,
+                scaledAmount,
+                price,
+                leverage
+            });
 
-        console.log('✅ Order executed successfully:', {
-            orderId: order.id,
-            symbol: order.symbol,
-            side: order.side,
-            amount: order.amount,
-            price: order.price,
-            cost: order.cost,
-            status: order.status,
-            timestamp: new Date(order.timestamp).toLocaleString()
-        });
+            // Simulate successful order
+            console.log('  ✅ DRY RUN: Order simulated successfully');
+        } else {
+            // LIVE MODE: Execute order
+            console.log(`  🚀 LIVE: Executing order with ${leverage}x leverage...`);
+
+            // Execute limit order at trader's exact price with scaled amount
+            const order = await executeExchange.createLimitOrder(symbol, side, scaledAmount, price);
+
+            console.log('  ✅ Order executed successfully:', {
+                orderId: order.id,
+                symbol: order.symbol,
+                side: order.side,
+                amount: order.amount,
+                price: order.price,
+                cost: order.cost,
+                status: order.status,
+                timestamp: new Date(order.timestamp).toLocaleString()
+            });
+        }
 
         // Notify callback with order details (use scaled amount)
         if (onOrderExecuted) {
@@ -423,31 +572,39 @@ async function executeCopyTrade(trade) {
 }
 
 /**
- * Set leverage for symbol (once per symbol)
- * Uses default max leverage (Hyperliquid will enforce its own limits)
+ * Set leverage for symbol (once per symbol or when leverage changes)
+ * Uses trader's actual leverage or default max leverage
  * @param {string} symbol - Trading pair
+ * @param {number} leverage - Target leverage (from trader's position or default)
  */
-async function setLeverageIfNeeded(symbol) {
+async function setLeverageIfNeeded(symbol, leverage = DEFAULT_MAX_LEVERAGE) {
     if (!session) return;
 
     const { executeExchange, leverageCache } = session;
 
     try {
-        console.log(`Setting leverage for ${symbol} to ${DEFAULT_MAX_LEVERAGE}x...`);
+        console.log(`Setting leverage for ${symbol} to ${leverage}x...`);
 
-        // Set cross margin mode with leverage
-        // Hyperliquid will enforce its own per-symbol limits automatically
-        await executeExchange.setMarginMode('cross', symbol, { leverage: DEFAULT_MAX_LEVERAGE });
+        if (DRY_RUN_MODE) {
+            console.log(`  🧪 DRY RUN: Would set leverage to ${leverage}x (skipping actual API call)`);
+            // Cache leverage in dry-run mode
+            leverageCache.set(symbol, leverage);
+            console.log(`  ✅ DRY RUN: Leverage cached for ${symbol}: ${leverage}x`);
+        } else {
+            // Set cross margin mode with leverage
+            // Hyperliquid will enforce its own per-symbol limits automatically
+            await executeExchange.setMarginMode('cross', symbol, { leverage: leverage });
 
-        // Cache leverage to avoid redundant calls
-        leverageCache.set(symbol, DEFAULT_MAX_LEVERAGE);
+            // Cache leverage to avoid redundant calls
+            leverageCache.set(symbol, leverage);
 
-        console.log(`✅ Leverage set for ${symbol}: ${DEFAULT_MAX_LEVERAGE}x`);
+            console.log(`✅ Leverage set for ${symbol}: ${leverage}x`);
+        }
     } catch (error) {
         console.error(`Failed to set leverage for ${symbol}:`, error.message);
 
-        // Cache default leverage even if set failed (to avoid repeated attempts)
-        leverageCache.set(symbol, DEFAULT_MAX_LEVERAGE);
+        // Cache requested leverage even if set failed (to avoid repeated attempts)
+        leverageCache.set(symbol, leverage);
     }
 }
 

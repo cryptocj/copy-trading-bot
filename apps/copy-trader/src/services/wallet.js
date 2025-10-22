@@ -89,6 +89,12 @@ async function fetchPositionsDirectAPI(userAddress) {
             const szi = parseFloat(pos.position.szi);
             const isLong = szi > 0;
 
+            // Extract leverage - Hyperliquid uses isolated margin per position
+            // Leverage = positionValue / marginUsed
+            const positionValue = Math.abs(szi) * parseFloat(pos.position.entryPx || 0);
+            const marginUsed = parseFloat(pos.position.marginUsed || positionValue / 20); // Default to 20x if not available
+            const leverage = marginUsed > 0 ? positionValue / marginUsed : 20;
+
             return {
                 symbol: `${pos.position.coin}/USDC:USDC`, // Format to match CCXT
                 side: isLong ? 'long' : 'short',
@@ -96,7 +102,7 @@ async function fetchPositionsDirectAPI(userAddress) {
                 entryPrice: parseFloat(pos.position.entryPx || 0),
                 markPrice: parseFloat(pos.position.positionValue || 0) / Math.abs(szi),
                 unrealizedPnl: parseFloat(pos.position.unrealizedPnl || 0),
-                leverage: parseFloat(pos.position.leverage?.value || 1),
+                leverage: Math.round(leverage), // Round to nearest integer
                 percentage: 0, // Not provided by direct API
                 liquidationPrice: parseFloat(pos.position.liquidationPx || 0),
             };

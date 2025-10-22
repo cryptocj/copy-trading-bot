@@ -85,7 +85,7 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
       totalMarketValue: 0,
       feasible: true,
       warnings: [],
-      utilizationPercent: 0
+      utilizationPercent: 0,
     };
   }
 
@@ -101,7 +101,7 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
       side,
       size,
       entryPrice,
-      leverage = 20, // Default max leverage
+      leverage = 10, // Default max leverage
     } = traderPos;
 
     // Validate position data
@@ -114,14 +114,18 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
     const marketValue = size * entryPrice; // Total position value
     const requiredMargin = marketValue / leverage; // Margin required (with leverage)
 
+    // Convert position side to order side for CCXT
+    // 'long' position → 'buy' order, 'short' position → 'sell' order
+    const orderSide = side === 'long' ? 'buy' : 'sell';
+
     calculatedPositions.push({
       symbol,
-      side,
-      size,  // Use trader's exact size
-      entryPrice,  // Use trader's exact price
+      side: orderSide, // Use CCXT-compatible order side ('buy' or 'sell')
+      size, // Use trader's exact size
+      entryPrice, // Use trader's exact price
       estimatedCost: requiredMargin,
       leverage,
-      marketValue
+      marketValue,
     });
 
     totalEstimatedCost += requiredMargin;
@@ -143,7 +147,7 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
     scalingFactor = (userCopyBalance * 0.8) / totalEstimatedCost;
 
     // Scale down all positions proportionally, preserving original precision
-    scaledPositions = calculatedPositions.map(pos => {
+    scaledPositions = calculatedPositions.map((pos) => {
       // Detect precision from trader's original size
       const sizePrecision = getDecimalPrecision(pos.size);
 
@@ -152,12 +156,12 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
 
       return {
         symbol: pos.symbol,
-        side: pos.side,
-        size: scaledSize,  // Scaled size with original precision
-        entryPrice: pos.entryPrice,  // Keep trader's exact entry price
+        side: pos.side, // Already converted to 'buy'/'sell' in calculatedPositions
+        size: scaledSize, // Scaled size with original precision
+        entryPrice: pos.entryPrice, // Keep trader's exact entry price
         estimatedCost: pos.estimatedCost * scalingFactor,
         leverage: pos.leverage,
-        marketValue: pos.marketValue * scalingFactor
+        marketValue: pos.marketValue * scalingFactor,
       };
     });
 
@@ -186,7 +190,7 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
     wasScaled: !feasible,
     scalingFactor,
     originalTotalCost: totalEstimatedCost,
-    originalTotalValue: totalMarketValue
+    originalTotalValue: totalMarketValue,
   };
 }
 
@@ -245,20 +249,22 @@ export function formatPositionCalculation(calculation) {
     totalMarketValue,
     feasible,
     warnings,
-    utilizationPercent
+    utilizationPercent,
   } = calculation;
 
-  const summary = positions.length > 0
-    ? `${positions.length} position(s) | Total Margin: $${totalEstimatedCost.toFixed(2)} | Total Value: $${totalMarketValue.toFixed(2)} | Utilization: ${utilizationPercent.toFixed(1)}%`
-    : 'No positions to copy';
+  const summary =
+    positions.length > 0
+      ? `${positions.length} position(s) | Total Margin: $${totalEstimatedCost.toFixed(2)} | Total Value: $${totalMarketValue.toFixed(2)} | Utilization: ${utilizationPercent.toFixed(1)}%`
+      : 'No positions to copy';
 
-  const positionSummaries = positions.map(pos =>
-    `${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ $${pos.entryPrice.toFixed(2)} (Margin: $${pos.estimatedCost.toFixed(2)}, ${pos.leverage}x)`
+  const positionSummaries = positions.map(
+    (pos) =>
+      `${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ $${pos.entryPrice.toFixed(2)} (Margin: $${pos.estimatedCost.toFixed(2)}, ${pos.leverage}x)`
   );
 
   return {
     summary,
     positionSummaries,
-    warnings: feasible ? warnings : ['⚠️ Insufficient balance', ...warnings]
+    warnings: feasible ? warnings : ['⚠️ Insufficient balance', ...warnings],
   };
 }
