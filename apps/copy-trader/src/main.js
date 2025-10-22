@@ -7,11 +7,7 @@
 // Available as window.ccxt
 
 // Import services and utilities
-import {
-  validateAddress,
-  validateApiKey,
-  validateCopyBalance,
-} from './services/validation.js';
+import { validateAddress, validateApiKey, validateCopyBalance } from './services/validation.js';
 import { truncateAddress, formatNumber } from './utils/format.js';
 import { calculateInitialPositions } from './utils/positionCalculator.js';
 import {
@@ -20,10 +16,7 @@ import {
 } from './services/trading.js';
 import { fetchTradeHistory, renderTradeHistoryTable } from './services/tradeHistory.js';
 import { fetchWalletInfo, fetchPositions, fetchWalletBalance } from './services/wallet.js';
-import {
-  loadSessionState,
-  initializeTabId,
-} from './services/sessionPersistence.js';
+import { loadSessionState, initializeTabId } from './services/sessionPersistence.js';
 
 // Global state
 let config = {
@@ -84,6 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
     startButton: document.getElementById('start-button'),
     stopButton: document.getElementById('stop-button'),
     calculationTestResults: document.getElementById('calculation-test-results'),
+    loadCustomWalletButton: document.getElementById('load-custom-wallet-button'),
+    customWalletAddress: document.getElementById('custom-wallet-address'),
+    loadMyWalletButton: document.getElementById('load-my-wallet-button'),
+    myWalletAddress: document.getElementById('my-wallet-address'),
 
     // Orders
     ordersBody: document.getElementById('orders-body'),
@@ -185,8 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (lastWallet) {
         console.log(`\n📋 Current Wallet Configuration:`);
-        console.log(`  - Trader Address: ${localStorage.getItem(STORAGE_KEYS.getTraderAddressKey(lastWallet)) || 'not set'}`);
-        console.log(`  - Copy Balance: $${localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(lastWallet)) || 'not set'}`);
+        console.log(
+          `  - Trader Address: ${localStorage.getItem(STORAGE_KEYS.getTraderAddressKey(lastWallet)) || 'not set'}`
+        );
+        console.log(
+          `  - Copy Balance: $${localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(lastWallet)) || 'not set'}`
+        );
       }
 
       // Find all wallet-specific configurations
@@ -199,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const balance = localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(wallet));
           walletConfigs[wallet] = {
             address: localStorage.getItem(key),
-            balance: balance || 'not set'
+            balance: balance || 'not set',
           };
         }
       }
@@ -215,9 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       console.log(`\n🔐 Global Settings:`);
-      console.log(`  - API Key Saved: ${localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true' ? 'Yes' : 'No'}`);
-      console.log(`  - History Collapsed: ${localStorage.getItem(STORAGE_KEYS.HISTORY_COLLAPSED) === 'true' ? 'Yes' : 'No'}`);
-      console.log(`  - Wallets Collapsed: ${localStorage.getItem(STORAGE_KEYS.WALLETS_COLLAPSED) === 'true' ? 'Yes' : 'No'}`);
+      console.log(
+        `  - API Key Saved: ${localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true' ? 'Yes' : 'No'}`
+      );
+      console.log(
+        `  - History Collapsed: ${localStorage.getItem(STORAGE_KEYS.HISTORY_COLLAPSED) === 'true' ? 'Yes' : 'No'}`
+      );
+      console.log(
+        `  - Wallets Collapsed: ${localStorage.getItem(STORAGE_KEYS.WALLETS_COLLAPSED) === 'true' ? 'Yes' : 'No'}`
+      );
 
       console.log(`\n═══════════════════════════════════════════════════════`);
     },
@@ -304,7 +311,7 @@ function loadSavedSettings() {
     console.log('API key found, automatically loading wallet info...');
     // Use setTimeout to ensure DOM is fully initialized
     setTimeout(() => {
-      refreshWalletInfo().catch(error => {
+      refreshWalletInfo().catch((error) => {
         console.error('Failed to auto-load wallet:', error);
       });
     }, 100);
@@ -391,9 +398,13 @@ async function restoreActiveSession() {
     console.log('Restoring copy trading session...');
 
     // Start trading service with resumeState parameter
-    await startTradingService(config, (order) => {
-      addOrder(order); // Add order to display list
-    }, sessionState); // Pass resumeState to restore trade counter and startTime
+    await startTradingService(
+      config,
+      (order) => {
+        addOrder(order); // Add order to display list
+      },
+      sessionState
+    ); // Pass resumeState to restore trade counter and startTime
 
     console.log('✅ Session restored successfully');
     console.log(`Session duration: ${Math.floor((Date.now() - sessionState.startTime) / 1000)}s`);
@@ -480,17 +491,18 @@ function clearSavedSettings() {
   const keysToRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && (
-      key.startsWith('copyTrading.traderAddress.') ||
-      key.startsWith('copyTrading.copyBalance.') ||
-      key.startsWith('copyTrading.session.')
-    )) {
+    if (
+      key &&
+      (key.startsWith('copyTrading.traderAddress.') ||
+        key.startsWith('copyTrading.copyBalance.') ||
+        key.startsWith('copyTrading.session.'))
+    ) {
       keysToRemove.push(key);
     }
   }
 
   // Remove all wallet-specific keys
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
 
   console.log('All saved settings cleared (including all wallet configurations)');
 }
@@ -636,7 +648,18 @@ async function testPositionCalculation() {
     console.log('Position calculation:', calculation);
 
     // Build results display
-    const { positions, totalEstimatedCost, totalMarketValue, feasible, warnings, utilizationPercent, wasScaled, scalingFactor, originalTotalCost, originalTotalValue } = calculation;
+    const {
+      positions,
+      totalEstimatedCost,
+      totalMarketValue,
+      feasible,
+      warnings,
+      utilizationPercent,
+      wasScaled,
+      scalingFactor,
+      originalTotalCost,
+      originalTotalValue,
+    } = calculation;
 
     // Show scaling info if positions were scaled
     let scalingInfoHtml = '';
@@ -659,13 +682,14 @@ async function testPositionCalculation() {
     }
 
     // Build position table with comparison if scaled
-    const positionsTableHtml = positions.map((pos, index) => {
-      const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
-      const originalPos = traderPositions[index];
+    const positionsTableHtml = positions
+      .map((pos, index) => {
+        const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
+        const originalPos = traderPositions[index];
 
-      if (wasScaled && originalPos) {
-        // Show comparison: Original → Scaled
-        return `
+        if (wasScaled && originalPos) {
+          // Show comparison: Original → Scaled
+          return `
           <tr style="border-bottom:1px solid #2a3550;">
             <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
             <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
@@ -685,9 +709,9 @@ async function testPositionCalculation() {
             </td>
           </tr>
         `;
-      } else {
-        // Show single row when not scaled
-        return `
+        } else {
+          // Show single row when not scaled
+          return `
           <tr style="border-bottom:1px solid #2a3550;">
             <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
             <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
@@ -698,8 +722,9 @@ async function testPositionCalculation() {
             <td style="padding:8px; color:#4a9eff; font-weight:600;">$${pos.estimatedCost.toFixed(2)}</td>
           </tr>
         `;
-      }
-    }).join('');
+        }
+      })
+      .join('');
 
     const totalRowHtml = `
       <tr style="background-color:#1a2137; font-weight:700;">
@@ -719,7 +744,7 @@ async function testPositionCalculation() {
       warningsHtml = `
         <div style="margin-top:10px; padding:10px; background-color:#3a1a1a; border-radius:4px; border-left:3px solid #ff4a4a;">
           <div style="color:#ff4a4a; font-weight:600; margin-bottom:5px;">⚠️ Warnings:</div>
-          ${warnings.map(warning => `<div style="color:#ffaa00; font-size:0.85em; margin-left:20px;">• ${warning}</div>`).join('')}
+          ${warnings.map((warning) => `<div style="color:#ffaa00; font-size:0.85em; margin-left:20px;">• ${warning}</div>`).join('')}
         </div>
       `;
     }
@@ -772,7 +797,6 @@ async function testPositionCalculation() {
 
       ${warningsHtml}
     `;
-
   } catch (error) {
     console.error('Position calculation test failed:', error);
     elements.calculationTestResults.innerHTML = `
@@ -791,6 +815,8 @@ function setupButtonListeners() {
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
   elements.refreshWalletButton.addEventListener('click', refreshWalletInfo);
+  elements.loadCustomWalletButton.addEventListener('click', loadCustomWallet);
+  elements.loadMyWalletButton.addEventListener('click', loadMyWalletByAddress);
 }
 
 /**
@@ -818,7 +844,7 @@ async function startCopyTrading() {
     const result = await confirmCopyTradingSession({
       traderAddress: config.traderAddress,
       copyBalance: config.copyBalance,
-      apiKey: config.userApiKey
+      apiKey: config.userApiKey,
     });
 
     if (!result.confirmed) {
@@ -827,7 +853,9 @@ async function startCopyTrading() {
     }
 
     console.log('✅ User confirmed, starting copy trading...');
-    console.log(`📊 Scaling factor: ${result.scalingFactor.toFixed(4)} (${(result.scalingFactor * 100).toFixed(1)}%)`);
+    console.log(
+      `📊 Scaling factor: ${result.scalingFactor.toFixed(4)} (${(result.scalingFactor * 100).toFixed(1)}%)`
+    );
     console.log(`📊 Initial positions to open: ${result.initialPositions.length}`);
 
     // Ensure current configuration is saved and tracked as last monitored wallet
@@ -845,7 +873,7 @@ async function startCopyTrading() {
       {
         ...config,
         scalingFactor: result.scalingFactor,
-        initialPositions: result.initialPositions
+        initialPositions: result.initialPositions,
       },
       (order) => {
         addOrder(order); // Add order to display list (US4)
@@ -1020,7 +1048,11 @@ function setupHistoryPanelListeners() {
  * Show positions and trade history in right panel
  */
 async function showHistoryPanel(address) {
-  console.log('showHistoryPanel called with address:', address);
+  console.log('========================================');
+  console.log('[showHistoryPanel] FUNCTION CALLED');
+  console.log('[showHistoryPanel] Address:', address);
+  console.log('[showHistoryPanel] Timestamp:', new Date().toISOString());
+  console.log('========================================');
 
   // Reset state - hide all panels
   elements.historyPlaceholder.style.display = 'none';
@@ -1033,31 +1065,62 @@ async function showHistoryPanel(address) {
   elements.historyAddress.title = address;
 
   try {
-    console.log('Fetching balance, positions and order history...');
+    console.log('[showHistoryPanel] Step 1: Starting data fetch...');
 
     // Fetch balance, positions and order history in parallel
     const [balance, positions, orders] = await Promise.all([
       fetchBalanceForAddress(address),
       fetchPositionsForAddress(address),
-      fetchTradeHistory(address, 200)
+      fetchTradeHistory(address, 200),
     ]);
 
-    console.log('Data fetched:', 'balance:', balance, positions.length, 'positions,', orders.length, 'orders');
+    console.log('[showHistoryPanel] Step 2: Data fetched successfully');
+    console.log('[showHistoryPanel] Step 2: Balance:', balance);
+    console.log('[showHistoryPanel] Step 2: Positions count:', positions.length);
+    console.log('[showHistoryPanel] Step 2: Orders count:', orders.length);
 
     // Hide loading, show content
     elements.historyLoading.style.display = 'none';
     elements.historyContent.style.display = 'block';
 
     // Render balance
+    console.log('[showHistoryPanel] Step 3: Rendering balance...');
     renderSelectedWalletBalance(balance);
 
     // Render positions
+    console.log('[showHistoryPanel] Step 3: Rendering positions...');
     renderSelectedWalletPositions(positions);
 
-    // Render orders
-    renderTradeHistoryTable(orders, elements.historyBody);
+    // Render orders in history panel
+    console.log(`[showHistoryPanel] Step 4: Rendering ${orders.length} orders in history panel`);
+    console.log(`[showHistoryPanel] Step 4: historyBody element:`, elements.historyBody);
+    console.log(`[showHistoryPanel] Step 4: historyBody exists:`, !!elements.historyBody);
 
-    console.log(`Displayed balance, ${positions.length} positions and ${orders.length} orders for ${address}`);
+    try {
+      renderTradeHistoryTable(orders, elements.historyBody);
+      console.log(`[showHistoryPanel] Step 4: History panel updated successfully`);
+    } catch (err) {
+      console.error(`[showHistoryPanel] Step 4: Error rendering history table:`, err);
+    }
+
+    // Also update the "Recent Orders" section at the bottom to show selected wallet's orders
+    console.log(`[showHistoryPanel] Step 5: Updating Recent Orders section`);
+    console.log(`[showHistoryPanel] - Total orders: ${orders.length}`);
+    console.log(`[showHistoryPanel] - Orders to display: ${Math.min(orders.length, 6)}`);
+    console.log(`[showHistoryPanel] - Target element:`, elements.ordersBody);
+    console.log(`[showHistoryPanel] - Element exists:`, !!elements.ordersBody);
+    console.log(`[showHistoryPanel] - Element ID should be:`, 'orders-body');
+
+    try {
+      renderTradeHistoryTable(orders.slice(0, 6), elements.ordersBody);
+      console.log(`[showHistoryPanel] Step 5: Recent Orders section updated successfully`);
+    } catch (err) {
+      console.error(`[showHistoryPanel] Step 5: Error rendering orders table:`, err);
+    }
+
+    console.log(
+      `[showHistoryPanel] ✅ Complete: Displayed balance, ${positions.length} positions and ${orders.length} orders for ${address}`
+    );
   } catch (error) {
     console.error('Error in showHistoryPanel:', error);
     // Show error
@@ -1068,33 +1131,73 @@ async function showHistoryPanel(address) {
 }
 
 /**
- * Fetch balance for a specific address
+ * Fetch balance for a specific address using Hyperliquid Direct API
+ * Works without API key - uses public API endpoint
  */
 async function fetchBalanceForAddress(address) {
   try {
-    // CCXT's fetchBalance works with user parameter (unlike fetchPositions)
-    // Need to create exchange instance with user's API key to query other wallets
-    const { userApiKey } = config;
-    if (!userApiKey) {
-      console.warn('No API key available, cannot fetch balance for monitored wallet');
-      return { total: 0, free: 0, used: 0, assets: {} };
-    }
+    console.log(`[fetchBalance] Querying balance for ${address}`);
 
-    const wallet = new ethers.Wallet(userApiKey);
-    const walletAddress = wallet.address;
-
-    const exchange = new ccxt.hyperliquid({
-      privateKey: userApiKey,
-      walletAddress: walletAddress,
+    // Use Hyperliquid direct API (same as positions)
+    const response = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'clearinghouseState',
+        user: address,
+      }),
     });
 
-    await exchange.loadMarkets();
-    const balance = await fetchWalletBalance(exchange, address);
-    await exchange.close();
+    if (!response.ok) {
+      throw new Error(`Hyperliquid API error: ${response.status}`);
+    }
 
+    const data = await response.json();
+    console.log(`[fetchBalance] Full API response:`, JSON.stringify(data, null, 2));
+
+    // Extract balance from marginSummary
+    const marginSummary = data.marginSummary || {};
+    console.log(`[fetchBalance] marginSummary:`, marginSummary);
+
+    // Hyperliquid balance structure:
+    // - accountValue: Account equity (raw USD + unrealized PnL)
+    // - totalMarginUsed: Margin currently locked in positions
+    // - totalRawUsd: Raw USD balance (collateral value before PnL)
+    // - withdrawable: Amount that can be withdrawn
+    // - totalNtlPos: Total notional position value
+    const accountValue = parseFloat(marginSummary.accountValue || 0);
+    const totalMarginUsed = parseFloat(marginSummary.totalMarginUsed || 0);
+    const totalRawUsd = parseFloat(marginSummary.totalRawUsd || 0);
+    const withdrawable = parseFloat(data.withdrawable || 0);
+
+    // Balance calculations for display:
+    // - Total: Raw USD balance (collateral before PnL) = totalRawUsd
+    // - Used: Margin locked in positions = totalMarginUsed
+    // - Available: Free margin for new positions = totalRawUsd - totalMarginUsed
+    const balance = {
+      total: totalRawUsd, // Raw collateral
+      used: totalMarginUsed, // Margin in use
+      free: totalRawUsd - totalMarginUsed, // Available margin
+      accountValue: accountValue, // Equity (with PnL)
+      withdrawable: withdrawable, // Withdrawable amount
+      assets: {
+        USDC: {
+          total: totalRawUsd,
+          used: totalMarginUsed,
+          free: totalRawUsd - totalMarginUsed,
+        },
+      },
+    };
+
+    console.log(`[fetchBalance] Calculated balance:`, balance);
+    console.log(`[fetchBalance] - Total (Raw USD): $${totalRawUsd.toFixed(2)}`);
+    console.log(`[fetchBalance] - Margin Used: $${totalMarginUsed.toFixed(2)}`);
+    console.log(`[fetchBalance] - Available: $${(totalRawUsd - totalMarginUsed).toFixed(2)}`);
+    console.log(`[fetchBalance] - Account Value (Equity): $${accountValue.toFixed(2)}`);
+    console.log(`[fetchBalance] - Withdrawable: $${withdrawable.toFixed(2)}`);
     return balance;
   } catch (error) {
-    console.error('Failed to fetch balance for address:', error);
+    console.error('[fetchBalance] Failed to fetch balance:', error);
     return { total: 0, free: 0, used: 0, assets: {} };
   }
 }
@@ -1126,7 +1229,8 @@ function renderSelectedWalletBalance(balance) {
   elements.selectedBalanceError.style.display = 'none';
 
   if (!balance || balance.total === 0) {
-    elements.selectedBalanceContent.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No balance information available</p>';
+    elements.selectedBalanceContent.innerHTML =
+      '<p style="text-align:center; padding:20px; color:#666;">No balance information available</p>';
     return;
   }
 
@@ -1162,12 +1266,13 @@ function renderSelectedWalletPositions(positions) {
   elements.selectedPositionsError.style.display = 'none';
 
   if (!positions || positions.length === 0) {
-    elements.selectedPositionsContent.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No open positions</p>';
+    elements.selectedPositionsContent.innerHTML =
+      '<p style="text-align:center; padding:20px; color:#666;">No open positions</p>';
     return;
   }
 
   // Calculate totals
-  const totalPositionValue = positions.reduce((sum, pos) => sum + (pos.size * pos.markPrice), 0);
+  const totalPositionValue = positions.reduce((sum, pos) => sum + pos.size * pos.markPrice, 0);
   const totalUnrealizedPnl = positions.reduce((sum, pos) => sum + pos.unrealizedPnl, 0);
 
   // Render summary card
@@ -1260,42 +1365,52 @@ function renderWalletsTable() {
   // Add row click event (similar to leaderboard selection)
   const rows = elements.walletsBody.querySelectorAll('tr');
   rows.forEach((row) => {
-    row.addEventListener('click', () => {
-      // Remove selected class from all wallet rows
-      rows.forEach((r) => r.classList.remove('selected'));
-      // Add selected class to clicked row
-      row.classList.add('selected');
+    row.addEventListener('click', async () => {
+      console.log('[WALLET CLICK] Event triggered!');
 
-      // Auto-fill trader address
-      const address = row.getAttribute('data-address');
-      console.log(`👆 Wallet selected: ${address}`);
+      try {
+        // Remove selected class from all wallet rows
+        rows.forEach((r) => r.classList.remove('selected'));
+        // Add selected class to clicked row
+        row.classList.add('selected');
 
-      elements.traderAddressInput.value = address;
-      config.traderAddress = address;
+        // Auto-fill trader address
+        const address = row.getAttribute('data-address');
+        console.log(`[WALLET CLICK] 👆 Wallet selected: ${address}`);
 
-      // Load wallet-specific copy balance (if exists)
-      const savedCopyBalance = localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(address));
-      if (savedCopyBalance) {
-        console.log(`📂 Loading saved copy balance for this wallet: $${savedCopyBalance}`);
-        elements.copyBalanceInput.value = savedCopyBalance;
-        config.copyBalance = parseFloat(savedCopyBalance);
-      } else {
-        console.log(`⚠️ No saved copy balance for this wallet, keeping current value: $${config.copyBalance}`);
+        elements.traderAddressInput.value = address;
+        config.traderAddress = address;
+
+        // Load wallet-specific copy balance (if exists)
+        const savedCopyBalance = localStorage.getItem(STORAGE_KEYS.getCopyBalanceKey(address));
+        if (savedCopyBalance) {
+          console.log(`📂 Loading saved copy balance for this wallet: $${savedCopyBalance}`);
+          elements.copyBalanceInput.value = savedCopyBalance;
+          config.copyBalance = parseFloat(savedCopyBalance);
+        } else {
+          console.log(
+            `⚠️ No saved copy balance for this wallet, keeping current value: $${config.copyBalance}`
+          );
+        }
+
+        // Trigger validation
+        const result = validateAddress(address);
+        displayValidationError('trader-address', result);
+        checkFormValidity();
+
+        // Save settings with wallet-specific configuration
+        if (result.valid) {
+          console.log(`📝 Auto-saving configuration for selected wallet`);
+          saveSettings();
+        }
+
+        // Load order history (same as leaderboard) - await to catch errors
+        console.log(`🔄 Loading history panel for ${address}...`);
+        await showHistoryPanel(address);
+      } catch (error) {
+        console.error('Error in wallet row click handler:', error);
+        alert(`Failed to load wallet data: ${error.message}`);
       }
-
-      // Trigger validation
-      const result = validateAddress(address);
-      displayValidationError('trader-address', result);
-      checkFormValidity();
-
-      // Save settings with wallet-specific configuration
-      if (result.valid) {
-        console.log(`📝 Auto-saving configuration for selected wallet`);
-        saveSettings();
-      }
-
-      // Load order history (same as leaderboard)
-      showHistoryPanel(address);
     });
   });
 }
@@ -1332,11 +1447,157 @@ async function refreshWalletInfo() {
 
     // Fetch your wallet info
     await fetchAndDisplayYourWallet(exchange);
-
   } catch (error) {
     console.error('Failed to refresh wallet info:', error);
     alert(`Failed to refresh wallet info: ${error.message}`);
   }
+}
+
+/**
+ * Load custom wallet by address input
+ * Query balance and positions without needing API key
+ */
+async function loadCustomWallet() {
+  console.log('Loading custom wallet...');
+
+  const address = elements.customWalletAddress.value.trim();
+
+  // Validate address format (basic Ethereum address check)
+  if (!address) {
+    alert('Please enter a wallet address');
+    return;
+  }
+
+  if (!address.match(/^0x[a-fA-F0-9]{40}$/)) {
+    alert('Invalid wallet address format. Must be 40 hex characters starting with 0x');
+    return;
+  }
+
+  try {
+    console.log(`Loading wallet data for ${address}...`);
+
+    // Load wallet data in history panel (balance + positions + orders)
+    await showHistoryPanel(address);
+
+    // Optionally auto-fill trader address input
+    elements.traderAddressInput.value = address;
+    config.traderAddress = address;
+
+    // Trigger validation
+    const result = validateAddress(address);
+    displayValidationError('trader-address', result);
+    checkFormValidity();
+
+    console.log(`Custom wallet ${address} loaded successfully`);
+  } catch (error) {
+    console.error('Failed to load custom wallet:', error);
+    alert(`Failed to load wallet: ${error.message}`);
+  }
+}
+
+/**
+ * Load wallet by address directly (for "My Wallet & Positions" section)
+ * Query balance and positions without needing API key
+ */
+async function loadMyWalletByAddress() {
+  console.log('Loading wallet by address...');
+
+  const address = elements.myWalletAddress.value.trim();
+
+  // Validate address format (basic Ethereum address check)
+  if (!address) {
+    alert('Please enter a wallet address');
+    return;
+  }
+
+  if (!address.match(/^0x[a-fA-F0-9]{40}$/)) {
+    alert('Invalid wallet address format. Must be 40 hex characters starting with 0x');
+    return;
+  }
+
+  try {
+    console.log(`Loading wallet data for ${address}...`);
+
+    // Show loading state
+    elements.yourWalletPlaceholder.style.display = 'none';
+    elements.yourWalletError.style.display = 'none';
+    elements.yourWalletContent.style.display = 'none';
+    elements.yourWalletLoading.style.display = 'block';
+
+    // Fetch balance and positions using direct API (no CCXT exchange needed)
+    const [balance, positions] = await Promise.all([
+      fetchBalanceForAddress(address),
+      fetchPositionsForAddress(address),
+    ]);
+
+    // Display in "My Wallet & Positions" section
+    displayYourWalletInfo(balance, positions);
+
+    console.log(`Wallet ${address} loaded successfully`);
+    console.log(`Balance:`, balance);
+    console.log(`Positions:`, positions);
+  } catch (error) {
+    console.error('Failed to load wallet by address:', error);
+
+    // Show error
+    elements.yourWalletPlaceholder.style.display = 'none';
+    elements.yourWalletLoading.style.display = 'none';
+    elements.yourWalletContent.style.display = 'none';
+    elements.yourWalletError.style.display = 'block';
+    elements.yourWalletError.textContent = `Failed to load wallet: ${error.message}`;
+  }
+}
+
+/**
+ * Display wallet info in "My Wallet & Positions" section
+ * @param {object} balance - Balance object
+ * @param {Array} positions - Positions array
+ */
+function displayYourWalletInfo(balance, positions) {
+  // Hide loading and errors
+  elements.yourWalletPlaceholder.style.display = 'none';
+  elements.yourWalletLoading.style.display = 'none';
+  elements.yourWalletError.style.display = 'none';
+
+  // Show content
+  elements.yourWalletContent.style.display = 'block';
+
+  // Update balance display (use direct values from balance object)
+  const free = balance?.free || 0;
+  const used = balance?.used || 0;
+  const total = balance?.total || 0;
+
+  // Calculate position value and unrealized PnL
+  let totalPositionValue = 0;
+  let totalUnrealizedPnl = 0;
+
+  if (positions && positions.length > 0) {
+    positions.forEach((pos) => {
+      totalPositionValue += Math.abs(pos.notional || 0);
+      totalUnrealizedPnl += pos.unrealizedPnl || 0;
+    });
+  }
+
+  // Update balance elements
+  elements.yourBalanceFree.textContent = `$${free.toFixed(2)}`;
+  elements.yourBalanceUsed.textContent = `$${used.toFixed(2)}`;
+  elements.yourBalanceTotal.textContent = `$${total.toFixed(2)}`;
+  elements.yourPositionValue.textContent = `$${totalPositionValue.toFixed(2)}`;
+
+  // Update unrealized PnL with color
+  const pnlElement = elements.yourUnrealizedPnl;
+  pnlElement.textContent = `$${totalUnrealizedPnl >= 0 ? '+' : ''}${totalUnrealizedPnl.toFixed(2)}`;
+  pnlElement.classList.remove('positive', 'negative');
+  if (totalUnrealizedPnl > 0) {
+    pnlElement.classList.add('positive');
+  } else if (totalUnrealizedPnl < 0) {
+    pnlElement.classList.add('negative');
+  }
+
+  // Render positions
+  renderPositions(positions, elements.yourPositionsBody);
+
+  console.log(`Displayed balance and ${positions?.length || 0} positions`);
 }
 
 /**
@@ -1387,7 +1648,8 @@ async function fetchAndDisplayYourWallet(exchange) {
  */
 function renderPositions(positions, container) {
   if (!positions || positions.length === 0) {
-    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No open positions</p>';
+    container.innerHTML =
+      '<p style="text-align:center; padding:20px; color:#666;">No open positions</p>';
     return;
   }
 
@@ -1452,9 +1714,10 @@ async function confirmCopyTradingSession(sessionConfig) {
   const cancelButton = document.getElementById('trade-confirm-cancel');
 
   // Mask API key (show first 6 and last 4 characters)
-  const maskedApiKey = sessionConfig.apiKey.length > 10
-    ? `${sessionConfig.apiKey.substring(0, 6)}...${sessionConfig.apiKey.substring(sessionConfig.apiKey.length - 4)}`
-    : '******';
+  const maskedApiKey =
+    sessionConfig.apiKey.length > 10
+      ? `${sessionConfig.apiKey.substring(0, 6)}...${sessionConfig.apiKey.substring(sessionConfig.apiKey.length - 4)}`
+      : '******';
 
   // Show loading state
   detailsDiv.innerHTML = `
@@ -1484,7 +1747,18 @@ async function confirmCopyTradingSession(sessionConfig) {
   // Build positions display HTML with calculation results
   let positionsHtml = '';
   if (positionCalculation && positionCalculation.positions.length > 0) {
-    const { positions, totalEstimatedCost, totalMarketValue, feasible, warnings, utilizationPercent, wasScaled, scalingFactor, originalTotalCost, originalTotalValue } = positionCalculation;
+    const {
+      positions,
+      totalEstimatedCost,
+      totalMarketValue,
+      feasible,
+      warnings,
+      utilizationPercent,
+      wasScaled,
+      scalingFactor,
+      originalTotalCost,
+      originalTotalValue,
+    } = positionCalculation;
 
     // Show scaling info if positions were scaled
     let scalingInfoHtml = '';
@@ -1507,13 +1781,14 @@ async function confirmCopyTradingSession(sessionConfig) {
     }
 
     // Build position table with comparison if scaled
-    const positionsTableHtml = positions.map((pos, index) => {
-      const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
-      const originalPos = traderPositions[index];
+    const positionsTableHtml = positions
+      .map((pos, index) => {
+        const sideColor = pos.side === 'long' ? '#2a9d5f' : '#d94848';
+        const originalPos = traderPositions[index];
 
-      if (wasScaled && originalPos) {
-        // Show comparison: Original → Scaled
-        return `
+        if (wasScaled && originalPos) {
+          // Show comparison: Original → Scaled
+          return `
           <tr style="border-bottom:1px solid #2a3550;">
             <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
             <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
@@ -1533,9 +1808,9 @@ async function confirmCopyTradingSession(sessionConfig) {
             </td>
           </tr>
         `;
-      } else {
-        // Show single row when not scaled
-        return `
+        } else {
+          // Show single row when not scaled
+          return `
           <tr style="border-bottom:1px solid #2a3550;">
             <td style="padding:8px; color:#e0e0e0; font-weight:600;">${pos.symbol}</td>
             <td style="padding:8px; color:${sideColor}; font-weight:600; text-transform:uppercase;">${pos.side}</td>
@@ -1546,8 +1821,9 @@ async function confirmCopyTradingSession(sessionConfig) {
             <td style="padding:8px; color:#4a9eff; font-weight:600;">$${pos.estimatedCost.toFixed(2)}</td>
           </tr>
         `;
-      }
-    }).join('');
+        }
+      })
+      .join('');
 
     // Total row
     const totalRowHtml = `
@@ -1571,7 +1847,7 @@ async function confirmCopyTradingSession(sessionConfig) {
       warningsHtml = `
         <div style="margin-top:10px; padding:10px; background-color:#3a1a1a; border-radius:4px; border-left:3px solid #ff4a4a;">
           <div style="color:#ff4a4a; font-weight:600; margin-bottom:5px;">⚠️ Warnings:</div>
-          ${warnings.map(warning => `<div style="color:#ffaa00; font-size:0.85em; margin-left:20px;">• ${warning}</div>`).join('')}
+          ${warnings.map((warning) => `<div style="color:#ffaa00; font-size:0.85em; margin-left:20px;">• ${warning}</div>`).join('')}
         </div>
       `;
     }
@@ -1647,7 +1923,7 @@ async function confirmCopyTradingSession(sessionConfig) {
       resolve({
         confirmed: true,
         scalingFactor: positionCalculation?.scalingFactor || 1.0,
-        initialPositions: positionCalculation?.positions || []
+        initialPositions: positionCalculation?.positions || [],
       });
     };
 
@@ -1657,7 +1933,7 @@ async function confirmCopyTradingSession(sessionConfig) {
       resolve({
         confirmed: false,
         scalingFactor: 1.0,
-        initialPositions: []
+        initialPositions: [],
       });
     };
 

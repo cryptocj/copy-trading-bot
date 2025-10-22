@@ -30,6 +30,32 @@
                     <p style="color:#888; font-size:14px; margin-bottom:10px;">
                         🔍 Pre-configured wallet addresses for monitoring. Click a wallet to view order history and auto-fill the trader address.
                     </p>
+
+                    <!-- Custom Address Input -->
+                    <div style="margin-bottom:20px; padding:15px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
+                        <label for="custom-wallet-address" style="display:block; margin-bottom:8px; color:#b0b0b0; font-weight:500;">
+                            📍 Query Custom Wallet Address
+                        </label>
+                        <div style="display:flex; gap:10px;">
+                            <input
+                                type="text"
+                                id="custom-wallet-address"
+                                placeholder="0x... (Enter any wallet address to query)"
+                                style="flex:1; padding:10px; background-color:#151b2e; border:1px solid #2a3550; border-radius:4px; color:#e0e0e0;"
+                            >
+                            <button
+                                id="load-custom-wallet-button"
+                                class="refresh-button"
+                                style="flex-shrink:0; white-space:nowrap;"
+                            >
+                                Load Wallet
+                            </button>
+                        </div>
+                        <small style="color:#888; display:block; margin-top:5px;">
+                            💡 Enter any Hyperliquid wallet address to view its positions and balance (no API key required)
+                        </small>
+                    </div>
+
                     <div class="table-container">
                         <table id="wallets-table">
                             <thead>
@@ -176,12 +202,37 @@
                 </button>
             </div>
 
+            <!-- Custom Wallet Address Input -->
+            <div style="margin-bottom:20px; padding:15px; background-color:#0f1420; border-radius:6px; border:1px solid #2a3550;">
+                <label for="my-wallet-address" style="display:block; margin-bottom:8px; color:#b0b0b0; font-weight:500;">
+                    📍 Query Wallet by Address
+                </label>
+                <div style="display:flex; gap:10px;">
+                    <input
+                        type="text"
+                        id="my-wallet-address"
+                        placeholder="0x... (Enter wallet address or use API key + Refresh)"
+                        style="flex:1; padding:10px; background-color:#151b2e; border:1px solid #2a3550; border-radius:4px; color:#e0e0e0;"
+                    >
+                    <button
+                        id="load-my-wallet-button"
+                        class="refresh-button"
+                        style="flex-shrink:0; white-space:nowrap;"
+                    >
+                        Load Wallet
+                    </button>
+                </div>
+                <small style="color:#888; display:block; margin-top:5px;">
+                    💡 Enter any wallet address to view balance & positions (no API key required)
+                </small>
+            </div>
+
             <div id="your-wallet-loading" style="display:none; text-align:center; padding:40px; color:#666;">
                 Loading...
             </div>
             <div id="your-wallet-error" class="error-message" style="display:none;"></div>
             <div id="your-wallet-placeholder" style="text-align:center; padding:40px; color:#666;">
-                Enter API key and click Refresh to view your wallet
+                Enter wallet address above or use API key + Refresh
             </div>
 
             <div id="your-wallet-content" style="display:none;">
