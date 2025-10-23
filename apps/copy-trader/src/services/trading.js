@@ -67,16 +67,32 @@ function getMarketInfo(exchange, symbol) {
         };
     }
 
-    // Use market precision, but ensure minimum sensible values for crypto
-    const amountPrecision = market.precision?.amount ?? 1;
-    const pricePrecision = market.precision?.price ?? 4;
+    // Convert precision to decimal places
+    // CCXT can return precision as either decimal places (e.g., 4) or tick size (e.g., 0.0001)
+    const convertPrecision = (value) => {
+        if (!value) return 1;
 
-    // Override if precision is 0 (whole numbers only) - this is likely wrong for crypto prices
+        // If precision is < 1, it's a tick size (e.g., 0.0001), convert to decimal places
+        if (value < 1) {
+            // Count decimal places: 0.0001 -> 4, 0.01 -> 2, 0.1 -> 1
+            const decimals = -Math.floor(Math.log10(value));
+            return Math.max(0, decimals);
+        }
+
+        // Otherwise it's already decimal places
+        return Math.round(value);
+    };
+
+    const amountPrecision = convertPrecision(market.precision?.amount);
+    const pricePrecision = convertPrecision(market.precision?.price);
+
+    // Override if precision is 0 (whole numbers only) - use sensible defaults for crypto
+    const finalAmountPrecision = amountPrecision === 0 ? 1 : amountPrecision;
     const finalPricePrecision = pricePrecision === 0 ? 4 : pricePrecision;
 
     return {
         precision: {
-            amount: amountPrecision,
+            amount: finalAmountPrecision,
             price: finalPricePrecision
         },
         limits: market.limits || { amount: { min: 1 }, price: { min: 0.0001 } },
