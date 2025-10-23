@@ -806,8 +806,8 @@ async function executeCopyTrade(trade) {
                 method: 'createLimitOrder',
                 symbol,
                 side,
-                scaledAmount,
-                price,
+                amount: roundedAmount,
+                price: roundedPrice,
                 leverage
             });
 
@@ -832,13 +832,13 @@ async function executeCopyTrade(trade) {
             });
         }
 
-        // Notify callback with order details (use scaled amount)
+        // Notify callback with order details (use rounded amount)
         if (onOrderExecuted) {
             onOrderExecuted({
                 symbol,
                 side,
-                amount: scaledAmount, // Use scaled amount for display
-                price,
+                amount: roundedAmount, // Use rounded amount for display
+                price: roundedPrice,
                 timestamp: Date.now()
             });
         }
