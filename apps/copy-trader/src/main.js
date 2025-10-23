@@ -391,7 +391,9 @@ async function startCopyTrading() {
       {
         ...config,
         scalingFactor: result.scalingFactor,
-        initialPositions: result.initialPositions,
+        initialPositions: result.initialPositions, // Pre-calculated positions from confirmation
+        traderOriginalPositions: result.traderOriginalPositions, // ALL trader positions (for counting)
+        traderFilteredPositions: result.traderFilteredPositions, // Filtered RAW positions (for recalculation)
       },
       (order) => {
         addOrder(elements, order); // Add order to display list (US4)

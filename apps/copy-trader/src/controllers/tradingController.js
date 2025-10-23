@@ -18,7 +18,7 @@ import { fetchPositionsForAddress } from '../rendering/wallet.js';
  * @param {string} sessionConfig.apiKey - User's API key
  * @param {Map} sessionConfig.latestPrices - Map of latest prices (optional)
  * @param {Set} sessionConfig.positionsToSkip - Set of symbols to skip (optional)
- * @returns {Promise<{confirmed: boolean, scalingFactor: number, initialPositions: array}>}
+ * @returns {Promise<{confirmed: boolean, scalingFactor: number, initialPositions: array, traderOriginalPositions: array, traderFilteredPositions: array}>}
  */
 export async function confirmCopyTradingSession(sessionConfig) {
   const modal = document.getElementById('trade-confirm-modal');
@@ -42,11 +42,16 @@ export async function confirmCopyTradingSession(sessionConfig) {
 
   // Fetch trader's current positions
   let traderPositions = [];
+  let traderOriginalPositions = []; // Store ALL original positions before filtering
+  let traderFilteredPositions = []; // Store filtered RAW positions (for recalculation)
   let positionCalculation = null;
 
   try {
     traderPositions = await fetchPositionsForAddress(sessionConfig.traderAddress);
     console.log('Trader positions loaded:', traderPositions);
+
+    // Store original positions before filtering (for proportional balance calculation)
+    traderOriginalPositions = [...traderPositions];
 
     // Filter out positions to skip (conflicting with user's existing positions)
     if (sessionConfig.positionsToSkip && sessionConfig.positionsToSkip.size > 0) {
@@ -55,6 +60,9 @@ export async function confirmCopyTradingSession(sessionConfig) {
       console.log(`⚠️ Filtered out ${beforeFilter - traderPositions.length} conflicting position(s)`);
       console.log(`Remaining positions to copy: ${traderPositions.length}`);
     }
+
+    // Store filtered RAW positions (for recalculation with actual balance in trading.js)
+    traderFilteredPositions = [...traderPositions];
 
     // Calculate what positions would be opened
     if (traderPositions.length > 0) {
@@ -84,6 +92,8 @@ export async function confirmCopyTradingSession(sessionConfig) {
         confirmed: true,
         scalingFactor: positionCalculation?.scalingFactor || 1.0,
         initialPositions: positionCalculation?.positions || [],
+        traderOriginalPositions: traderOriginalPositions, // ALL positions (for counting/proportional calc)
+        traderFilteredPositions: traderFilteredPositions, // Filtered RAW positions (for recalculation)
       });
     };
 
@@ -94,6 +104,8 @@ export async function confirmCopyTradingSession(sessionConfig) {
         confirmed: false,
         scalingFactor: 1.0,
         initialPositions: [],
+        traderOriginalPositions: [],
+        traderFilteredPositions: [],
       });
     };
 

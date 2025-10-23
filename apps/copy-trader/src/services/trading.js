@@ -17,11 +17,17 @@ import {
   claimSessionForCurrentTab
 } from './sessionPersistence.js';
 
-// Import position scaling helper
-import { scaleTrade } from '../utils/positionCalculator.js';
+// Import position scaling helpers
+import { calculateInitialPositions, scaleTradeWithMargin } from '../utils/positionCalculator.js';
 
 // Import price fetching utilities
 import { fetchLatestPrice, calculateOrderPrice } from './priceService.js';
+
+// Import balance fetching utility
+import { fetchBalanceForAddress } from '../rendering/wallet.js';
+
+// Import storage keys
+import { STORAGE_KEYS } from './storage.js';
 
 // Import monitoring status service
 import {
@@ -44,6 +50,50 @@ const DEFAULT_MAX_LEVERAGE = 10;
 
 // Dry-run mode flag (controlled by UI toggle)
 let DRY_RUN_MODE = true;
+
+/**
+ * Get market precision and limits for a symbol
+ * @param {object} exchange - CCXT exchange instance
+ * @param {string} symbol - Trading symbol (e.g., 'BTC/USD:USD')
+ * @returns {object} Market info with precision and limits
+ */
+function getMarketInfo(exchange, symbol) {
+    const market = exchange.markets[symbol];
+    if (!market) {
+        console.warn(`Market info not found for ${symbol}, using defaults`);
+        return {
+            precision: { amount: 1, price: 4 }, // Default: 1 decimal for amount, 4 for price
+            limits: { amount: { min: 1 }, price: { min: 0.0001 } }
+        };
+    }
+
+    // Use market precision, but ensure minimum sensible values for crypto
+    const amountPrecision = market.precision?.amount ?? 1;
+    const pricePrecision = market.precision?.price ?? 4;
+
+    // Override if precision is 0 (whole numbers only) - this is likely wrong for crypto prices
+    const finalPricePrecision = pricePrecision === 0 ? 4 : pricePrecision;
+
+    return {
+        precision: {
+            amount: amountPrecision,
+            price: finalPricePrecision
+        },
+        limits: market.limits || { amount: { min: 1 }, price: { min: 0.0001 } },
+        contractSize: market.contractSize || 1
+    };
+}
+
+/**
+ * Round amount to market precision
+ * @param {number} amount - Amount to round
+ * @param {number} precision - Decimal places
+ * @returns {number} Rounded amount
+ */
+function roundToTickSize(amount, precision) {
+    return parseFloat(amount.toFixed(precision));
+}
+
 
 /**
  * Set dry-run mode (controlled by UI toggle)
@@ -82,23 +132,38 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
     });
 
     try {
-        // Derive wallet address from private key
+        // Get user's wallet address from localStorage (the one they input in "My Wallet" section)
+        // This is the wallet with funds that we query balance from
+        const userWalletAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
+
+        if (!userWalletAddress) {
+            throw new Error('Please set your wallet address in "My Wallet" section first');
+        }
+
+        // Derive API key wallet address from private key (this is for executing trades/signing)
         // ethers.js is loaded via CDN and available as window.ethers
         const wallet = new ethers.Wallet(config.userApiKey);
-        const walletAddress = wallet.address;
-        console.log('Wallet address:', walletAddress);
+        const apiKeyWalletAddress = wallet.address;
+
+        console.log('User wallet address (for balance queries):', userWalletAddress);
+        console.log('API key wallet address (for trade execution):', apiKeyWalletAddress);
 
         // Initialize CCXT instances
-        // Hyperliquid uses Ethereum-style wallet authentication
+        // Hyperliquid uses Ethereum-style wallet authentication with API key wallet
         const monitorExchange = new ccxt.pro.hyperliquid({
             privateKey: config.userApiKey, // Ethereum wallet private key
-            walletAddress: walletAddress,   // Derived from private key
+            walletAddress: apiKeyWalletAddress, // API key wallet for trade execution
         });
 
         const executeExchange = new ccxt.hyperliquid({
             privateKey: config.userApiKey, // Ethereum wallet private key
-            walletAddress: walletAddress,   // Derived from private key
+            walletAddress: apiKeyWalletAddress, // API key wallet for trade execution
         });
+
+        // Load markets to get precision and limits info
+        console.log('Loading market data...');
+        await executeExchange.loadMarkets();
+        console.log('Markets loaded:', Object.keys(executeExchange.markets).length, 'symbols');
 
         // Initialize trade counter from resume state or start fresh (T010)
         tradeCounter = resumeState ? (resumeState.tradeCounter || 0) : 0;
@@ -106,10 +171,12 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
         const scalingFactor = resumeState ? (resumeState.scalingFactor || 1.0) : (config.scalingFactor || 1.0);
         const initialPositionsOpened = resumeState ? (resumeState.initialPositionsOpened || false) : false;
 
-        // Create session with scaling factor
+        // Create session with both wallet addresses
         session = {
             monitorExchange,
             executeExchange,
+            userWalletAddress, // User's wallet address for balance queries
+            apiKeyWalletAddress, // API key wallet for trade execution
             activationTimestamp: Date.now(), // Always use current time for filtering new trades
             leverageCache: new Map(), // symbol → leverage mapping
             scalingFactor: scalingFactor, // Store scaling factor from resume state or config
@@ -142,10 +209,89 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
         // Open initial positions if provided (copy trader's existing positions)
         // Skip if already opened in previous session (on refresh/resume)
         if (config.initialPositions && config.initialPositions.length > 0 && !initialPositionsOpened) {
+            console.log(`\n💰 Fetching actual available margin from user's wallet: ${session.userWalletAddress}`);
+
+            // Fetch balance directly using user's wallet address (the one with funds)
+            const balance = await fetchBalanceForAddress(session.userWalletAddress);
+            const freeMargin = balance.free; // Available margin (accountValue - totalMarginUsed)
+            const totalBalance = balance.total; // Total account value
+            const usedMargin = balance.used; // Margin locked in positions
+
+            console.log('📊 Balance fetched:', { totalBalance, usedMargin, freeMargin });
+
+            if (freeMargin <= 0) {
+                console.error(`❌ Insufficient margin available: $${freeMargin.toFixed(2)}`);
+                throw new Error(`No available margin to open positions. Free: $${freeMargin.toFixed(2)}, Used: $${usedMargin.toFixed(2)}`);
+            }
+
+            console.log(`\n📊 Balance comparison:`);
+            console.log(`  Configured copyBalance: $${config.copyBalance.toFixed(2)}`);
+            console.log(`  Actual free margin: $${freeMargin.toFixed(2)}`);
+            console.log(`  Total balance: $${totalBalance.toFixed(2)}`);
+            console.log(`  Used margin: $${usedMargin.toFixed(2)}`);
+
+            // Calculate proportional balance for missing positions
+            // If user has existing positions, we need to allocate balance proportionally
+            let effectiveBalance;
+
+            if (config.traderOriginalPositions && config.traderOriginalPositions.length > 0) {
+                const totalTraderPositions = config.traderOriginalPositions.length;
+                const missingPositions = config.initialPositions.length; // Positions we need to open
+                const existingPositions = totalTraderPositions - missingPositions;
+
+                if (existingPositions > 0) {
+                    // User has some positions already, calculate proportional allocation
+                    const proportionalBalance = (config.copyBalance * missingPositions) / totalTraderPositions;
+                    effectiveBalance = Math.min(proportionalBalance, freeMargin);
+
+                    console.log(`\n🔄 Proportional balance calculation:`);
+                    console.log(`  Total trader positions: ${totalTraderPositions}`);
+                    console.log(`  Your existing positions: ${existingPositions}`);
+                    console.log(`  Missing positions to open: ${missingPositions}`);
+                    console.log(`  Proportional allocation: $${proportionalBalance.toFixed(2)} (${(missingPositions / totalTraderPositions * 100).toFixed(1)}% of ${config.copyBalance.toFixed(2)})`);
+                    console.log(`  Effective balance (min of proportional and free): $${effectiveBalance.toFixed(2)}`);
+                } else {
+                    // No existing positions, use configured balance vs free margin
+                    effectiveBalance = Math.min(config.copyBalance, freeMargin);
+                    console.log(`  No existing positions - using min of configured and free margin: $${effectiveBalance.toFixed(2)}`);
+                }
+            } else {
+                // No trader original positions provided, fallback to simple comparison
+                effectiveBalance = Math.min(config.copyBalance, freeMargin);
+                console.log(`  No trader original positions - using min of configured and free margin: $${effectiveBalance.toFixed(2)}`);
+            }
+
+            // Recalculate scaling with effective balance
+            // Use traderFilteredPositions (filtered RAW positions) for recalculation
+            if (config.traderFilteredPositions && config.traderFilteredPositions.length > 0) {
+                console.log(`\n🔄 Re-calculating position scaling with effective balance...`);
+
+                // Recalculate using filtered RAW positions (not pre-calculated positions)
+                // This ensures we recalculate with the actual available balance
+                const recalcResult = calculateInitialPositions(config.traderFilteredPositions, effectiveBalance);
+
+                console.log(`\n📊 Re-scaling results:`, {
+                    originalScaling: `${(scalingFactor * 100).toFixed(1)}%`,
+                    newScaling: `${(recalcResult.scalingFactor * 100).toFixed(1)}%`,
+                    originalCost: config.initialPositions.reduce((sum, p) => sum + (p.size * p.entryPrice / p.leverage), 0).toFixed(2),
+                    recalculatedCost: recalcResult.totalEstimatedCost.toFixed(2),
+                    effectiveBalance: effectiveBalance.toFixed(2)
+                });
+
+                if (recalcResult.warnings.length > 0) {
+                    console.log('\n⚠️ Scaling warnings:');
+                    recalcResult.warnings.forEach(w => console.log(`  - ${w}`));
+                }
+
+                // Use recalculated positions
+                config.initialPositions = recalcResult.positions;
+                session.scalingFactor = recalcResult.scalingFactor;
+            }
+
             console.log(`\n📊 Opening ${config.initialPositions.length} initial positions...`);
             console.log(`📋 Trader's original positions (before scaling):`, config.traderOriginalPositions);
             console.log(`📐 Scaled positions to open:`, config.initialPositions);
-            console.log(`📊 Scaling factor: ${scalingFactor.toFixed(4)} (${(scalingFactor * 100).toFixed(1)}%)\n`);
+            console.log(`📊 Final scaling factor: ${session.scalingFactor.toFixed(4)} (${(session.scalingFactor * 100).toFixed(1)}%)\n`);
 
             const positionsOpened = await openInitialPositions(config.initialPositions);
 
@@ -246,6 +392,21 @@ async function openInitialPositions(positions) {
             const actualLeverage = leverageCache.get(symbol) || targetLeverage;
             console.log(`  ⚙️ Using ${actualLeverage}x leverage (cached: ${!!cachedLeverage}, matches trader: ${actualLeverage === leverage})`);
 
+            // Apply market precision to size and price
+            const marketInfo = getMarketInfo(executeExchange, symbol);
+            const roundedSize = roundToTickSize(size, marketInfo.precision.amount);
+            const roundedPrice = roundToTickSize(orderPrice, marketInfo.precision.price);
+
+            console.log(`  📏 Market precision applied:`, {
+                originalSize: size,
+                roundedSize,
+                sizePrecision: marketInfo.precision.amount,
+                originalPrice: orderPrice,
+                roundedPrice,
+                pricePrecision: marketInfo.precision.price,
+                minAmount: marketInfo.limits.amount.min
+            });
+
             if (DRY_RUN_MODE) {
                 // DRY RUN: Log what would be executed without placing order
                 console.log(`  🧪 DRY RUN: Would place order:`, {
@@ -287,8 +448,8 @@ async function openInitialPositions(positions) {
                 successCount++;
             } else {
                 // LIVE MODE: Place actual order
-                console.log(`  🚀 LIVE: Placing limit order at $${orderPrice.toFixed(4)}...`);
-                const order = await executeExchange.createLimitOrder(symbol, side, size, orderPrice);
+                console.log(`  🚀 LIVE: Placing limit order at $${roundedPrice.toFixed(4)}...`);
+                const order = await executeExchange.createLimitOrder(symbol, side, roundedSize, roundedPrice);
 
                 console.log(`  ✅ Order placed successfully:`, {
                     orderId: order.id,
@@ -555,19 +716,15 @@ async function executeCopyTrade(trade) {
         return;
     }
 
-    const { executeExchange, config, leverageCache, scalingFactor, onOrderExecuted } = session;
+    const { executeExchange, userWalletAddress, config, leverageCache, scalingFactor, onOrderExecuted } = session;
     const { symbol, side, price, amount } = trade;
 
     try {
-        // Apply scaling to trade amount (preserves trader's original precision)
-        const scaledAmount = scaleTrade(amount, scalingFactor);
-
         console.log(`\n📡 New trade detected from trader:`);
         console.log(`  Symbol: ${symbol}`);
         console.log(`  Side: ${side}`);
         console.log(`  Price: ${price}`);
         console.log(`  Original amount: ${amount.toFixed(4)}`);
-        console.log(`  Scaled amount:   ${scaledAmount.toFixed(4)} (${(scalingFactor * 100).toFixed(1)}%)`);
 
         // Set leverage if first time for this symbol (use default for live trades)
         if (!leverageCache.has(symbol)) {
@@ -576,8 +733,55 @@ async function executeCopyTrade(trade) {
 
         // Get leverage for this symbol (or default)
         const leverage = leverageCache.get(symbol) || DEFAULT_MAX_LEVERAGE;
-
         console.log(`  Leverage: ${leverage}x (cached: ${leverageCache.has(symbol)})`);
+
+        // Fetch current available margin before placing order
+        console.log(`  💰 Checking available margin for user's wallet: ${userWalletAddress}`);
+        const balance = await fetchBalanceForAddress(userWalletAddress);
+        const freeMargin = balance.free; // Available margin
+        const totalBalance = balance.total;
+        const usedMargin = balance.used;
+
+        // Use unified scaling function with margin check
+        const scalingResult = scaleTradeWithMargin({
+            amount,
+            price,
+            leverage,
+            freeMargin,
+            scalingFactor,
+            safetyBuffer: 0.8
+        });
+
+        console.log(`  📊 Scaling result:`, {
+            originalAmount: amount.toFixed(4),
+            scaledAmount: scalingResult.scaledAmount.toFixed(4),
+            finalAmount: scalingResult.finalAmount.toFixed(4),
+            scalingFactor: (scalingFactor * 100).toFixed(1) + '%',
+            marginRequired: scalingResult.marginRequired.toFixed(2),
+            marginAvailable: scalingResult.marginAvailable.toFixed(2),
+            freeMargin: freeMargin.toFixed(2),
+            usedMargin: usedMargin.toFixed(2),
+            totalBalance: totalBalance.toFixed(2),
+            wasAdjusted: scalingResult.wasAdjusted
+        });
+
+        if (scalingResult.wasAdjusted) {
+            console.log(`  ⚠️ Trade scaled down by ${(scalingResult.adjustmentFactor * 100).toFixed(1)}% due to insufficient margin`);
+        }
+
+        // Apply market precision to final amount and price
+        const marketInfo = getMarketInfo(executeExchange, symbol);
+        const roundedAmount = roundToTickSize(scalingResult.finalAmount, marketInfo.precision.amount);
+        const roundedPrice = roundToTickSize(price, marketInfo.precision.price);
+
+        console.log(`  📏 Market precision:`, {
+            originalAmount: scalingResult.finalAmount,
+            roundedAmount,
+            amountPrecision: marketInfo.precision.amount,
+            originalPrice: price,
+            roundedPrice,
+            pricePrecision: marketInfo.precision.price
+        });
 
         if (DRY_RUN_MODE) {
             // DRY RUN: Log what would be executed
@@ -598,7 +802,7 @@ async function executeCopyTrade(trade) {
             console.log(`  🚀 LIVE: Executing order with ${leverage}x leverage...`);
 
             // Execute limit order at trader's exact price with scaled amount
-            const order = await executeExchange.createLimitOrder(symbol, side, scaledAmount, price);
+            const order = await executeExchange.createLimitOrder(symbol, side, roundedAmount, roundedPrice);
 
             console.log('  ✅ Order executed successfully:', {
                 orderId: order.id,

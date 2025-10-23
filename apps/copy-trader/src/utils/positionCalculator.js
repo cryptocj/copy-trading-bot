@@ -232,6 +232,86 @@ export function scaleTrade(traderAmount, scalingFactor) {
 }
 
 /**
+ * Calculate scaled trade amount based on available margin
+ * Checks if sufficient margin is available and scales down if needed
+ *
+ * @param {{
+ *   amount: number,
+ *   price: number,
+ *   leverage: number,
+ *   freeMargin: number,
+ *   scalingFactor: number,
+ *   safetyBuffer: number
+ * }} params
+ * @returns {{
+ *   scaledAmount: number,
+ *   finalAmount: number,
+ *   marginRequired: number,
+ *   marginAvailable: number,
+ *   wasAdjusted: boolean,
+ *   adjustmentFactor: number
+ * }}
+ */
+export function scaleTradeWithMargin({
+  amount,
+  price,
+  leverage,
+  freeMargin,
+  scalingFactor = 1.0,
+  safetyBuffer = 0.8
+}) {
+  // Validate inputs
+  if (typeof amount !== 'number' || amount <= 0) {
+    throw new Error('amount must be a positive number');
+  }
+  if (typeof price !== 'number' || price <= 0) {
+    throw new Error('price must be a positive number');
+  }
+  if (typeof leverage !== 'number' || leverage <= 0) {
+    throw new Error('leverage must be a positive number');
+  }
+  if (typeof freeMargin !== 'number' || freeMargin < 0) {
+    throw new Error('freeMargin must be a non-negative number');
+  }
+  if (typeof scalingFactor !== 'number' || scalingFactor <= 0 || scalingFactor > 1) {
+    throw new Error('scalingFactor must be between 0 and 1');
+  }
+  if (typeof safetyBuffer !== 'number' || safetyBuffer <= 0 || safetyBuffer > 1) {
+    throw new Error('safetyBuffer must be between 0 and 1');
+  }
+
+  // Apply initial scaling factor
+  const scaledAmount = scaleTrade(amount, scalingFactor);
+
+  // Calculate margin requirements
+  const marketValue = scaledAmount * price;
+  const marginRequired = marketValue / leverage;
+  const marginAvailable = freeMargin * safetyBuffer;
+
+  // Check if additional adjustment needed
+  let finalAmount = scaledAmount;
+  let wasAdjusted = false;
+  let adjustmentFactor = 1.0;
+
+  if (marginRequired > marginAvailable) {
+    // Scale down to fit available margin
+    adjustmentFactor = marginAvailable / marginRequired;
+    const precision = getDecimalPrecision(scaledAmount);
+    finalAmount = roundToDecimals(scaledAmount * adjustmentFactor, precision);
+    wasAdjusted = true;
+  }
+
+  return {
+    scaledAmount, // Amount after initial scaling
+    finalAmount, // Final amount after margin adjustment
+    marginRequired, // Margin required for scaled amount
+    marginAvailable, // Available margin with safety buffer
+    wasAdjusted, // Whether margin adjustment was needed
+    adjustmentFactor // Adjustment factor applied (1.0 if no adjustment)
+  };
+}
+
+/**
  * Format position calculation result for display
  * Converts calculation result into human-readable strings
  *
