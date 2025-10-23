@@ -1,0 +1,296 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      }
+    ],
+    "name": "InvalidExpo",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "fee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidUpdateFee",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "feeder",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "requestId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "price",
+        "type": "uint128"
+      }
+    ],
+    "name": "PriceUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "requestId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "price",
+        "type": "uint128"
+      }
+    ],
+    "name": "RequestNotExist",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "requestId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "RequestPrice",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "maxDelayForTrading",
+        "type": "uint16"
+      }
+    ],
+    "name": "SetMaxDelayForTrading",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "requestId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "priceId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "reciprocalPrice",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          }
+        ],
+        "internalType": "struct IPriceFacade.PriceCallbackPythParam[]",
+        "name": "requests",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "batchRequestPriceCallback",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "requestId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          }
+        ],
+        "internalType": "struct IPriceFacade.PriceCallbackParam[]",
+        "name": "requests",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "batchRequestPriceCallbackV2",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getMaxDelayForTrading",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "getPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "getPriceForTrading",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "enum RequestType",
+        "name": "requestType",
+        "type": "uint8"
+      }
+    ],
+    "name": "requestPrice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint128",
+        "name": "price",
+        "type": "uint128"
+      }
+    ],
+    "name": "savePriceToCache",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "maxDelayForTrading",
+        "type": "uint16"
+      }
+    ],
+    "name": "setMaxDelayForTrading",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

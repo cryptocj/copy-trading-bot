@@ -1,0 +1,778 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      }
+    ],
+    "name": "InvalidExpo",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "weight",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "feeBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "taxBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "stable",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "dynamicFee",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "featureSwitches",
+        "type": "uint8"
+      }
+    ],
+    "name": "AddToken",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "tokenAddress",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16[]",
+        "name": "oldWeights",
+        "type": "uint16[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16[]",
+        "name": "newWeights",
+        "type": "uint16[]"
+      }
+    ],
+    "name": "ChangeWeight",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "CloseTradeRemoveLiquidity",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "CloseTradeRemoveLiquidity",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "RemoveToken",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "oldFeeBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "oldTaxBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "oldDynamicFee",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "feeBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "taxBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "dynamicFee",
+        "type": "bool"
+      }
+    ],
+    "name": "UpdateToken",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "featureSwitches",
+        "type": "uint8"
+      }
+    ],
+    "name": "UpdateTokenFeature",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint16",
+        "name": "feeBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "taxBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "internalType": "bool",
+        "name": "stable",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "dynamicFee",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "asMargin",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "asBet",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint16[]",
+        "name": "weights",
+        "type": "uint16[]"
+      }
+    ],
+    "name": "addToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16[]",
+        "name": "weights",
+        "type": "uint16[]"
+      }
+    ],
+    "name": "changeWeight",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "decrease",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "decreaseByCloseTrade",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "decimals",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct ITradingClose.SettleToken[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getTokenByAddress",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint16",
+            "name": "weight",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "taxBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "stable",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "dynamicFee",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "asMargin",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "asBet",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "decimals",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.Token",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getTokenForPrediction",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "switchOn",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "decimals",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.MarginToken",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getTokenForTrading",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "switchOn",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "decimals",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.MarginToken",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTokens",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint16",
+            "name": "weight",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "taxBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "stable",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "dynamicFee",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "asMargin",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "asBet",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "decimals",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.Token[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTotalValueUsd",
+    "outputs": [
+      {
+        "internalType": "int256",
+        "name": "",
+        "type": "int256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "increase",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "itemValue",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "int256",
+            "name": "value",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "decimals",
+            "type": "uint8"
+          },
+          {
+            "internalType": "int256",
+            "name": "valueUsd",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "targetWeight",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "taxBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "dynamicFee",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct LpItem",
+        "name": "lpItem",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "maxWithdrawAbleUsd",
+    "outputs": [
+      {
+        "internalType": "int256",
+        "name": "",
+        "type": "int256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint16[]",
+        "name": "weights",
+        "type": "uint16[]"
+      }
+    ],
+    "name": "removeToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalValue",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "int256",
+            "name": "value",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "decimals",
+            "type": "uint8"
+          },
+          {
+            "internalType": "int256",
+            "name": "valueUsd",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "targetWeight",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "taxBasisPoints",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "dynamicFee",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct LpItem[]",
+        "name": "lpItems",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint16",
+        "name": "feeBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "taxBasisPoints",
+        "type": "uint16"
+      },
+      {
+        "internalType": "bool",
+        "name": "dynamicFee",
+        "type": "bool"
+      }
+    ],
+    "name": "updateToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "asMargin",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "asBet",
+        "type": "bool"
+      }
+    ],
+    "name": "updateTokenFeature",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

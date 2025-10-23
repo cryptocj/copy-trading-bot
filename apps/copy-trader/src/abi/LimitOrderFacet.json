@@ -1,0 +1,946 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      }
+    ],
+    "name": "InvalidExpo",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "fee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidUpdateFee",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "CancelLimitOrder",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "CancelLimitOrder",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      }
+    ],
+    "name": "ExecuteLimitOrderRejected",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      }
+    ],
+    "name": "ExecuteLimitOrderRejected",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ExecuteLimitOrderSuccessful",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ExecuteLimitOrderSuccessful",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      }
+    ],
+    "name": "LimitOrderRefund",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      }
+    ],
+    "name": "LimitOrderRefund",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "OpenLimitOrder",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "OpenLimitOrder",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldSl",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "sl",
+        "type": "uint256"
+      }
+    ],
+    "name": "UpdateOrderSl",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldTp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tp",
+        "type": "uint256"
+      }
+    ],
+    "name": "UpdateOrderTp",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "orderHashes",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "batchCancelLimitOrders",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "cancelLimitOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "hash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "priceId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "reciprocalPrice",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          }
+        ],
+        "internalType": "struct ILimitOrder.KeeperExecutionWithPyth[]",
+        "name": "executeOrders",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "executeLimitOrder",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "hash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          }
+        ],
+        "internalType": "struct ILimitOrder.LimitOrderExecutionParam[]",
+        "name": "executeOrders",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "executeLimitOrderV2",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getLimitOrderByHash",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "orderHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "pair",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "limitPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          }
+        ],
+        "internalType": "struct ILimitOrder.LimitOrderView",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "pairBase",
+        "type": "address"
+      }
+    ],
+    "name": "getLimitOrders",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "orderHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "pair",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "limitPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          }
+        ],
+        "internalType": "struct ILimitOrder.LimitOrderView[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "openLimitOrder",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "openLimitOrderETH",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "openLimitOrderWithPyth",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint128",
+        "name": "stopLoss",
+        "type": "uint128"
+      }
+    ],
+    "name": "updateOrderSl",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint128",
+        "name": "takeProfit",
+        "type": "uint128"
+      }
+    ],
+    "name": "updateOrderTp",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint128",
+        "name": "takeProfit",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "stopLoss",
+        "type": "uint128"
+      }
+    ],
+    "name": "updateOrderTpAndSl",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

@@ -1,0 +1,643 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      }
+    ],
+    "name": "InvalidExpo",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "priceId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "publishTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      }
+    ],
+    "name": "InvalidHistoryPrice",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "fee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidUpdateFee",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum IPredictUpDown.PredictionRefund",
+        "name": "refund",
+        "type": "uint8"
+      }
+    ],
+    "name": "PendingPredictionRefund",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "betAmount",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "predictionPairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "betAmountUsd",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenPredictIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint32",
+            "name": "startTime",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isUp",
+            "type": "bool"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct OpenPrediction",
+        "name": "op",
+        "type": "tuple"
+      }
+    ],
+    "name": "PredictAndBet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "predictionPairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isUp",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "blockNumber",
+            "type": "uint128"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct PendingPrediction",
+        "name": "pp",
+        "type": "tuple"
+      }
+    ],
+    "name": "PredictAndBetPending",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "correctTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "SettlePredictionReject",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "win",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "endPrice",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "profitOrLoss",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "closeFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "SettlePredictionSuccessful",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPredictionById",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "betAmount",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "predictionPairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint32",
+            "name": "startTime",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bool",
+            "name": "isUp",
+            "type": "bool"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct IPredictUpDown.PredictionView",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "predictionPairBase",
+        "type": "address"
+      },
+      {
+        "internalType": "enum Period[]",
+        "name": "periods",
+        "type": "uint8[]"
+      }
+    ],
+    "name": "getPredictionMarket",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint96",
+            "name": "upUsd",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "downUsd",
+            "type": "uint96"
+          }
+        ],
+        "internalType": "struct PredictionMarket[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "predictionPairBase",
+        "type": "address"
+      }
+    ],
+    "name": "getPredictions",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "betAmount",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "predictionPairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint32",
+            "name": "startTime",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bool",
+            "name": "isUp",
+            "type": "bool"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct IPredictUpDown.PredictionView[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "predictionPairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isUp",
+            "type": "bool"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IPredictUpDown.PredictionInput",
+        "name": "pi",
+        "type": "tuple"
+      }
+    ],
+    "name": "predictAndBet",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "predictionPairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isUp",
+            "type": "bool"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IPredictUpDown.PredictionInput",
+        "name": "pi",
+        "type": "tuple"
+      }
+    ],
+    "name": "predictAndBetETH",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "id",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "predictionCallback",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "priceId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "publishTime",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct IPredictUpDown.SettlePredictionWithPyth[]",
+        "name": "params",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "settlePredictions",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]

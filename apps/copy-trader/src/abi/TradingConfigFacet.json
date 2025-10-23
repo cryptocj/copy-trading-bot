@@ -1,0 +1,657 @@
+[
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      }
+    ],
+    "name": "SetExecutionFeeReceiver",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldExecutionFeeUsd",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "executionFeeUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "SetExecutionFeeUsd",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldExecutionFeeUsd",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "executionFeeUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "SetExecutionFeeUsd",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "enum IPairsManager.PairType",
+        "name": "pairType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxLeverageForMarketOff",
+        "type": "uint256"
+      }
+    ],
+    "name": "SetMaxLeverageForMarketOff",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "enum IPairsManager.PairType",
+        "name": "pairType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxLeverageForMarketOff",
+        "type": "uint256"
+      }
+    ],
+    "name": "SetMaxLeverageForMarketOff",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "oldMaxTakeProfitP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "maxTakeProfitP",
+        "type": "uint24"
+      }
+    ],
+    "name": "SetMaxTakeProfitP",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "oldMaxTakeProfitP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "maxTakeProfitP",
+        "type": "uint24"
+      }
+    ],
+    "name": "SetMaxTakeProfitP",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "pairBase",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint16",
+            "name": "leverage",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint24",
+            "name": "maxTakeProfitP",
+            "type": "uint24"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct MaxTpRatioForLeverage[]",
+        "name": "maxTpRatios",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "SetMaxTpRatioForLeverage",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "pairBase",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint16",
+            "name": "leverage",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint24",
+            "name": "maxTakeProfitP",
+            "type": "uint24"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct MaxTpRatioForLeverage[]",
+        "name": "maxTpRatios",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "SetMaxTpRatioForLeverage",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldMinBetUsd",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "minBetUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "SetMinBetUsd",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldMinNotionalUsd",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "minNotionalUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "SetMinNotionalUsd",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "oldMinNotionalUsd",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "minNotionalUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "SetMinNotionalUsd",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "oldTradeSwitches",
+        "type": "uint16"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "tradeSwitches",
+        "type": "uint16"
+      }
+    ],
+    "name": "SetTradeSwitches",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "oldTradeSwitches",
+        "type": "uint16"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "tradeSwitches",
+        "type": "uint16"
+      }
+    ],
+    "name": "SetTradeSwitches",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "executionFeeReceiver",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IPairsManager.PairType",
+        "name": "pairType",
+        "type": "uint8"
+      }
+    ],
+    "name": "getMaxLeverageForMarketOff",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "pairBase",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "leverage_10000",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPairMaxTpRatio",
+    "outputs": [
+      {
+        "internalType": "uint24",
+        "name": "",
+        "type": "uint24"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "pairBase",
+        "type": "address"
+      }
+    ],
+    "name": "getPairMaxTpRatios",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint16",
+            "name": "leverage",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint24",
+            "name": "maxTakeProfitP",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct MaxTpRatioForLeverage[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPredictionConfig",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "minBetUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "predictionBet",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "predictionSettle",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ITradingConfig.PredictionConfig",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTradingConfig",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "executionFeeUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minNotionalUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint24",
+            "name": "maxTakeProfitP",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "limitOrder",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "executeLimitOrder",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "marketTrading",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "userCloseTrading",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "tpSlCloseTrading",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "liquidateTrading",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ITradingConfig.TradingConfig",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "executionFeeUsd",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minNotionalUsd",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint24",
+        "name": "maxTakeProfitP",
+        "type": "uint24"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minBetUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "initTradingConfigFacet",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      }
+    ],
+    "name": "setExecutionFeeReceiver",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "executionFeeUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "setExecutionFeeUsd",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IPairsManager.PairType",
+        "name": "pairType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxLeverageForMarketOff",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMaxLeverageForMarketOff",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint24",
+        "name": "maxTakeProfitP",
+        "type": "uint24"
+      }
+    ],
+    "name": "setMaxTakeProfitP",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "pairBase",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint16",
+            "name": "leverage",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint24",
+            "name": "maxTakeProfitP",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct MaxTpRatioForLeverage[]",
+        "name": "maxTpRatios",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "setMaxTpRatioForLeverage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "minBetUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMinBetUsd",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "minNotionalUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMinNotionalUsd",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "limitOrder",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "executeLimitOrder",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "marketTrade",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "userCloseTrade",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "tpSlCloseTrade",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "liquidateTradeSwitch",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "predictBet",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "predictSettle",
+        "type": "bool"
+      }
+    ],
+    "name": "setTradingSwitches",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

@@ -1,0 +1,170 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "closePrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "int96",
+            "name": "fundingFee",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "closeFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int96",
+            "name": "pnl",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "holdingFee",
+            "type": "uint96"
+          }
+        ],
+        "internalType": "struct CloseInfo",
+        "name": "info",
+        "type": "tuple"
+      }
+    ],
+    "name": "afterClose",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenTradeIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint40",
+            "name": "holdingFeeRate",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "margin",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "executionFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int256",
+            "name": "longAccFundingFeePerShare",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "openBlock",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ITrading.OpenTrade",
+        "name": "ot",
+        "type": "tuple"
+      }
+    ],
+    "name": "afterMarketExecuted",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      }
+    ],
+    "name": "afterMarketRefund",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

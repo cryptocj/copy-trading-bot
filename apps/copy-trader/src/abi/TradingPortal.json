@@ -1,0 +1,183 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "openMarketTradeWithPyth",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "closePrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "pythUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "closeMarketTradeWithPyth",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getPendingTrade",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint8",
+            "name": "broker",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "pairBase",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amountIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "qty",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "stopLoss",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "takeProfit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "blockNumber",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IPendingTrade.PendingTrade",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

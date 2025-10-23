@@ -1,0 +1,509 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
+      }
+    ],
+    "name": "ExistentPartner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      }
+    ],
+    "name": "NonexistentPartner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "gasCost",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "callbackReceiver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint24",
+            "name": "partnerIndex",
+            "type": "uint24"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct LibHookManager.Partner",
+        "name": "partner",
+        "type": "tuple"
+      }
+    ],
+    "name": "AddPartner",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "callbackReceiver",
+        "type": "address"
+      }
+    ],
+    "name": "UpdatePartnerCallbackReceiver",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "name": "UpdatePartnerName",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
+      }
+    ],
+    "name": "UpdatePartnerUrl",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "callbackReceiver",
+        "type": "address"
+      }
+    ],
+    "name": "addPartner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "closePrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "int96",
+            "name": "fundingFee",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "closeFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int96",
+            "name": "pnl",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "holdingFee",
+            "type": "uint96"
+          }
+        ],
+        "internalType": "struct CloseInfo",
+        "name": "info",
+        "type": "tuple"
+      }
+    ],
+    "name": "afterClose",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenTradeIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint40",
+            "name": "holdingFeeRate",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "margin",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "executionFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int256",
+            "name": "longAccFundingFeePerShare",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "openBlock",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ITrading.OpenTrade",
+        "name": "ot",
+        "type": "tuple"
+      }
+    ],
+    "name": "afterMarketExecuted",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      }
+    ],
+    "name": "afterMarketRefund",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getPartnerByAddress",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "blockNumber",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "callbackReceiver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "gasCost",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct PartnerInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "start",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "length",
+        "type": "uint8"
+      }
+    ],
+    "name": "partners",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "blockNumber",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "callbackReceiver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "gasCost",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct PartnerInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "callbackReceiver",
+        "type": "address"
+      }
+    ],
+    "name": "updatePartnerCallbackReceiver",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "name": "updatePartnerName",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
+      }
+    ],
+    "name": "updatePartnerUrl",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

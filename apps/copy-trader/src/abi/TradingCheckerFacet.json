@@ -1,0 +1,950 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenTradeIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint40",
+            "name": "holdingFeeRate",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "margin",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "executionFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int256",
+            "name": "longAccFundingFeePerShare",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "openBlock",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ITrading.OpenTrade",
+        "name": "ot",
+        "type": "tuple"
+      }
+    ],
+    "name": "availableTakeProfit",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "takeProfit",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "isLong",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "stopLoss",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "entryPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "checkSl",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      }
+    ],
+    "name": "executeCloseBinaryOptionsCheck",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "needClose",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenTradeIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint40",
+            "name": "holdingFeeRate",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "margin",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "executionFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int256",
+            "name": "longAccFundingFeePerShare",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "openBlock",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ITrading.OpenTrade",
+        "name": "ot",
+        "type": "tuple"
+      }
+    ],
+    "name": "executeHighLeverageCheck",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "needClose",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "limitPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenOrderIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          }
+        ],
+        "internalType": "struct LimitOrder",
+        "name": "order",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "marketPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "executeLimitOrderCheck",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "successful",
+        "type": "bool"
+      },
+      {
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenTradeIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint40",
+            "name": "holdingFeeRate",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "margin",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "executionFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int256",
+            "name": "longAccFundingFeePerShare",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "openBlock",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ITrading.OpenTrade",
+        "name": "ot",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "marketPrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "closePrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "executeLiquidateCheck",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "needLiq",
+        "type": "bool"
+      },
+      {
+        "internalType": "int256",
+        "name": "pnl",
+        "type": "int256"
+      },
+      {
+        "internalType": "int256",
+        "name": "fundingFee",
+        "type": "int256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "closeFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "holdingFee",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenTradeIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint40",
+            "name": "holdingFeeRate",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "margin",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "executionFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int256",
+            "name": "longAccFundingFeePerShare",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "openBlock",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ITrading.OpenTrade",
+        "name": "ot",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint128",
+        "name": "marketPrice",
+        "type": "uint128"
+      }
+    ],
+    "name": "executeSLCheck",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "needClose",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "uint32",
+            "name": "userOpenTradeIndex",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint40",
+            "name": "holdingFeeRate",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint128",
+            "name": "entryPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "margin",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "openFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "executionFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int256",
+            "name": "longAccFundingFeePerShare",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "openBlock",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ITrading.OpenTrade",
+        "name": "ot",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint128",
+        "name": "marketPrice",
+        "type": "uint128"
+      }
+    ],
+    "name": "executeTPCheck",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "needClose",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "price",
+        "type": "uint128"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "priceId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "executeTradePriceCheck",
+    "outputs": [],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "user",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "blockNumber",
+            "type": "uint128"
+          }
+        ],
+        "internalType": "struct ITrading.PendingTrade",
+        "name": "pt",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "marketPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "marketTradeCallbackCheck",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "successful",
+        "type": "bool"
+      },
+      {
+        "internalType": "enum ITradingChecker.Refund",
+        "name": "refund",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "openLimitOrderCheck",
+    "outputs": [],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "pairBase",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isLong",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenIn",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "amountIn",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint128",
+            "name": "qty",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "stopLoss",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takeProfit",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint24",
+            "name": "broker",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct IBook.OpenDataInput",
+        "name": "data",
+        "type": "tuple"
+      }
+    ],
+    "name": "openMarketTradeCheck",
+    "outputs": [],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

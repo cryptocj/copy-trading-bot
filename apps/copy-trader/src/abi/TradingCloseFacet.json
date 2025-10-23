@@ -1,0 +1,339 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "int64",
+        "name": "price",
+        "type": "int64"
+      },
+      {
+        "internalType": "int32",
+        "name": "expo",
+        "type": "int32"
+      }
+    ],
+    "name": "InvalidExpo",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "fee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidUpdateFee",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "CloseTradeAddLiquidity",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "CloseTradeReceived",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "closePrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "int96",
+            "name": "fundingFee",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "closeFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int96",
+            "name": "pnl",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "holdingFee",
+            "type": "uint96"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct CloseInfo",
+        "name": "closeInfo",
+        "type": "tuple"
+      }
+    ],
+    "name": "CloseTradeSuccessful",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum ITradingClose.ExecutionType",
+        "name": "executionType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "execPrice",
+        "type": "uint128"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "marketPrice",
+        "type": "uint128"
+      }
+    ],
+    "name": "ExecuteCloseRejected",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum ITradingClose.ExecutionType",
+        "name": "executionType",
+        "type": "uint8"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "closePrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "int96",
+            "name": "fundingFee",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "closeFee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "int96",
+            "name": "pnl",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "holdingFee",
+            "type": "uint96"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct CloseInfo",
+        "name": "closeInfo",
+        "type": "tuple"
+      }
+    ],
+    "name": "ExecuteCloseSuccessful",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tradeHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "upperPrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lowerPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "closeTradeCallback",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "tradeHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum ITradingClose.ExecutionType",
+            "name": "executionType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "priceId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "reciprocalPrice",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          }
+        ],
+        "internalType": "struct ITradingClose.TpSlOrLiqWithPyth[]",
+        "name": "arr",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "executeTpSlOrLiq",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "tradeHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum ITradingClose.ExecutionType",
+            "name": "executionType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint128",
+            "name": "price",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint32",
+            "name": "timestamp",
+            "type": "uint32"
+          }
+        ],
+        "internalType": "struct ITradingClose.TpSlOrLiqExecutionParam[]",
+        "name": "arr",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "priceUpdateData",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "executeTpSlOrLiqV2",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]

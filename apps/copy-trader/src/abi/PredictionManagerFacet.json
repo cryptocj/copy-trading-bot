@@ -1,0 +1,1183 @@
+[
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "AddPeriodForPredictionPair",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "AddPeriodForPredictionPair",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "AddPredictionPair",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "AddPredictionPair",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      }
+    ],
+    "name": "RemovePredictionPair",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      }
+    ],
+    "name": "RemovePredictionPair",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "ReplacePredictionPairPeriod",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "ReplacePredictionPairPeriod",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "winCloseFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "loseCloseFeeP",
+        "type": "uint16"
+      }
+    ],
+    "name": "UpdatePredictionPairPeriodFee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "winCloseFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "loseCloseFeeP",
+        "type": "uint16"
+      }
+    ],
+    "name": "UpdatePredictionPairPeriodFee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxUpUsd",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxDownUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "UpdatePredictionPairPeriodMaxCap",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxUpUsd",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxDownUsd",
+        "type": "uint256"
+      }
+    ],
+    "name": "UpdatePredictionPairPeriodMaxCap",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "winRatio",
+        "type": "uint16"
+      }
+    ],
+    "name": "UpdatePredictionPairPeriodWinRatio",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "winRatio",
+        "type": "uint16"
+      }
+    ],
+    "name": "UpdatePredictionPairPeriodWinRatio",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum PredictionPairStatus",
+        "name": "status",
+        "type": "uint8"
+      }
+    ],
+    "name": "UpdatePredictionPairStatus",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum PredictionPairStatus",
+        "name": "status",
+        "type": "uint8"
+      }
+    ],
+    "name": "UpdatePredictionPairStatus",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "addPeriodForPredictionPair",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "addPredictionPair",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      }
+    ],
+    "name": "getPredictionPairByBase",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "base",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "maxUpUsd",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxDownUsd",
+                "type": "uint256"
+              },
+              {
+                "internalType": "enum Period",
+                "name": "period",
+                "type": "uint8"
+              },
+              {
+                "internalType": "enum PredictionPairStatus",
+                "name": "status",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint16",
+                "name": "winRatio",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "openFeeP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "winCloseFeeP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "loseCloseFeeP",
+                "type": "uint16"
+              }
+            ],
+            "internalType": "struct PredictionPeriod[]",
+            "name": "predictionPeriods",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct IPredictionManager.PredictionPairView",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "internalType": "enum Period",
+        "name": "period",
+        "type": "uint8"
+      }
+    ],
+    "name": "getPredictionPeriod",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct PredictionPeriod",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "start",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "size",
+        "type": "uint8"
+      }
+    ],
+    "name": "predictionPairs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "base",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "maxUpUsd",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxDownUsd",
+                "type": "uint256"
+              },
+              {
+                "internalType": "enum Period",
+                "name": "period",
+                "type": "uint8"
+              },
+              {
+                "internalType": "enum PredictionPairStatus",
+                "name": "status",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint16",
+                "name": "winRatio",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "openFeeP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "winCloseFeeP",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "loseCloseFeeP",
+                "type": "uint16"
+              }
+            ],
+            "internalType": "struct PredictionPeriod[]",
+            "name": "predictionPeriods",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct IPredictionManager.PredictionPairView[]",
+        "name": "predictPairViews",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      }
+    ],
+    "name": "removePredictionPair",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum PredictionPairStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct PredictionPeriod[]",
+        "name": "predictionPeriods",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "replacePredictionPairPeriod",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winCloseFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "loseCloseFeeP",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct IPredictionManager.PeriodFee[]",
+        "name": "periodFees",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "updatePredictionPairFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxUpUsd",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxDownUsd",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IPredictionManager.PeriodCap[]",
+        "name": "periodCaps",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "updatePredictionPairMaxCap",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "internalType": "enum PredictionPairStatus",
+        "name": "status",
+        "type": "uint8"
+      }
+    ],
+    "name": "updatePredictionPairStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "base",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum Period",
+            "name": "period",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "winRatio",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct IPredictionManager.PeriodWinRatio[]",
+        "name": "periodWinRatios",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "updatePredictionPairWinRatio",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

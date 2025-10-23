@@ -1,0 +1,884 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "closeFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "shareP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "minCloseFeeP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "name": "AddFeeConfig",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "closeFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "shareP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "minCloseFeeP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "name": "AddFeeConfig",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalFee",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "daoAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "brokerId",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "brokerAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "mlpPoolAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "CloseFee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalFee",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "daoAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "brokerId",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "brokerAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "mlpPoolAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "OpenFee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalFee",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "daoAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "brokerId",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "brokerAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "mlpPoolAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "PredictionCloseFee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalFee",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "daoAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "brokerId",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "brokerAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "mlpPoolAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "PredictionOpenFee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      }
+    ],
+    "name": "RemoveFeeConfig",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      }
+    ],
+    "name": "RemoveFeeConfig",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "oldDaoRepurchase",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "daoRepurchase",
+        "type": "address"
+      }
+    ],
+    "name": "SetDaoRepurchase",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "oldDaoRepurchase",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "daoRepurchase",
+        "type": "address"
+      }
+    ],
+    "name": "SetDaoRepurchase",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "oldRevenueAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "revenueAddress",
+        "type": "address"
+      }
+    ],
+    "name": "SetRevenueAddress",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "oldRevenueAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "revenueAddress",
+        "type": "address"
+      }
+    ],
+    "name": "SetRevenueAddress",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "closeFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "shareP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "minCloseFeeP",
+        "type": "uint24"
+      }
+    ],
+    "name": "UpdateFeeConfig",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "closeFeeP",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "shareP",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "minCloseFeeP",
+        "type": "uint24"
+      }
+    ],
+    "name": "UpdateFeeConfig",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "WithdrawRevenue",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "closeFeeP",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint24",
+        "name": "shareP",
+        "type": "uint24"
+      },
+      {
+        "internalType": "uint24",
+        "name": "minCloseFeeP",
+        "type": "uint24"
+      }
+    ],
+    "name": "addFeeConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "closeFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint24",
+        "name": "broker",
+        "type": "uint24"
+      }
+    ],
+    "name": "chargeCloseFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "openFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint24",
+        "name": "broker",
+        "type": "uint24"
+      }
+    ],
+    "name": "chargeOpenFee",
+    "outputs": [
+      {
+        "internalType": "uint24",
+        "name": "",
+        "type": "uint24"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "closeFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint24",
+        "name": "broker",
+        "type": "uint24"
+      }
+    ],
+    "name": "chargePredictionCloseFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "openFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint24",
+        "name": "broker",
+        "type": "uint24"
+      }
+    ],
+    "name": "chargePredictionOpenFee",
+    "outputs": [
+      {
+        "internalType": "uint24",
+        "name": "",
+        "type": "uint24"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "feeAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "daoRepurchase",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "revenueAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      }
+    ],
+    "name": "getFeeConfigByIndex",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint16",
+            "name": "index",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "openFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "closeFeeP",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "enable",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint24",
+            "name": "shareP",
+            "type": "uint24"
+          },
+          {
+            "internalType": "uint24",
+            "name": "minCloseFeeP",
+            "type": "uint24"
+          }
+        ],
+        "internalType": "struct LibFeeManager.FeeConfig",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "base",
+            "type": "address"
+          },
+          {
+            "internalType": "enum IPairsManager.PairType",
+            "name": "pairType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "enum IPairsManager.PairStatus",
+            "name": "status",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct IPairsManager.PairSimple[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "getFeeDetails",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "total",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "daoAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "brokerAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "mlpPoolAmount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IFeeManager.FeeDetail[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "daoRepurchase",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "revenueAddress",
+        "type": "address"
+      }
+    ],
+    "name": "initFeeManagerFacet",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      }
+    ],
+    "name": "removeFeeConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "revenues",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "total",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pending",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct CommissionInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "daoRepurchase",
+        "type": "address"
+      }
+    ],
+    "name": "setDaoRepurchase",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "revenueAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setRevenueAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "index",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "openFeeP",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint16",
+        "name": "closeFeeP",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint24",
+        "name": "shareP",
+        "type": "uint24"
+      },
+      {
+        "internalType": "uint24",
+        "name": "minCloseFeeP",
+        "type": "uint24"
+      }
+    ],
+    "name": "updateFeeConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "withdrawRevenue",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
