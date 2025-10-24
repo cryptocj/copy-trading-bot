@@ -36,6 +36,7 @@ import { initializeElements } from './dom/elements.js';
 import {
   setupValidationListeners as setupValidation,
   checkFormValidity as checkValidity,
+  initializeDryRunMode,
 } from './validation/formValidation.js';
 import {
   renderWalletsTable,
@@ -97,6 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load saved settings from localStorage
   loadSavedSettings(elements, config, checkFormValidity, () => refreshWalletInfo(elements, isCopyTradingActive));
+
+  // Initialize dry run mode after settings are loaded (to sync button text with loaded state)
+  initializeDryRunMode(elements);
 
   // After settings are loaded, derive wallet address if Moonlander is selected
   console.log(`🔍 Checking initialization: platform=${config.executionPlatform}, hasPrivateKey=${!!config.moonlander.privateKey}`);

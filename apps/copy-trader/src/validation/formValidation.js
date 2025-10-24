@@ -50,14 +50,6 @@ export function setupValidationListeners(elements, checkFormValidityFn) {
 
       console.log(`🧪 Dry-run mode ${enabled ? 'enabled' : 'disabled'} - orders will ${enabled ? 'NOT' : ''} be placed on exchange`);
     });
-
-    // Set initial mode based on checkbox state
-    setDryRunMode(elements.dryRunModeCheckbox.checked);
-    config.isDryRun = elements.dryRunModeCheckbox.checked; // Save to config
-    const initialButtonText = elements.dryRunModeCheckbox.checked
-      ? 'Start Copy Trading (DRY RUN)'
-      : 'Start Copy Trading (LIVE)';
-    elements.startButton.textContent = initialButtonText;
   }
 
   // Use latest price checkbox listener
@@ -138,6 +130,27 @@ export function setupValidationListeners(elements, checkFormValidityFn) {
     }
     checkFormValidityFn();
   });
+}
+
+/**
+ * Initialize dry run mode state after settings are loaded
+ * Should be called after loadSavedSettings() to sync button text with loaded state
+ * @param {object} elements - DOM element references
+ */
+export function initializeDryRunMode(elements) {
+  if (elements.dryRunModeCheckbox) {
+    const enabled = elements.dryRunModeCheckbox.checked;
+    setDryRunMode(enabled);
+    config.isDryRun = enabled;
+
+    // Update button text to match loaded state
+    const buttonText = enabled
+      ? 'Start Copy Trading (DRY RUN)'
+      : 'Start Copy Trading (LIVE)';
+    elements.startButton.textContent = buttonText;
+
+    console.log(`🧪 Dry-run mode initialized: ${enabled ? 'enabled' : 'disabled'}`);
+  }
 }
 
 /**
