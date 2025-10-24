@@ -114,6 +114,37 @@ export function recordTradeDetected(tradeCount) {
 }
 
 /**
+ * Show progress for long-running operations
+ * @param {string} operation - Operation name (e.g., "Opening positions", "Closing positions")
+ * @param {number} current - Current progress count
+ * @param {number} total - Total items to process
+ */
+export function showProgress(operation, current, total) {
+  if (!elements) return;
+
+  const percentage = Math.round((current / total) * 100);
+
+  elements.monitoringStatus.classList.remove('hidden');
+  elements.monitoringStatus.classList.add('flex');
+
+  elements.statusText.textContent = operation;
+  elements.statusDetails.textContent = `${current}/${total} (${percentage}%)`;
+
+  // Show orange indicator for in-progress
+  elements.statusIndicator.className = 'w-2 h-2 rounded-full bg-orange-500 animate-pulse';
+}
+
+/**
+ * Hide progress indicator and restore normal status
+ */
+export function hideProgress() {
+  if (!elements) return;
+
+  // Restore green indicator
+  elements.statusIndicator.className = 'w-2 h-2 rounded-full bg-green-500';
+}
+
+/**
  * Update status details with time since last activity
  */
 function updateStatusDetails() {

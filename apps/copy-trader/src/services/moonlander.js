@@ -208,29 +208,33 @@ export class MoonlanderExchange {
 
   /**
    * Approve margin token spending by diamond contract
-   * @param {string} amount - Amount to approve in human-readable format
+   * Approves maximum amount (2^256-1) so it only needs to be done once
    */
-  async approveMarginToken(amount) {
+  async approveMarginToken() {
     try {
-      const decimals = await this.marginToken.decimals();
-      const amountWei = ethers.parseUnits(amount, decimals);
-
-      // Check current allowance
+      // Check current allowance first
       const currentAllowance = await this.marginToken.allowance(
         this.walletAddress,
         this.diamondAddress
       );
 
-      if (currentAllowance >= amountWei) {
-        console.log(`  ✅ Already approved: ${amount}`);
+      // Use maximum uint256 value for unlimited approval
+      const maxApproval = ethers.MaxUint256;
+
+      // If allowance is already high (> 90% of max), skip approval
+      const threshold = maxApproval / 10n; // 10% of max as threshold
+      if (currentAllowance >= threshold) {
+        console.log(`  ✅ Already approved (allowance: ${ethers.formatUnits(currentAllowance, 6)} USDC)`);
         return true;
       }
 
-      console.log(`  📝 Approving ${amount} margin token...`);
-      const tx = await this.marginToken.approve(this.diamondAddress, amountWei);
+      console.log(`  📝 Approving maximum amount for margin token (one-time approval)...`);
+      const tx = await this.marginToken.approve(this.diamondAddress, maxApproval);
+      console.log(`  ⏳ Waiting for approval transaction: ${tx.hash}`);
       await tx.wait();
 
-      console.log(`  ✅ Approval confirmed: ${tx.hash}`);
+      console.log(`  ✅ Maximum approval confirmed: ${tx.hash}`);
+      console.log(`     This approval will work for all future trades.`);
       return true;
     } catch (error) {
       console.error('Failed to approve margin token:', error.message);
@@ -326,8 +330,8 @@ export class MoonlanderExchange {
       console.log(`  Stop loss: ${ethers.formatUnits(stopLossPrice, 18)}`);
       console.log(`  Take profit: ${ethers.formatUnits(takeProfitPrice, 18)}`);
 
-      // Step 3: Approve margin token if needed
-      await this.approveMarginToken(amount);
+      // Step 3: Approve margin token if needed (one-time max approval)
+      await this.approveMarginToken();
 
       // Step 4: Calculate Pyth update fee
       // Fee is typically 1 wei per update data entry on testnet/mainnet

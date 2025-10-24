@@ -61,7 +61,7 @@ import {
 import { confirmCopyTradingSession } from './controllers/tradingController.js';
 import { testPositionCalculation } from './utils/testCalculation.js';
 import { fetchLatestPricesForConfirmation } from './services/priceService.js';
-import { initMonitoringStatus } from './services/monitoringStatus.js';
+import { initMonitoringStatus, showProgress, hideProgress } from './services/monitoringStatus.js';
 
 // DOM elements (will be initialized after DOM loads)
 let elements = {};
@@ -550,27 +550,51 @@ async function closeAllMoonlanderPositions() {
     }
 
     console.log(`📋 Found ${positions.length} position(s) to close`);
+    console.log(`🔄 Closing positions sequentially (blockchain nonce management)...`);
 
-    // Close each position
+    // Show initial progress in UI and alert
+    showProgress('Closing positions', 0, positions.length);
+    const progressMsg = `Closing ${positions.length} position(s)...\n\nThis will take approximately ${positions.length * 2} seconds.\nWatch the status indicator for progress.`;
+    alert(progressMsg);
+
+    // Close positions sequentially to avoid nonce conflicts
+    // Blockchain transactions must maintain proper nonce ordering
     const results = [];
     let successCount = 0;
     let failCount = 0;
 
     for (let i = 0; i < positions.length; i++) {
       const position = positions[i];
-      console.log(`\n🔄 Closing position ${i + 1}/${positions.length}: ${position.symbol}`);
+      console.log(`\n🔄 [${i + 1}/${positions.length}] Closing position: ${position.symbol}`);
+
+      // Update progress in UI
+      showProgress('Closing positions', i, positions.length);
 
       try {
         const result = await exchange.closeTrade(position.tradeHash);
         console.log(`✅ Position ${position.symbol} close requested: ${result.txHash}`);
         results.push({ symbol: position.symbol, success: true, txHash: result.txHash });
         successCount++;
+
+        // Show progress in console and UI
+        const progress = `Progress: ${i + 1}/${positions.length} closed (${Math.round(((i + 1) / positions.length) * 100)}%)`;
+        console.log(`📊 ${progress}`);
+        showProgress('Closing positions', i + 1, positions.length);
+
+        // Wait for transaction to be mined before sending next one (avoid nonce issues)
+        if (i < positions.length - 1) {
+          console.log('⏳ Waiting 2s for transaction to be mined...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       } catch (error) {
         console.error(`❌ Failed to close position ${position.symbol}:`, error);
         results.push({ symbol: position.symbol, success: false, error: error.message });
         failCount++;
       }
     }
+
+    // Hide progress indicator
+    hideProgress();
 
     // Show results summary
     const summary =
@@ -634,7 +658,10 @@ function setFormDisabled(disabled) {
  * Start copy trading (US2/US3)
  */
 async function startCopyTrading() {
-  console.log('🚀 Preparing to start copy trading...');
+  const startTime = performance.now();
+  const getTimestamp = () => new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+
+  console.log(`🚀 [${getTimestamp()}] Preparing to start copy trading...`);
   console.log(`📊 Configuration:`);
   console.log(`  - Trader Address: ${config.traderAddress}`);
   console.log(`  - Copy Balance: $${config.copyBalance}`);
@@ -642,7 +669,7 @@ async function startCopyTrading() {
 
   try {
     // Check for position conflicts between user and trader
-    console.log('🔍 Checking for existing positions and conflicts...');
+    console.log(`\n🔍 [${getTimestamp()}] Step 1: Checking for existing positions and conflicts...`);
 
     // Get wallet address - use custom saved address if available, otherwise derive from API key
     const savedMyWalletAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
@@ -658,41 +685,59 @@ async function startCopyTrading() {
       console.log('  - Using wallet derived from API key:', myWalletAddress);
     }
 
-    // Fetch user's current positions - platform-aware
-    let userPositions = [];
-    if (config.executionPlatform === 'moonlander') {
-      console.log('🌙 Fetching user positions from Moonlander...');
-      if (config.moonlander.privateKey) {
-        try {
-          const { MoonlanderExchange } = await import('./services/moonlander-browser.js');
-          const { getMoonlanderConfig } = await import('./config/moonlander.js');
-          const moonlanderConfig = getMoonlanderConfig(config.moonlander.network);
+    // Fetch user's and trader's positions in parallel for better performance
+    console.log('🔄 Fetching positions in parallel...');
 
-          const exchange = new MoonlanderExchange({
-            privateKey: config.moonlander.privateKey,
-            ...moonlanderConfig,
-          });
-          await exchange.initialize();
+    const fetchUserPositions = async () => {
+      if (config.executionPlatform === 'moonlander') {
+        console.log('🌙 Fetching user positions from Moonlander...');
+        if (config.moonlander.privateKey) {
+          try {
+            const { MoonlanderExchange } = await import('./services/moonlander-browser.js');
+            const { getMoonlanderConfig } = await import('./config/moonlander.js');
+            const moonlanderConfig = getMoonlanderConfig(config.moonlander.network);
 
-          userPositions = await exchange.fetchPositions();
-          console.log(`  - Moonlander user positions: ${userPositions.length}`);
-        } catch (error) {
-          console.error('Failed to fetch Moonlander user positions:', error);
-          userPositions = [];
+            const exchange = new MoonlanderExchange({
+              privateKey: config.moonlander.privateKey,
+              ...moonlanderConfig,
+            });
+            await exchange.initialize();
+
+            const positions = await exchange.fetchPositions();
+            console.log(`  - Moonlander user positions: ${positions.length}`);
+            return positions;
+          } catch (error) {
+            console.error('Failed to fetch Moonlander user positions:', error);
+            return [];
+          }
         }
+        return [];
+      } else {
+        console.log('⚡ Fetching user positions from Hyperliquid...');
+        const positions = await fetchPositionsForAddress(myWalletAddress);
+        console.log(`  - Hyperliquid user positions: ${positions.length}`);
+        return positions;
       }
-    } else {
-      console.log('⚡ Fetching user positions from Hyperliquid...');
-      userPositions = await fetchPositionsForAddress(myWalletAddress);
-      console.log(`  - Hyperliquid user positions: ${userPositions.length}`);
-    }
+    };
 
-    // Fetch trader's positions (always from Hyperliquid for monitoring)
-    console.log('⚡ Fetching trader positions from Hyperliquid...');
-    const traderPositions = await fetchPositionsForAddress(config.traderAddress);
-    console.log('  - Trader positions:', traderPositions.length);
+    const fetchTraderPositions = async () => {
+      console.log('⚡ Fetching trader positions from Hyperliquid...');
+      const positions = await fetchPositionsForAddress(config.traderAddress);
+      console.log('  - Trader positions:', positions.length);
+      return positions;
+    };
+
+    // Execute both fetches in parallel
+    const [userPositions, traderPositions] = await Promise.all([
+      fetchUserPositions(),
+      fetchTraderPositions(),
+    ]);
+
+    const step1End = performance.now();
+    console.log(`⏱️ [${getTimestamp()}] Step 1 completed: ${(step1End - startTime).toFixed(0)}ms (cumulative from start)`);
 
     // Check for conflicts and prepare filtered list
+    console.log(`\n🔍 [${getTimestamp()}] Step 2: Checking for position conflicts...`);
     let positionsToSkip = new Set();
 
     if (userPositions.length > 0) {
@@ -771,18 +816,24 @@ async function startCopyTrading() {
         }
       }
     }
+    const step2End = performance.now();
+    console.log(`⏱️ [${getTimestamp()}] Step 2 completed: ${(step2End - startTime).toFixed(0)}ms (cumulative from start)`);
     console.log('✅ Position check complete - proceeding with copy trading');
 
     // Fetch latest prices if enabled (before confirmation)
+    console.log(`\n📊 [${getTimestamp()}] Step 3: Fetching latest market prices...`);
     let latestPrices = null;
     if (config.useLatestPrice) {
-      console.log('📊 Fetching latest market prices for confirmation...');
       const apiKey = getApiKey();
       latestPrices = await fetchLatestPricesForConfirmation(apiKey, config.traderAddress);
+    } else {
+      console.log('  - Skipped (useLatestPrice is disabled)');
     }
+    const step3End = performance.now();
+    console.log(`⏱️ [${getTimestamp()}] Step 3 completed: ${(step3End - startTime).toFixed(0)}ms (cumulative from start)`);
 
     // Show confirmation dialog before starting
-    console.log('Requesting user confirmation...');
+    console.log(`\n💬 [${getTimestamp()}] Step 4: Requesting user confirmation...`);
     const apiKey = getApiKey();
     const result = await confirmCopyTradingSession({
       traderAddress: config.traderAddress,
@@ -790,22 +841,27 @@ async function startCopyTrading() {
       apiKey: apiKey,
       latestPrices: latestPrices,
       positionsToSkip: positionsToSkip, // Pass conflicting symbols to skip
+      traderPositions: traderPositions, // Pass already-fetched positions to avoid duplicate fetch
     });
 
     if (!result.confirmed) {
-      console.log('❌ Copy trading cancelled by user');
+      console.log(`❌ [${getTimestamp()}] Copy trading cancelled by user`);
       return;
     }
+    const step4End = performance.now();
+    console.log(`⏱️ [${getTimestamp()}] Step 4 completed: ${(step4End - startTime).toFixed(0)}ms (cumulative from start)`);
 
-    console.log('✅ User confirmed, starting copy trading...');
+    console.log(`\n✅ [${getTimestamp()}] User confirmed, starting copy trading...`);
     console.log(
       `📊 Scaling factor: ${result.scalingFactor.toFixed(4)} (${(result.scalingFactor * 100).toFixed(1)}%)`
     );
     console.log(`📊 Initial positions to open: ${result.initialPositions.length}`);
 
     // Ensure current configuration is saved and tracked as last monitored wallet
-    console.log('💾 Saving current configuration before starting...');
+    console.log(`\n💾 [${getTimestamp()}] Step 5: Saving current configuration...`);
     saveSettings(config);
+    const step5End = performance.now();
+    console.log(`⏱️ [${getTimestamp()}] Step 5 completed: ${(step5End - startTime).toFixed(0)}ms (cumulative from start)`);
 
     // Update UI state
     setCopyTradingActive(true);
@@ -814,6 +870,7 @@ async function startCopyTrading() {
     setFormDisabled(true);
 
     // Start trading service with order callback, scaling factor, and initial positions (US3 + US4 integration)
+    console.log(`\n🚀 [${getTimestamp()}] Step 6: Starting trading service...`);
     await startTradingService(
       {
         ...config,
@@ -826,11 +883,17 @@ async function startCopyTrading() {
         addOrder(elements, order); // Add order to display list (US4)
       }
     );
+    const step6End = performance.now();
+    console.log(`⏱️ [${getTimestamp()}] Step 6 completed: ${(step6End - startTime).toFixed(0)}ms (cumulative from start)`);
 
-    console.log('✅ Copy trading started successfully');
+    console.log(`\n⏱️ ========================================`);
+    console.log(`⏱️ [${getTimestamp()}] TOTAL STARTUP TIME: ${(step6End - startTime).toFixed(0)}ms`);
+    console.log(`⏱️ ========================================\n`);
+
+    console.log(`✅ [${getTimestamp()}] Copy trading started successfully`);
     console.log(`📡 Now monitoring wallet: ${config.traderAddress}`);
   } catch (error) {
-    console.error('❌ Failed to start copy trading:', error);
+    console.error(`❌ [${getTimestamp()}] Failed to start copy trading:`, error);
 
     // Revert UI state on error
     setCopyTradingActive(false);

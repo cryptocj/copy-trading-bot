@@ -36,7 +36,9 @@ import {
   setStatusActive,
   setStatusReconnecting,
   updateLastActivity,
-  recordTradeDetected
+  recordTradeDetected,
+  showProgress,
+  hideProgress
 } from './monitoringStatus.js';
 
 // Active trading session state
@@ -516,10 +518,18 @@ async function openInitialPositions(positions) {
     }
 
     const { executeExchange, leverageCache, onOrderExecuted } = session;
-    let successCount = 0;
-    let failCount = 0;
 
-    for (const pos of positions) {
+    // Check if this is Moonlander (blockchain) or Hyperliquid (API)
+    const isMoonlander = executeExchange.pairAddresses !== undefined;
+
+    if (isMoonlander) {
+        console.log(`\n🔄 Opening ${positions.length} positions sequentially (blockchain nonce management)...`);
+    } else {
+        console.log(`\n🚀 Opening ${positions.length} positions in parallel...`);
+    }
+
+    // Helper function to process a single position
+    const processPosition = async (pos, index) => {
         const { symbol, side, size, entryPrice, leverage } = pos;
 
         try {
@@ -532,11 +542,11 @@ async function openInitialPositions(positions) {
 
             if (useLatestPrice) {
                 try {
-                    console.log(`  📊 Fetching latest market price for ${symbol}...`);
+                    console.log(`  📊 [${index + 1}/${positions.length}] Fetching latest market price for ${symbol}...`);
                     const priceInfo = await fetchLatestPrice(executeExchange, symbol);
                     orderPrice = calculateOrderPrice(priceInfo, side, entryPrice);
 
-                    console.log(`  💹 Price decision:`, {
+                    console.log(`  💹 [${symbol}] Price decision:`, {
                         traderEntry: entryPrice.toFixed(4),
                         latestBid: priceInfo.bid?.toFixed(4),
                         latestAsk: priceInfo.ask?.toFixed(4),
@@ -545,13 +555,13 @@ async function openInitialPositions(positions) {
                         priceChange: (((orderPrice - entryPrice) / entryPrice) * 100).toFixed(2) + '%'
                     });
                 } catch (priceError) {
-                    console.warn(`  ⚠️ Failed to fetch latest price, using trader's entry price:`, priceError.message);
+                    console.warn(`  ⚠️ [${symbol}] Failed to fetch latest price, using trader's entry price:`, priceError.message);
                     orderPrice = entryPrice;
                 }
             }
 
-            console.log(`\n📌 Opening initial position: ${side.toUpperCase()} ${size.toFixed(4)} ${symbol} @ $${orderPrice.toFixed(4)}`);
-            console.log(`  📊 Position details from calculation:`, {
+            console.log(`\n📌 [${index + 1}/${positions.length}] Opening position: ${side.toUpperCase()} ${size.toFixed(4)} ${symbol} @ $${orderPrice.toFixed(4)}`);
+            console.log(`  📊 Position details:`, {
                 symbol,
                 side,
                 size,
@@ -572,14 +582,14 @@ async function openInitialPositions(positions) {
 
             // Get leverage for this symbol (should match target)
             const actualLeverage = leverageCache.get(symbol) || targetLeverage;
-            console.log(`  ⚙️ Using ${actualLeverage}x leverage (cached: ${!!cachedLeverage}, matches trader: ${actualLeverage === leverage})`);
+            console.log(`  ⚙️ [${symbol}] Using ${actualLeverage}x leverage (cached: ${!!cachedLeverage}, matches trader: ${actualLeverage === leverage})`);
 
             // Apply market precision to size and price
             const marketInfo = getMarketInfo(executeExchange, symbol);
             const roundedSize = roundToTickSize(size, marketInfo.precision.amount);
             const roundedPrice = roundToTickSize(orderPrice, marketInfo.precision.price);
 
-            console.log(`  📏 Market precision applied:`, {
+            console.log(`  📏 [${symbol}] Market precision applied:`, {
                 originalSize: size,
                 roundedSize,
                 sizePrecision: marketInfo.precision.amount,
@@ -591,7 +601,7 @@ async function openInitialPositions(positions) {
 
             if (DRY_RUN_MODE) {
                 // DRY RUN: Log what would be executed without placing order
-                console.log(`  🧪 DRY RUN: Would place order:`, {
+                console.log(`  🧪 [${symbol}] DRY RUN: Would place order:`, {
                     exchange: 'Hyperliquid',
                     method: 'createLimitOrder',
                     symbol,
@@ -613,7 +623,7 @@ async function openInitialPositions(positions) {
                     side
                 };
 
-                console.log(`  ✅ DRY RUN: Simulated order:`, simulatedOrder);
+                console.log(`  ✅ [${symbol}] DRY RUN: Simulated order:`, simulatedOrder);
 
                 // Notify callback with simulated order
                 if (onOrderExecuted) {
@@ -627,13 +637,16 @@ async function openInitialPositions(positions) {
                     });
                 }
 
-                successCount++;
+                // Increment trade counter
+                tradeCounter++;
+
+                return { success: true, symbol };
             } else {
                 // LIVE MODE: Place actual order
-                console.log(`  🚀 LIVE: Placing order at $${roundedPrice.toFixed(4)}...`);
+                console.log(`  🚀 [${symbol}] LIVE: Placing order at $${roundedPrice.toFixed(4)}...`);
                 const order = await executeOrder(executeExchange, symbol, side, roundedSize, roundedPrice, actualLeverage);
 
-                console.log(`  ✅ Order placed successfully:`, order);
+                console.log(`  ✅ [${symbol}] Order placed successfully:`, order);
 
                 // Notify callback
                 if (onOrderExecuted) {
@@ -646,14 +659,14 @@ async function openInitialPositions(positions) {
                     });
                 }
 
-                successCount++;
+                // Increment trade counter
+                tradeCounter++;
+
+                return { success: true, symbol };
             }
 
-            // Increment trade counter
-            tradeCounter++;
-
         } catch (error) {
-            console.error(`  ❌ Failed to open position for ${symbol}:`, error.message);
+            console.error(`  ❌ [${symbol}] Failed to open position:`, error.message);
             console.error(`  📋 Error details:`, {
                 symbol,
                 side,
@@ -663,18 +676,60 @@ async function openInitialPositions(positions) {
                 errorMessage: error.message,
                 errorStack: error.stack?.split('\n').slice(0, 3).join('\n')
             });
-            failCount++;
-            // Continue with other positions even if one fails
+            return { success: false, symbol, error: error.message };
+        }
+    };
+
+    // Execute based on platform
+    let results;
+    if (isMoonlander) {
+        // Moonlander: Sequential execution to avoid nonce conflicts
+        console.log(`⏳ Estimated time: ~${positions.length * 2} seconds (blockchain processing)`);
+
+        // Show initial progress in UI
+        showProgress('Opening positions', 0, positions.length);
+
+        results = [];
+        for (let i = 0; i < positions.length; i++) {
+            // Update progress before processing
+            showProgress('Opening positions', i, positions.length);
+
+            const result = await processPosition(positions[i], i);
+            results.push(result);
+
+            // Show progress after processing
+            const progress = `${i + 1}/${positions.length}`;
+            const percentage = Math.round(((i + 1) / positions.length) * 100);
+            console.log(`📊 Progress: ${progress} positions opened (${percentage}%)`);
+            showProgress('Opening positions', i + 1, positions.length);
+
+            // Wait between transactions to ensure proper nonce ordering
+            if (i < positions.length - 1 && result.success) {
+                console.log('⏳ Waiting 2s for transaction to be mined...');
+                await sleep(2000);
+            }
         }
 
-        // Small delay between orders to avoid rate limits
-        await sleep(500);
+        // Hide progress indicator after completion
+        hideProgress();
+    } else {
+        // Hyperliquid: Parallel execution for faster processing
+        console.log(`⚡ Opening all positions in parallel (API-based, fast processing)...`);
+        showProgress('Opening positions', 0, positions.length);
+
+        const orderPromises = positions.map((pos, index) => processPosition(pos, index));
+        results = await Promise.all(orderPromises);
+
+        // Update to 100% and hide
+        showProgress('Opening positions', positions.length, positions.length);
+        setTimeout(() => hideProgress(), 500); // Brief delay to show 100%
     }
 
-    console.log(`\n📊 Initial positions summary: ${successCount} successful, ${failCount} failed`);
+    // Count successes and failures
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
 
-    // Check if this is a MoonlanderExchange
-    const isMoonlander = executeExchange.pairAddresses !== undefined;
+    console.log(`\n📊 Initial positions summary: ${successCount} successful, ${failCount} failed`);
 
     // In dry-run mode or after successful orders, verify positions
     if (successCount > 0 && !DRY_RUN_MODE && !isMoonlander) {

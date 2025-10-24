@@ -40,15 +40,21 @@ export async function confirmCopyTradingSession(sessionConfig) {
   `;
   modal.style.display = 'flex';
 
-  // Fetch trader's current positions
+  // Fetch trader's current positions (or use already-fetched ones)
   let traderPositions = [];
   let traderOriginalPositions = []; // Store ALL original positions before filtering
   let traderFilteredPositions = []; // Store filtered RAW positions (for recalculation)
   let positionCalculation = null;
 
   try {
-    traderPositions = await fetchPositionsForAddress(sessionConfig.traderAddress);
-    console.log('Trader positions loaded:', traderPositions);
+    // Use pre-fetched positions if available to avoid duplicate API call
+    if (sessionConfig.traderPositions && sessionConfig.traderPositions.length >= 0) {
+      traderPositions = sessionConfig.traderPositions;
+      console.log('✅ Using pre-fetched trader positions:', traderPositions.length);
+    } else {
+      traderPositions = await fetchPositionsForAddress(sessionConfig.traderAddress);
+      console.log('Trader positions loaded:', traderPositions.length);
+    }
 
     // Store original positions before filtering (for proportional balance calculation)
     traderOriginalPositions = [...traderPositions];
