@@ -570,7 +570,65 @@ export class MoonlanderExchange {
   }
 
   /**
-   * Close an existing position
+   * Request to close a trade (simplified version)
+   * This triggers a price request and returns the request ID
+   * @param {string} tradeHash - Position hash to close
+   * @returns {Promise<{txHash: string, requestId: string}>}
+   */
+  async closeTrade(tradeHash) {
+    try {
+      if (!this.tradingPortal) {
+        await this.initialize();
+      }
+
+      console.log(`\n🌙 Requesting trade closure: ${tradeHash}`);
+
+      // Request closure (triggers RequestPrice event)
+      const tx = await this.tradingPortal.closeTrade(tradeHash, {
+        gasLimit: 600000,
+      });
+
+      const receipt = await tx.wait();
+      console.log(`✅ Close request submitted: ${receipt.hash}`);
+
+      // Parse RequestPrice event to get request ID
+      let requestId = null;
+      for (const log of receipt.logs) {
+        try {
+          const parsed = this.tradingPortal.interface.parseLog({
+            topics: log.topics,
+            data: log.data,
+          });
+
+          if (parsed && parsed.name === 'RequestPrice') {
+            requestId = parsed.args.requestId;
+            console.log(`📋 Request price ID: ${requestId}`);
+            break;
+          }
+        } catch {
+          // Skip logs that don't match
+        }
+      }
+
+      if (!requestId) {
+        console.warn('⚠️ RequestPrice event not found in transaction logs');
+      }
+
+      return {
+        txHash: receipt.hash,
+        requestId: requestId || 'unknown',
+        status: 'requested',
+      };
+    } catch (error) {
+      console.error('Failed to request trade closure:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Close an existing position with market order
+   * @param {string} tradeHash - Position hash to close
+   * @returns {Promise<{txHash: string, status: string}>}
    */
   async closePosition(tradeHash) {
     try {

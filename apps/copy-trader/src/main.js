@@ -317,6 +317,13 @@ function setupButtonListeners() {
       }
     });
   }
+
+  // Close all positions button (for Moonlander mode)
+  if (elements.closeAllPositionsButton) {
+    elements.closeAllPositionsButton.addEventListener('click', async () => {
+      await closeAllMoonlanderPositions();
+    });
+  }
 }
 
 /**
@@ -482,6 +489,106 @@ async function deriveMoonlanderWalletAddress(privateKey) {
     }
 
     return null;
+  }
+}
+
+/**
+ * Close all current Moonlander positions
+ */
+async function closeAllMoonlanderPositions() {
+  try {
+    // Verify Moonlander is selected and configured
+    if (config.executionPlatform !== 'moonlander') {
+      alert('This feature is only available in Moonlander mode');
+      return;
+    }
+
+    if (!config.moonlander.privateKey) {
+      alert('Please enter your Moonlander private key first');
+      return;
+    }
+
+    // Confirmation dialog
+    const proceed = confirm(
+      '⚠️ Close All Positions\n\n' +
+      'This will request closure for ALL your current Moonlander positions.\n\n' +
+      'Are you sure you want to continue?'
+    );
+
+    if (!proceed) {
+      console.log('❌ Close all cancelled by user');
+      return;
+    }
+
+    console.log('🌙 Initializing Moonlander exchange to close all positions...');
+
+    // Initialize Moonlander exchange
+    const { MoonlanderExchange } = await import('./services/moonlander-browser.js');
+    const { getMoonlanderConfig } = await import('./config/moonlander.js');
+    const moonlanderConfig = getMoonlanderConfig(config.moonlander.network);
+
+    const exchange = new MoonlanderExchange({
+      privateKey: config.moonlander.privateKey,
+      ...moonlanderConfig,
+    });
+    await exchange.initialize();
+
+    // Fetch current positions
+    console.log('📊 Fetching current positions...');
+    const positions = await exchange.fetchPositions();
+
+    if (!positions || positions.length === 0) {
+      alert('No open positions found');
+      console.log('ℹ️ No positions to close');
+      return;
+    }
+
+    console.log(`📋 Found ${positions.length} position(s) to close`);
+
+    // Close each position
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < positions.length; i++) {
+      const position = positions[i];
+      console.log(`\n🔄 Closing position ${i + 1}/${positions.length}: ${position.symbol}`);
+
+      try {
+        const result = await exchange.closeTrade(position.tradeHash);
+        console.log(`✅ Position ${position.symbol} close requested: ${result.txHash}`);
+        results.push({ symbol: position.symbol, success: true, txHash: result.txHash });
+        successCount++;
+      } catch (error) {
+        console.error(`❌ Failed to close position ${position.symbol}:`, error);
+        results.push({ symbol: position.symbol, success: false, error: error.message });
+        failCount++;
+      }
+    }
+
+    // Show results summary
+    const summary =
+      `Close All Positions Complete\n\n` +
+      `✅ Successfully closed: ${successCount}\n` +
+      `❌ Failed: ${failCount}\n\n` +
+      results.map(r =>
+        r.success
+          ? `✅ ${r.symbol}: ${r.txHash.slice(0, 10)}...`
+          : `❌ ${r.symbol}: ${r.error}`
+      ).join('\n');
+
+    alert(summary);
+    console.log('\n📊 Close all positions summary:', { successCount, failCount, results });
+
+    // Refresh wallet info to show updated positions
+    if (successCount > 0) {
+      console.log('🔄 Refreshing wallet info...');
+      await refreshWalletInfo(elements, isCopyTradingActive);
+    }
+
+  } catch (error) {
+    console.error('❌ Failed to close all positions:', error);
+    alert(`Error: ${error.message}\n\nCheck console for details.`);
   }
 }
 

@@ -50,6 +50,7 @@ export function initializeElements() {
     derivedWalletDisplay: document.getElementById('derived-wallet-display'),
     derivedWalletAddress: document.getElementById('derived-wallet-address'),
     refreshDerivedWalletButton: document.getElementById('refresh-derived-wallet'),
+    closeAllPositionsButton: document.getElementById('close-all-positions'),
     dryRunModeCheckbox: document.getElementById('dry-run-mode'),
     useLatestPriceCheckbox: document.getElementById('use-latest-price'),
 
