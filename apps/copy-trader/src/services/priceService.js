@@ -5,18 +5,48 @@
 
 /**
  * Fetch latest ticker price for a symbol
- * @param {object} exchange - CCXT exchange instance
+ * @param {object} exchange - CCXT exchange instance or MoonlanderExchange
  * @param {string} symbol - Trading symbol
  * @returns {Promise<{bid: number, ask: number, last: number}>}
  */
 export async function fetchLatestPrice(exchange, symbol) {
   try {
-    const ticker = await exchange.fetchTicker(symbol);
-    return {
-      bid: ticker.bid || ticker.last,
-      ask: ticker.ask || ticker.last,
-      last: ticker.last,
-    };
+    // Check if this is a MoonlanderExchange (has pairAddresses property)
+    const isMoonlander = exchange.pairAddresses !== undefined;
+
+    if (isMoonlander) {
+      // Moonlander: Use fetchPrice method
+      // Convert symbol format (BTC/USD:USD or BTC/USDCC → BTC/USD)
+      const moonlanderSymbol = symbol
+        .replace(':USD', '')
+        .replace(':USDC', '')
+        .replace('/USDCC', '/USD');
+
+      console.log(`🌙 Fetching Moonlander price for ${moonlanderSymbol}...`);
+
+      // Fetch price from Pyth oracle via Moonlander
+      const { price } = await exchange.fetchPrice(moonlanderSymbol);
+
+      // Convert from BigInt (18 decimals) to number
+      const priceNumber = Number(ethers.formatUnits(price, 18));
+
+      console.log(`  Price: $${priceNumber.toFixed(4)}`);
+
+      // Moonlander uses market orders with oracle prices, so bid/ask are same as last
+      return {
+        bid: priceNumber,
+        ask: priceNumber,
+        last: priceNumber,
+      };
+    } else {
+      // CCXT Hyperliquid: Use fetchTicker
+      const ticker = await exchange.fetchTicker(symbol);
+      return {
+        bid: ticker.bid || ticker.last,
+        ask: ticker.ask || ticker.last,
+        last: ticker.last,
+      };
+    }
   } catch (error) {
     console.error(`Failed to fetch latest price for ${symbol}:`, error.message);
     throw error;

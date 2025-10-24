@@ -53,11 +53,23 @@ let DRY_RUN_MODE = true;
 
 /**
  * Get market precision and limits for a symbol
- * @param {object} exchange - CCXT exchange instance
- * @param {string} symbol - Trading symbol (e.g., 'BTC/USD:USD')
+ * @param {object} exchange - CCXT exchange instance or MoonlanderExchange
+ * @param {string} symbol - Trading symbol (e.g., 'BTC/USD:USD' or 'BTC/USD')
  * @returns {object} Market info with precision and limits
  */
 function getMarketInfo(exchange, symbol) {
+    // Check if this is a MoonlanderExchange (has pairAddresses property)
+    const isMoonlander = exchange.pairAddresses !== undefined;
+
+    if (isMoonlander) {
+        // Moonlander: Use fixed precision (similar to their platform)
+        return {
+            precision: { amount: 4, price: 4 }, // 4 decimals for both
+            limits: { amount: { min: 0.0001 }, price: { min: 0.0001 } }
+        };
+    }
+
+    // CCXT Hyperliquid: Use market info
     const market = exchange.markets[symbol];
     if (!market) {
         console.warn(`Market info not found for ${symbol}, using defaults`);
@@ -108,6 +120,81 @@ function getMarketInfo(exchange, symbol) {
  */
 function roundToTickSize(amount, precision) {
     return parseFloat(amount.toFixed(precision));
+}
+
+/**
+ * Execute order on the appropriate platform (CCXT Hyperliquid or Moonlander)
+ * @param {object} exchange - Exchange instance (CCXT or MoonlanderExchange)
+ * @param {string} symbol - Trading symbol
+ * @param {string} side - Order side ('buy' or 'sell')
+ * @param {number} amount - Order amount (position size)
+ * @param {number} price - Order price
+ * @param {number} leverage - Leverage for the position
+ * @returns {Promise<object>} Order result
+ */
+async function executeOrder(exchange, symbol, side, amount, price, leverage) {
+    // Check if this is a MoonlanderExchange
+    const isMoonlander = exchange.pairAddresses !== undefined;
+
+    if (isMoonlander) {
+        // Moonlander: Use createMarketOrder method
+        console.log(`  🌙 Executing Moonlander order: ${side} ${amount} ${symbol} @ ${price} (${leverage}x)`);
+
+        // Convert symbol format for Moonlander
+        // Hyperliquid formats: 'BTC/USD:USD', 'BTC/USDCC', 'ETH/USD:USD'
+        // Moonlander expects: 'BTC/USD', 'ETH/USD', 'SOL/USD', 'CRO/USD'
+        const moonlanderSymbol = symbol
+            .replace(':USD', '')      // Remove :USD suffix
+            .replace('/USDCC', '/USD'); // Convert USDCC to USD
+
+        console.log(`  🔄 Symbol conversion: ${symbol} → ${moonlanderSymbol}`);
+
+        // Verify pair is supported on Moonlander
+        if (!exchange.pairAddresses[moonlanderSymbol]) {
+            const availablePairs = Object.keys(exchange.pairAddresses).join(', ');
+            throw new Error(
+                `Pair ${moonlanderSymbol} not available on Moonlander. ` +
+                `Available pairs: ${availablePairs}. ` +
+                `Original symbol: ${symbol}`
+            );
+        }
+
+        // Calculate margin required: (position_size * price) / leverage
+        const marginRequired = (amount * price) / leverage;
+
+        console.log(`  📊 Moonlander order details:`, {
+            symbol: moonlanderSymbol,
+            side,
+            positionSize: amount,
+            price,
+            leverage,
+            marginRequired: marginRequired.toFixed(2)
+        });
+
+        // Execute order via Moonlander
+        const order = await exchange.createMarketOrder({
+            pairBase: moonlanderSymbol,
+            side,
+            amount: marginRequired.toFixed(6), // Margin in USD (string)
+            qty: amount.toFixed(10), // Position quantity (string)
+            stopLoss: null, // Optional: Can add stop loss logic
+            takeProfit: null, // Optional: Can add take profit logic
+            broker: 1, // Default broker
+        });
+
+        console.log(`  ✅ Moonlander order placed:`, order);
+
+        return order;
+    } else {
+        // CCXT Hyperliquid: Use createLimitOrder
+        console.log(`  ⚡ Executing Hyperliquid order: ${side} ${amount} ${symbol} @ ${price}`);
+
+        const order = await exchange.createLimitOrder(symbol, side, amount, price);
+
+        console.log(`  ✅ Hyperliquid order placed:`, order);
+
+        return order;
+    }
 }
 
 
@@ -204,22 +291,51 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
         console.log('User wallet address (for balance queries):', userWalletAddress);
         console.log('Monitoring wallet address:', apiKeyWalletAddress);
 
-        // Initialize CCXT instances
-        // Hyperliquid uses Ethereum-style wallet authentication with API key wallet
+        // Initialize monitoring exchange (always Hyperliquid for now)
         const monitorExchange = new ccxt.pro.hyperliquid({
             privateKey: apiKey, // Ethereum wallet private key
-            walletAddress: apiKeyWalletAddress, // API key wallet for trade execution
+            walletAddress: apiKeyWalletAddress, // API key wallet for monitoring
         });
 
-        const executeExchange = new ccxt.hyperliquid({
-            privateKey: apiKey, // Ethereum wallet private key
-            walletAddress: apiKeyWalletAddress, // API key wallet for trade execution
-        });
+        // Initialize execution exchange based on platform
+        let executeExchange;
 
-        // Load markets to get precision and limits info
-        console.log('Loading market data...');
-        await executeExchange.loadMarkets();
-        console.log('Markets loaded:', Object.keys(executeExchange.markets).length, 'symbols');
+        if (config.executionPlatform === 'moonlander') {
+            console.log('🌙 Initializing Moonlander exchange for order execution...');
+
+            // Dynamically import MoonlanderExchange (browser version)
+            const { MoonlanderExchange } = await import('../services/moonlander-browser.js');
+            const { getMoonlanderConfig } = await import('../config/moonlander.js');
+
+            // Get Moonlander config
+            const moonlanderConfig = getMoonlanderConfig(config.moonlander.network);
+
+            // Create Moonlander exchange instance
+            executeExchange = new MoonlanderExchange({
+                privateKey: executionPrivateKey,
+                ...moonlanderConfig,
+            });
+
+            // Initialize contracts (loads ABIs)
+            await executeExchange.initialize();
+
+            console.log('✅ Moonlander exchange initialized');
+            console.log('  - Wallet address:', executeExchange.walletAddress);
+            console.log('  - Diamond contract:', moonlanderConfig.diamondAddress);
+            console.log('  - Network:', config.moonlander.network);
+        } else {
+            console.log('⚡ Initializing Hyperliquid exchange for order execution...');
+
+            executeExchange = new ccxt.hyperliquid({
+                privateKey: executionPrivateKey,
+                walletAddress: apiKeyWalletAddress,
+            });
+
+            // Load markets to get precision and limits info (CCXT only)
+            console.log('Loading market data...');
+            await executeExchange.loadMarkets();
+            console.log('Markets loaded:', Object.keys(executeExchange.markets).length, 'symbols');
+        }
 
         // Initialize trade counter from resume state or start fresh (T010)
         tradeCounter = resumeState ? (resumeState.tradeCounter || 0) : 0;
@@ -267,8 +383,18 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
         if (config.initialPositions && config.initialPositions.length > 0 && !initialPositionsOpened) {
             console.log(`\n💰 Fetching actual available margin from user's wallet: ${session.userWalletAddress}`);
 
-            // Fetch balance directly using user's wallet address (the one with funds)
-            const balance = await fetchBalanceForAddress(session.userWalletAddress);
+            // Fetch balance - platform-aware
+            let balance;
+            if (config.executionPlatform === 'moonlander') {
+                // Moonlander: Use executeExchange.fetchBalance() (queries blockchain + API)
+                console.log('🌙 Fetching balance from Moonlander...');
+                balance = await executeExchange.fetchBalance();
+            } else {
+                // Hyperliquid: Use fetchBalanceForAddress (queries Hyperliquid API)
+                console.log('⚡ Fetching balance from Hyperliquid...');
+                balance = await fetchBalanceForAddress(session.userWalletAddress);
+            }
+
             const freeMargin = balance.free; // Available margin (accountValue - totalMarginUsed)
             const totalBalance = balance.total; // Total account value
             const usedMargin = balance.used; // Margin locked in positions
@@ -504,18 +630,10 @@ async function openInitialPositions(positions) {
                 successCount++;
             } else {
                 // LIVE MODE: Place actual order
-                console.log(`  🚀 LIVE: Placing limit order at $${roundedPrice.toFixed(4)}...`);
-                const order = await executeExchange.createLimitOrder(symbol, side, roundedSize, roundedPrice);
+                console.log(`  🚀 LIVE: Placing order at $${roundedPrice.toFixed(4)}...`);
+                const order = await executeOrder(executeExchange, symbol, side, roundedSize, roundedPrice, actualLeverage);
 
-                console.log(`  ✅ Order placed successfully:`, {
-                    orderId: order.id,
-                    status: order.status,
-                    amount: order.amount,
-                    price: order.price,
-                    cost: order.cost,
-                    filled: order.filled,
-                    remaining: order.remaining
-                });
+                console.log(`  ✅ Order placed successfully:`, order);
 
                 // Notify callback
                 if (onOrderExecuted) {
@@ -555,14 +673,17 @@ async function openInitialPositions(positions) {
 
     console.log(`\n📊 Initial positions summary: ${successCount} successful, ${failCount} failed`);
 
+    // Check if this is a MoonlanderExchange
+    const isMoonlander = executeExchange.pairAddresses !== undefined;
+
     // In dry-run mode or after successful orders, verify positions
-    if (successCount > 0 && !DRY_RUN_MODE) {
+    if (successCount > 0 && !DRY_RUN_MODE && !isMoonlander) {
         console.log(`\n🔍 Verifying opened positions...`);
         try {
             // Wait a moment for orders to settle
             await sleep(2000);
 
-            // Fetch current positions from exchange
+            // Fetch current positions from exchange (Hyperliquid only)
             const currentPositions = await executeExchange.fetchPositions();
             const openPositions = currentPositions.filter(pos => Math.abs(pos.contracts || 0) > 0);
 
@@ -601,6 +722,8 @@ async function openInitialPositions(positions) {
         }
     } else if (DRY_RUN_MODE) {
         console.log(`\n🧪 DRY RUN: Skipping position verification (no real orders placed)`);
+    } else if (isMoonlander) {
+        console.log(`\n🌙 Moonlander: Position verification via blockchain (check wallet for transaction confirmations)`);
     }
 
     // Save updated trade counter and mark initial positions as opened (only if successful)
@@ -791,9 +914,16 @@ async function executeCopyTrade(trade) {
         const leverage = leverageCache.get(symbol) || DEFAULT_MAX_LEVERAGE;
         console.log(`  Leverage: ${leverage}x (cached: ${leverageCache.has(symbol)})`);
 
-        // Fetch current available margin before placing order
+        // Fetch current available margin before placing order - platform-aware
         console.log(`  💰 Checking available margin for user's wallet: ${userWalletAddress}`);
-        const balance = await fetchBalanceForAddress(userWalletAddress);
+        let balance;
+        if (config.executionPlatform === 'moonlander') {
+            // Moonlander: Use executeExchange.fetchBalance()
+            balance = await executeExchange.fetchBalance();
+        } else {
+            // Hyperliquid: Use fetchBalanceForAddress
+            balance = await fetchBalanceForAddress(userWalletAddress);
+        }
         const freeMargin = balance.free; // Available margin
         const totalBalance = balance.total;
         const usedMargin = balance.used;
@@ -857,19 +987,10 @@ async function executeCopyTrade(trade) {
             // LIVE MODE: Execute order
             console.log(`  🚀 LIVE: Executing order with ${leverage}x leverage...`);
 
-            // Execute limit order at trader's exact price with scaled amount
-            const order = await executeExchange.createLimitOrder(symbol, side, roundedAmount, roundedPrice);
+            // Execute order at trader's exact price with scaled amount
+            const order = await executeOrder(executeExchange, symbol, side, roundedAmount, roundedPrice, leverage);
 
-            console.log('  ✅ Order executed successfully:', {
-                orderId: order.id,
-                symbol: order.symbol,
-                side: order.side,
-                amount: order.amount,
-                price: order.price,
-                cost: order.cost,
-                status: order.status,
-                timestamp: new Date(order.timestamp).toLocaleString()
-            });
+            console.log('  ✅ Order executed successfully:', order);
         }
 
         // Notify callback with order details (use rounded amount)
@@ -912,6 +1033,7 @@ async function executeCopyTrade(trade) {
 /**
  * Set leverage for symbol (once per symbol or when leverage changes)
  * Uses trader's actual leverage or default max leverage
+ * Note: Moonlander sets leverage per-order, so this only applies to Hyperliquid
  * @param {string} symbol - Trading pair
  * @param {number} leverage - Target leverage (from trader's position or default)
  */
@@ -919,6 +1041,16 @@ async function setLeverageIfNeeded(symbol, leverage = DEFAULT_MAX_LEVERAGE) {
     if (!session) return;
 
     const { executeExchange, leverageCache } = session;
+
+    // Check if this is a MoonlanderExchange (sets leverage per-order)
+    const isMoonlander = executeExchange.pairAddresses !== undefined;
+
+    if (isMoonlander) {
+        // Moonlander: Leverage is set per-order, just cache it
+        console.log(`  🌙 Moonlander: Leverage ${leverage}x will be set per-order`);
+        leverageCache.set(symbol, leverage);
+        return;
+    }
 
     try {
         console.log(`Setting leverage for ${symbol} to ${leverage}x...`);
@@ -929,8 +1061,7 @@ async function setLeverageIfNeeded(symbol, leverage = DEFAULT_MAX_LEVERAGE) {
             leverageCache.set(symbol, leverage);
             console.log(`  ✅ DRY RUN: Leverage cached for ${symbol}: ${leverage}x`);
         } else {
-            // Set cross margin mode with leverage
-            // Hyperliquid will enforce its own per-symbol limits automatically
+            // Set cross margin mode with leverage (Hyperliquid only)
             await executeExchange.setMarginMode('cross', symbol, { leverage: leverage });
 
             // Cache leverage to avoid redundant calls
