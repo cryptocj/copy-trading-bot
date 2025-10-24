@@ -26,6 +26,9 @@ import { fetchLatestPrice, calculateOrderPrice } from './priceService.js';
 // Import balance fetching utility
 import { fetchBalanceForAddress } from '../rendering/wallet.js';
 
+// Import Hyperliquid configuration
+import { getHyperliquidConfig } from '../config/hyperliquid.js';
+
 // Import storage keys
 import { STORAGE_KEYS } from './storage.js';
 
@@ -393,8 +396,10 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
                 balance = await executeExchange.fetchBalance();
             } else {
                 // Hyperliquid: Use fetchBalanceForAddress (queries Hyperliquid API)
-                console.log('⚡ Fetching balance from Hyperliquid...');
-                balance = await fetchBalanceForAddress(session.userWalletAddress);
+                const hyperliquidNetwork = config.hyperliquid?.network || 'mainnet';
+                const hyperliquidConfig = getHyperliquidConfig(hyperliquidNetwork);
+                console.log(`⚡ Fetching balance from Hyperliquid ${hyperliquidNetwork}...`);
+                balance = await fetchBalanceForAddress(session.userWalletAddress, hyperliquidConfig.apiUrl);
             }
 
             const freeMargin = balance.free; // Available margin (accountValue - totalMarginUsed)
@@ -976,8 +981,10 @@ async function executeCopyTrade(trade) {
             // Moonlander: Use executeExchange.fetchBalance()
             balance = await executeExchange.fetchBalance();
         } else {
-            // Hyperliquid: Use fetchBalanceForAddress
-            balance = await fetchBalanceForAddress(userWalletAddress);
+            // Hyperliquid: Use fetchBalanceForAddress with network-aware API URL
+            const hyperliquidNetwork = config.hyperliquid?.network || 'mainnet';
+            const hyperliquidConfig = getHyperliquidConfig(hyperliquidNetwork);
+            balance = await fetchBalanceForAddress(userWalletAddress, hyperliquidConfig.apiUrl);
         }
         const freeMargin = balance.free; // Available margin
         const totalBalance = balance.total;

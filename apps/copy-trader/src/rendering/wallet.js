@@ -371,12 +371,12 @@ export function renderPositions(positions, container) {
  * @param {string} address - Wallet address
  * @returns {Promise<object>} Balance object with free, used, total
  */
-export async function fetchBalanceForAddress(address) {
+export async function fetchBalanceForAddress(address, apiUrl = 'https://api.hyperliquid.xyz') {
   try {
-    console.log(`[fetchBalance] Querying balance for ${address}`);
+    console.log(`[fetchBalance] Querying balance for ${address} on ${apiUrl}`);
 
     // Use Hyperliquid direct API
-    const response = await fetch('https://api.hyperliquid.xyz/info', {
+    const response = await fetch(`${apiUrl}/info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

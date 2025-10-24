@@ -8,7 +8,24 @@
  *   (CCXT's fetchPositions has a bug with user parameter)
  */
 
-const HYPERLIQUID_API_URL = 'https://api.hyperliquid.xyz/info';
+import { getHyperliquidConfig } from '../config/hyperliquid.js';
+
+// Get API URL based on network (default to mainnet for backward compatibility)
+function getApiUrl() {
+    // Try to get network from localStorage config
+    try {
+        const settingsKey = 'copy-trader-settings';
+        const settings = JSON.parse(localStorage.getItem(settingsKey) || '{}');
+        const network = settings.hyperliquid?.network || 'mainnet';
+        const config = getHyperliquidConfig(network);
+        return `${config.apiUrl}/info`;
+    } catch {
+        // Fallback to mainnet if config is not available
+        return 'https://api.hyperliquid.xyz/info';
+    }
+}
+
+const HYPERLIQUID_API_URL = getApiUrl();
 
 /**
  * Fetch wallet balance (USDC and other assets)
