@@ -773,6 +773,122 @@ async function startCopyTrading() {
       const userSymbols = new Set([...userSymbolMap.values()]);
       const traderSymbols = new Set([...traderSymbolMap.values()]);
 
+      // Find extra positions (positions user has that trader doesn't)
+      const extraPositionsNormalized = [...userSymbolMap.keys()].filter(normalized =>
+        !traderSymbolMap.has(normalized)
+      );
+
+      // Close extra positions if found
+      if (extraPositionsNormalized.length > 0) {
+        const extraSymbols = extraPositionsNormalized.map(n => userSymbolMap.get(n));
+
+        const proceed = confirm(
+          `📋 Portfolio Sync\n\n` +
+          `You have ${extraPositionsNormalized.length} position(s) that trader doesn't have:\n` +
+          `${extraSymbols.join(', ')}\n\n` +
+          `Do you want to close these positions to match trader's portfolio?`
+        );
+
+        if (proceed) {
+          console.log('🔄 Closing extra positions to match trader portfolio...');
+
+          try {
+            // Get extra positions to close
+            const positionsToClose = userPositions.filter(p => {
+              const normalized = normalizeSymbol(p.symbol);
+              return extraPositionsNormalized.includes(normalized);
+            });
+
+            console.log('📊 Extra positions to close:', positionsToClose.map(p => ({ symbol: p.symbol, side: p.side, size: p.size })));
+
+            // Close positions based on platform
+            if (config.executionPlatform === 'moonlander') {
+              // Initialize Moonlander exchange
+              const { MoonlanderExchange } = await import('./services/moonlander-browser.js');
+              const { getMoonlanderConfig } = await import('./config/moonlander.js');
+              const moonlanderConfig = getMoonlanderConfig(config.moonlander.network);
+
+              const exchange = new MoonlanderExchange({
+                privateKey: config.moonlander.privateKey,
+                ...moonlanderConfig,
+              });
+              await exchange.initialize();
+
+              // Close each position sequentially (blockchain nonce management)
+              for (let i = 0; i < positionsToClose.length; i++) {
+                const position = positionsToClose[i];
+                try {
+                  console.log(`🔄 [${i + 1}/${positionsToClose.length}] Closing ${position.symbol}...`);
+                  await exchange.closeTrade(position.tradeHash);
+                  console.log(`✅ [${i + 1}/${positionsToClose.length}] Closed ${position.symbol}`);
+
+                  // Wait for transaction to be mined before sending next one (avoid nonce issues)
+                  if (i < positionsToClose.length - 1) {
+                    console.log('⏳ Waiting 2s for transaction to be mined...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                  }
+                } catch (error) {
+                  console.error(`❌ Failed to close ${position.symbol}:`, error.message);
+                }
+              }
+            } else {
+              // Hyperliquid: Use CCXT exchange
+              const apiKey = getApiKey();
+              const wallet = new ethers.Wallet(apiKey);
+              const walletAddress = wallet.address;
+
+              const exchange = new ccxt.hyperliquid({
+                privateKey: apiKey,
+                walletAddress: walletAddress,
+              });
+
+              await exchange.loadMarkets();
+
+              // Close each position
+              for (const position of positionsToClose) {
+                try {
+                  console.log(`🔄 Closing ${position.symbol}...`);
+
+                  // Determine order side (opposite of position side)
+                  const side = position.side === 'long' ? 'sell' : 'buy';
+
+                  await exchange.createMarketOrder(
+                    position.symbol,
+                    side,
+                    Math.abs(position.size),
+                    undefined,
+                    { reduceOnly: true }
+                  );
+
+                  console.log(`✅ Closed ${position.symbol}`);
+                } catch (error) {
+                  console.error(`❌ Failed to close ${position.symbol}:`, error.message);
+                }
+              }
+            }
+
+            console.log('✅ Extra positions closed successfully');
+
+            // Refresh user positions after closing
+            userPositions.length = 0; // Clear array
+            const freshUserPositions = await fetchUserPositions();
+            userPositions.push(...freshUserPositions);
+
+            // Rebuild userSymbolMap with fresh data
+            userSymbolMap.clear();
+            userPositions.forEach(p => {
+              const normalized = normalizeSymbol(p.symbol);
+              userSymbolMap.set(normalized, p.symbol);
+            });
+
+            console.log('🔄 User positions refreshed after closing extras');
+          } catch (error) {
+            console.error('❌ Failed to close extra positions:', error);
+            alert(`Failed to close some positions: ${error.message}\n\nYou can continue, but some positions may remain open.`);
+          }
+        }
+      }
+
       // Find conflicts by comparing normalized symbols
       const conflictingNormalized = [...userSymbolMap.keys()].filter(normalized =>
         traderSymbolMap.has(normalized)
