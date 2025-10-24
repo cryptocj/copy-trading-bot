@@ -10,8 +10,8 @@
  */
 
 import dotenv from 'dotenv';
-import { MoonlanderExchange } from './src/services/moonlander.js';
-import { MOONLANDER_TESTNET } from './src/config/moonlander.js';
+import { MoonlanderExchange } from '../src/services/moonlander.js';
+import { MOONLANDER_TESTNET } from '../src/config/moonlander.js';
 
 dotenv.config();
 
@@ -28,9 +28,9 @@ const CONFIG = {
   usdcAddress: process.env.MOONLANDER_USDC_ADDRESS || '0x01A15d3504446928EB56dbc58D5dDA120D502Be4',
 
   // Order parameters (SAFE SMALL VALUES FOR TESTING)
-  testPair: 'BTC/USD',
+  testPair: 'CRO/USD',
   marginAmount: '1000', // $10 USDC margin
-  positionSize: '0.01', // 0.001 BTC position size
+  positionSize: '10000', // 0.001 BTC position size
   side: 'buy', // 'buy' for LONG, 'sell' for SHORT
 };
 
