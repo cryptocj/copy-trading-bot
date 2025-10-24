@@ -418,17 +418,11 @@ function setupPlatformSelector() {
       const network = e.target.value;
       config.moonlander.network = network;
       saveSettings(config);
-
-      // Update display with network config
-      await updateMoonlanderConfigDisplay(network);
     });
 
-    // Initialize display on page load
+    // Initialize network config on page load
     const initialNetwork = elements.moonlanderNetworkSelect.value || 'testnet';
     config.moonlander.network = initialNetwork;
-    updateMoonlanderConfigDisplay(initialNetwork).catch(err => {
-      console.error('Failed to initialize Moonlander config display:', err);
-    });
   }
 
   // Note: Wallet address derivation is handled after settings are loaded in main initialization
@@ -589,53 +583,6 @@ async function closeAllMoonlanderPositions() {
   } catch (error) {
     console.error('❌ Failed to close all positions:', error);
     alert(`Error: ${error.message}\n\nCheck console for details.`);
-  }
-}
-
-/**
- * Update Moonlander config display with network settings
- * @param {string} network - 'testnet' or 'mainnet'
- */
-async function updateMoonlanderConfigDisplay(network) {
-  try {
-    // Dynamically import the config
-    const { getMoonlanderConfig } = await import('./config/moonlander.js');
-    const networkConfig = getMoonlanderConfig(network === 'testnet');
-
-    // Update display elements
-    if (elements.moonlanderDiamondDisplay) {
-      const shortAddress = networkConfig.diamondAddress
-        ? `${networkConfig.diamondAddress.slice(0, 6)}...${networkConfig.diamondAddress.slice(-4)}`
-        : 'Not configured';
-      elements.moonlanderDiamondDisplay.textContent = shortAddress;
-      elements.moonlanderDiamondDisplay.title = networkConfig.diamondAddress;
-    }
-
-    if (elements.moonlanderUsdcDisplay) {
-      const usdcAddress = networkConfig.marginTokens?.USDC?.address || 'Not configured';
-      const shortUsdc = usdcAddress.startsWith('0x')
-        ? `${usdcAddress.slice(0, 6)}...${usdcAddress.slice(-4)}`
-        : usdcAddress;
-      elements.moonlanderUsdcDisplay.textContent = shortUsdc;
-      elements.moonlanderUsdcDisplay.title = usdcAddress;
-    }
-
-    // Update pairs display
-    if (elements.moonlanderPairsDisplay && networkConfig.pairAddresses) {
-      const pairs = Object.keys(networkConfig.pairAddresses).join(', ');
-      elements.moonlanderPairsDisplay.textContent = pairs || 'None configured';
-    }
-
-    console.log(`🌙 Loaded Moonlander ${network} config:`, {
-      diamond: networkConfig.diamondAddress,
-      usdc: networkConfig.marginTokens?.USDC?.address,
-      pairs: Object.keys(networkConfig.pairAddresses || {}).length,
-    });
-  } catch (error) {
-    console.error('Failed to load Moonlander config:', error);
-    if (elements.moonlanderDiamondDisplay) {
-      elements.moonlanderDiamondDisplay.textContent = 'Error loading';
-    }
   }
 }
 

@@ -31,9 +31,6 @@ export function initializeElements() {
     moonlanderPrivateKeyInput: document.getElementById('moonlander-private-key'),
     moonlanderPrivateKeyError: document.getElementById('moonlander-private-key-error'),
     saveMoonlanderPrivateKeyCheckbox: document.getElementById('save-moonlander-private-key'),
-    moonlanderDiamondDisplay: document.getElementById('moonlander-diamond-display'),
-    moonlanderUsdcDisplay: document.getElementById('moonlander-usdc-display'),
-    moonlanderPairsDisplay: document.getElementById('moonlander-pairs-display'),
 
     // Validation errors
     traderAddressError: document.getElementById('trader-address-error'),
