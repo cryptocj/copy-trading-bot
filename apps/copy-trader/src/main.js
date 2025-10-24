@@ -334,7 +334,7 @@ function setupButtonListeners() {
  * Setup platform selector to show/hide Moonlander configuration and API key fields
  */
 function setupPlatformSelector() {
-  elements.executionPlatformSelect.addEventListener('change', (e) => {
+  elements.executionPlatformSelect.addEventListener('change', async (e) => {
     const platform = e.target.value;
 
     if (platform === 'moonlander') {
@@ -360,6 +360,14 @@ function setupPlatformSelector() {
     // Update config
     config.executionPlatform = platform;
     console.log(`Execution platform changed to: ${platform}`);
+
+    // Refresh wallet info to show correct data for the new platform
+    console.log('🔄 Refreshing wallet info after platform switch...');
+    try {
+      await refreshWalletInfo(elements, isCopyTradingActive);
+    } catch (error) {
+      console.error('Failed to refresh wallet info after platform switch:', error);
+    }
 
     // Recheck form validity since different platforms require different API keys
     checkFormValidity();
