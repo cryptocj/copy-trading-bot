@@ -30,6 +30,7 @@ import {
   setCopyTradingActive,
   clearOrderList,
   getOrderList,
+  getApiKey,
 } from './state/appState.js';
 import { initializeElements } from './dom/elements.js';
 import {
@@ -82,6 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize button listeners
   setupButtonListeners();
 
+  // Initialize platform selector listener (also handles initial UI setup)
+  setupPlatformSelector();
+
   // Initialize history panel listeners
   setupHistoryPanelListeners();
 
@@ -93,6 +97,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load saved settings from localStorage
   loadSavedSettings(elements, config, checkFormValidity, () => refreshWalletInfo(elements, isCopyTradingActive));
+
+  // After settings are loaded, derive wallet address if Moonlander is selected
+  console.log(`🔍 Checking initialization: platform=${config.executionPlatform}, hasPrivateKey=${!!config.moonlander.privateKey}`);
+  if (config.executionPlatform === 'moonlander' && config.moonlander.privateKey) {
+    console.log('🔄 Deriving wallet address from loaded Moonlander private key...');
+    console.log(`🔑 Private key preview: ${config.moonlander.privateKey.substring(0, 10)}...`);
+    deriveMoonlanderWalletAddress(config.moonlander.privateKey).then(derivedAddress => {
+      if (derivedAddress) {
+        console.log(`✅ Wallet address derived on load: ${derivedAddress}`);
+        // Refresh wallet display
+        refreshWalletInfo(elements, isCopyTradingActive).catch(err => {
+          console.error('Failed to refresh wallet info after derivation:', err);
+        });
+      } else {
+        console.log('⚠️ Derivation returned null');
+      }
+    }).catch(err => {
+      console.error('❌ Failed to derive wallet address on load:', err);
+    });
+  } else {
+    console.log('⏭️ Skipping wallet derivation - conditions not met');
+  }
 
   // Restore active session if exists (T015 - US1: Automatic Session Recovery)
   // Non-blocking: runs in background, UI remains responsive
@@ -162,7 +188,13 @@ async function restoreActiveSession() {
 
   // Validate required fields
   const addressValidation = validateAddress(savedConfig.traderAddress);
-  const apiKeyValidation = validateApiKey(savedConfig.userApiKey);
+
+  // Validate the appropriate API key based on platform
+  const apiKeyToValidate = savedConfig.executionPlatform === 'moonlander'
+    ? savedConfig.monitoringApiKey
+    : savedConfig.hyperliquidApiKey;
+  const apiKeyValidation = validateApiKey(apiKeyToValidate);
+
   const copyBalanceValidation = validateCopyBalance(savedConfig.copyBalance);
 
   if (!addressValidation.valid || !apiKeyValidation.valid || !copyBalanceValidation.valid) {
@@ -180,18 +212,36 @@ async function restoreActiveSession() {
   console.log('[SessionRestore] savedConfig.useLatestPrice:', savedConfig.useLatestPrice);
 
   config.traderAddress = savedConfig.traderAddress;
-  config.userApiKey = savedConfig.userApiKey;
+  config.executionPlatform = savedConfig.executionPlatform || 'hyperliquid';
+  config.hyperliquidApiKey = savedConfig.hyperliquidApiKey || '';
+  config.monitoringApiKey = savedConfig.monitoringApiKey || '';
   config.copyBalance = savedConfig.copyBalance;
   config.useLatestPrice = savedConfig.useLatestPrice ?? false;
   config.isDryRun = savedConfig.isDryRun ?? true;
 
   console.log('[SessionRestore] Restored config.isDryRun:', config.isDryRun);
   console.log('[SessionRestore] Restored config.useLatestPrice:', config.useLatestPrice);
+  console.log('[SessionRestore] Restored config.executionPlatform:', config.executionPlatform);
 
   // Restore UI form values (T017)
-  elements.traderAddressInput.value = savedConfig.traderAddress;
-  elements.apiKeyInput.value = savedConfig.userApiKey;
-  elements.copyBalanceInput.value = savedConfig.copyBalance;
+  if (elements.traderAddressInput) {
+    elements.traderAddressInput.value = savedConfig.traderAddress;
+  }
+
+  // Restore the correct API key field based on platform
+  if (config.executionPlatform === 'moonlander') {
+    if (elements.monitoringApiKeyInput) {
+      elements.monitoringApiKeyInput.value = savedConfig.monitoringApiKey || '';
+    }
+  } else {
+    if (elements.hyperliquidApiKeyInput) {
+      elements.hyperliquidApiKeyInput.value = savedConfig.hyperliquidApiKey || '';
+    }
+  }
+
+  if (elements.copyBalanceInput) {
+    elements.copyBalanceInput.value = savedConfig.copyBalance;
+  }
 
   // Restore checkbox states
   if (elements.useLatestPriceCheckbox) {
@@ -253,6 +303,233 @@ function setupButtonListeners() {
   elements.startButton.addEventListener('click', startCopyTrading);
   elements.stopButton.addEventListener('click', stopCopyTrading);
   elements.loadMyWalletButton.addEventListener('click', () => loadMyWalletByAddress(elements));
+
+  // Refresh derived wallet button (for Moonlander mode)
+  if (elements.refreshDerivedWalletButton) {
+    elements.refreshDerivedWalletButton.addEventListener('click', async () => {
+      if (config.moonlander.privateKey) {
+        const derivedAddress = await deriveMoonlanderWalletAddress(config.moonlander.privateKey);
+        if (derivedAddress) {
+          await refreshWalletInfo(elements, isCopyTradingActive);
+        }
+      } else {
+        alert('Please enter your Moonlander private key first');
+      }
+    });
+  }
+}
+
+/**
+ * Setup platform selector to show/hide Moonlander configuration and API key fields
+ */
+function setupPlatformSelector() {
+  elements.executionPlatformSelect.addEventListener('change', (e) => {
+    const platform = e.target.value;
+
+    if (platform === 'moonlander') {
+      // Show Moonlander config and monitoring API key
+      elements.moonlanderConfig?.classList.remove('hidden');
+      elements.hyperliquidApiKeyField?.classList.add('hidden');
+      elements.monitoringApiKeyField?.classList.remove('hidden');
+
+      // Show derived wallet display, hide manual input
+      elements.derivedWalletDisplay?.classList.remove('hidden');
+      elements.manualWalletInput?.classList.add('hidden');
+    } else {
+      // Show Hyperliquid API key only
+      elements.moonlanderConfig?.classList.add('hidden');
+      elements.hyperliquidApiKeyField?.classList.remove('hidden');
+      elements.monitoringApiKeyField?.classList.add('hidden');
+
+      // Show manual wallet input, hide derived display
+      elements.derivedWalletDisplay?.classList.add('hidden');
+      elements.manualWalletInput?.classList.remove('hidden');
+    }
+
+    // Update config
+    config.executionPlatform = platform;
+    console.log(`Execution platform changed to: ${platform}`);
+
+    // Recheck form validity since different platforms require different API keys
+    checkFormValidity();
+  });
+
+  // Initialize on page load with default moonlander
+  config.executionPlatform = elements.executionPlatformSelect.value || 'moonlander';
+
+  // Trigger initial display based on default platform
+  const initialPlatform = config.executionPlatform;
+  if (initialPlatform === 'moonlander') {
+    elements.moonlanderConfig?.classList.remove('hidden');
+    elements.hyperliquidApiKeyField?.classList.add('hidden');
+    elements.monitoringApiKeyField?.classList.remove('hidden');
+
+    // Show derived wallet display, hide manual input
+    elements.derivedWalletDisplay?.classList.remove('hidden');
+    elements.manualWalletInput?.classList.add('hidden');
+  } else {
+    // Show manual wallet input, hide derived display
+    elements.derivedWalletDisplay?.classList.add('hidden');
+    elements.manualWalletInput?.classList.remove('hidden');
+  }
+
+  // Setup API key input listeners
+  elements.hyperliquidApiKeyInput?.addEventListener('blur', () => {
+    config.hyperliquidApiKey = elements.hyperliquidApiKeyInput.value;
+    saveSettings(config);
+  });
+
+  elements.monitoringApiKeyInput?.addEventListener('blur', () => {
+    config.monitoringApiKey = elements.monitoringApiKeyInput.value;
+    saveSettings(config);
+  });
+
+  // Setup Moonlander private key input listener
+  elements.moonlanderPrivateKeyInput?.addEventListener('blur', async () => {
+    console.log('🔑 Moonlander private key input blur event triggered');
+    const privateKey = elements.moonlanderPrivateKeyInput.value;
+    console.log(`🔑 Private key length: ${privateKey?.length || 0} characters`);
+    config.moonlander.privateKey = privateKey;
+
+    // Derive wallet address from private key and auto-save it
+    console.log('🔄 Calling deriveMoonlanderWalletAddress...');
+    const derivedAddress = await deriveMoonlanderWalletAddress(privateKey);
+    console.log(`🔄 Derivation result: ${derivedAddress || 'null'}`);
+    if (derivedAddress) {
+      // Refresh wallet display to show the derived address
+      console.log('🔄 Refreshing wallet info...');
+      await refreshWalletInfo(elements, isCopyTradingActive);
+    }
+
+    saveSettings(config);
+    checkFormValidity();
+  });
+
+  // Setup Moonlander network selector
+  if (elements.moonlanderNetworkSelect) {
+    elements.moonlanderNetworkSelect.addEventListener('change', async (e) => {
+      const network = e.target.value;
+      config.moonlander.network = network;
+      saveSettings(config);
+
+      // Update display with network config
+      await updateMoonlanderConfigDisplay(network);
+    });
+
+    // Initialize display on page load
+    const initialNetwork = elements.moonlanderNetworkSelect.value || 'testnet';
+    config.moonlander.network = initialNetwork;
+    updateMoonlanderConfigDisplay(initialNetwork).catch(err => {
+      console.error('Failed to initialize Moonlander config display:', err);
+    });
+  }
+
+  // Note: Wallet address derivation is handled after settings are loaded in main initialization
+
+  // Trigger initial form validity check
+  checkFormValidity();
+}
+
+/**
+ * Derive and save wallet address from Moonlander private key
+ * @param {string} privateKey - Moonlander private key
+ * @returns {Promise<string|null>} Derived wallet address or null if failed
+ */
+async function deriveMoonlanderWalletAddress(privateKey) {
+  if (!privateKey || privateKey.trim() === '') {
+    console.log('⚠️ No private key provided');
+    if (elements.derivedWalletAddress) {
+      elements.derivedWalletAddress.textContent = 'Not derived yet';
+      elements.derivedWalletAddress.classList.remove('text-red-400', 'text-primary');
+      elements.derivedWalletAddress.classList.add('text-gray-500');
+    }
+    return null;
+  }
+
+  try {
+    // Normalize private key - add 0x prefix if missing
+    let normalizedKey = privateKey.trim();
+    if (!normalizedKey.startsWith('0x')) {
+      normalizedKey = '0x' + normalizedKey;
+      console.log('🔧 Added 0x prefix to private key');
+    }
+
+    const wallet = new ethers.Wallet(normalizedKey);
+    const derivedAddress = wallet.address;
+
+    // Auto-save this as "My Wallet Address"
+    localStorage.setItem(STORAGE_KEYS.MY_WALLET_ADDRESS, derivedAddress);
+
+    // Update UI to show the derived address
+    if (elements.derivedWalletAddress) {
+      elements.derivedWalletAddress.textContent = derivedAddress;
+      elements.derivedWalletAddress.title = derivedAddress; // Full address on hover
+      elements.derivedWalletAddress.classList.remove('text-red-400', 'text-gray-500');
+      elements.derivedWalletAddress.classList.add('text-primary');
+    }
+
+    console.log(`🔑 Moonlander wallet address derived: ${derivedAddress}`);
+
+    return derivedAddress;
+  } catch (error) {
+    console.error('❌ Failed to derive wallet address from Moonlander private key:', error);
+
+    // Update UI to show error
+    if (elements.derivedWalletAddress) {
+      elements.derivedWalletAddress.textContent = `Invalid private key: ${error.message}`;
+      elements.derivedWalletAddress.classList.remove('text-primary', 'text-gray-500');
+      elements.derivedWalletAddress.classList.add('text-red-400');
+    }
+
+    return null;
+  }
+}
+
+/**
+ * Update Moonlander config display with network settings
+ * @param {string} network - 'testnet' or 'mainnet'
+ */
+async function updateMoonlanderConfigDisplay(network) {
+  try {
+    // Dynamically import the config
+    const { getMoonlanderConfig } = await import('./config/moonlander.js');
+    const networkConfig = getMoonlanderConfig(network === 'testnet');
+
+    // Update display elements
+    if (elements.moonlanderDiamondDisplay) {
+      const shortAddress = networkConfig.diamondAddress
+        ? `${networkConfig.diamondAddress.slice(0, 6)}...${networkConfig.diamondAddress.slice(-4)}`
+        : 'Not configured';
+      elements.moonlanderDiamondDisplay.textContent = shortAddress;
+      elements.moonlanderDiamondDisplay.title = networkConfig.diamondAddress;
+    }
+
+    if (elements.moonlanderUsdcDisplay) {
+      const usdcAddress = networkConfig.marginTokens?.USDC?.address || 'Not configured';
+      const shortUsdc = usdcAddress.startsWith('0x')
+        ? `${usdcAddress.slice(0, 6)}...${usdcAddress.slice(-4)}`
+        : usdcAddress;
+      elements.moonlanderUsdcDisplay.textContent = shortUsdc;
+      elements.moonlanderUsdcDisplay.title = usdcAddress;
+    }
+
+    // Update pairs display
+    if (elements.moonlanderPairsDisplay && networkConfig.pairAddresses) {
+      const pairs = Object.keys(networkConfig.pairAddresses).join(', ');
+      elements.moonlanderPairsDisplay.textContent = pairs || 'None configured';
+    }
+
+    console.log(`🌙 Loaded Moonlander ${network} config:`, {
+      diamond: networkConfig.diamondAddress,
+      usdc: networkConfig.marginTokens?.USDC?.address,
+      pairs: Object.keys(networkConfig.pairAddresses || {}).length,
+    });
+  } catch (error) {
+    console.error('Failed to load Moonlander config:', error);
+    if (elements.moonlanderDiamondDisplay) {
+      elements.moonlanderDiamondDisplay.textContent = 'Error loading';
+    }
+  }
 }
 
 /**
@@ -260,9 +537,31 @@ function setupButtonListeners() {
  * @param {boolean} disabled - Whether to disable inputs
  */
 function setFormDisabled(disabled) {
-  elements.traderAddressInput.disabled = disabled;
-  elements.apiKeyInput.disabled = disabled;
-  elements.copyBalanceInput.disabled = disabled;
+  if (elements.traderAddressInput) {
+    elements.traderAddressInput.disabled = disabled;
+  }
+
+  // Disable the appropriate API key field based on platform
+  if (config.executionPlatform === 'moonlander') {
+    if (elements.monitoringApiKeyInput) {
+      elements.monitoringApiKeyInput.disabled = disabled;
+    }
+    if (elements.moonlanderPrivateKeyInput) {
+      elements.moonlanderPrivateKeyInput.disabled = disabled;
+    }
+  } else {
+    if (elements.hyperliquidApiKeyInput) {
+      elements.hyperliquidApiKeyInput.disabled = disabled;
+    }
+  }
+
+  if (elements.copyBalanceInput) {
+    elements.copyBalanceInput.disabled = disabled;
+  }
+
+  if (elements.executionPlatformSelect) {
+    elements.executionPlatformSelect.disabled = disabled;
+  }
 }
 
 /**
@@ -287,7 +586,8 @@ async function startCopyTrading() {
       myWalletAddress = savedMyWalletAddress;
       console.log('  - Using saved wallet address:', myWalletAddress);
     } else {
-      const userWallet = new ethers.Wallet(config.userApiKey);
+      const apiKey = getApiKey();
+      const userWallet = new ethers.Wallet(apiKey);
       myWalletAddress = userWallet.address;
       console.log('  - Using wallet derived from API key:', myWalletAddress);
     }
@@ -352,15 +652,17 @@ async function startCopyTrading() {
     let latestPrices = null;
     if (config.useLatestPrice) {
       console.log('📊 Fetching latest market prices for confirmation...');
-      latestPrices = await fetchLatestPricesForConfirmation(config.userApiKey, config.traderAddress);
+      const apiKey = getApiKey();
+      latestPrices = await fetchLatestPricesForConfirmation(apiKey, config.traderAddress);
     }
 
     // Show confirmation dialog before starting
     console.log('Requesting user confirmation...');
+    const apiKey = getApiKey();
     const result = await confirmCopyTradingSession({
       traderAddress: config.traderAddress,
       copyBalance: config.copyBalance,
-      apiKey: config.userApiKey,
+      apiKey: apiKey,
       latestPrices: latestPrices,
       positionsToSkip: positionsToSkip, // Pass conflicting symbols to skip
     });

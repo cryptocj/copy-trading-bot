@@ -130,7 +130,7 @@ export function isDryRunMode() {
 
 /**
  * Start copy trading session
- * @param {{ traderAddress: string, userApiKey: string, copyBalance: number, initialPositions?: Array }} config
+ * @param {{ traderAddress: string, hyperliquidApiKey?: string, monitoringApiKey?: string, executionPlatform: string, copyBalance: number, initialPositions?: Array }} config
  * @param {Function} onOrderExecuted - Callback when order is executed (receives order object)
  * @param {object} [resumeState] - Optional: resume from saved session state (T010)
  * @returns {Promise<void>}
@@ -148,31 +148,71 @@ export async function startCopyTrading(config, onOrderExecuted, resumeState = nu
     });
 
     try {
-        // Get user's wallet address from localStorage (the one they input in "My Wallet" section)
-        // This is the wallet with funds that we query balance from
-        const userWalletAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
+        // Determine wallet addresses based on execution platform
+        let userWalletAddress; // Wallet address for balance queries
+        let apiKey; // API key for Hyperliquid monitoring
+        let executionPrivateKey; // Private key for trade execution
 
-        if (!userWalletAddress) {
-            throw new Error('Please set your wallet address in "My Wallet" section first');
+        if (config.executionPlatform === 'moonlander') {
+            // Moonlander mode: Use Moonlander private key for execution
+            executionPrivateKey = config.moonlander?.privateKey;
+            if (!executionPrivateKey) {
+                throw new Error('Moonlander private key not configured');
+            }
+
+            // Derive wallet address from Moonlander private key
+            const executionWallet = new ethers.Wallet(executionPrivateKey);
+            userWalletAddress = executionWallet.address;
+
+            // Use monitoring API key for Hyperliquid monitoring
+            apiKey = config.monitoringApiKey;
+            if (!apiKey) {
+                throw new Error('Monitoring API key not configured for Moonlander mode');
+            }
+
+            console.log('🌙 Moonlander mode:');
+            console.log('  - Execution wallet (from Moonlander private key):', userWalletAddress);
+            console.log('  - Monitoring via Hyperliquid');
+        } else {
+            // Hyperliquid mode: Use Hyperliquid API key for both monitoring and execution
+            apiKey = config.hyperliquidApiKey;
+            if (!apiKey) {
+                throw new Error('Hyperliquid API key not configured');
+            }
+
+            // Can use saved wallet address or derive from API key
+            const savedWalletAddress = localStorage.getItem(STORAGE_KEYS.MY_WALLET_ADDRESS);
+            if (savedWalletAddress) {
+                userWalletAddress = savedWalletAddress;
+            } else {
+                // Derive from API key
+                const wallet = new ethers.Wallet(apiKey);
+                userWalletAddress = wallet.address;
+            }
+
+            executionPrivateKey = apiKey; // Same key for execution
+
+            console.log('⚡ Hyperliquid mode:');
+            console.log('  - Wallet address:', userWalletAddress);
         }
 
-        // Derive API key wallet address from private key (this is for executing trades/signing)
-        // ethers.js is loaded via CDN and available as window.ethers
-        const wallet = new ethers.Wallet(config.userApiKey);
-        const apiKeyWalletAddress = wallet.address;
+        // Derive API key wallet address from API key (for Hyperliquid monitoring)
+        const monitoringWallet = new ethers.Wallet(apiKey);
+        const apiKeyWalletAddress = monitoringWallet.address;
 
+        console.log('Execution platform:', config.executionPlatform);
         console.log('User wallet address (for balance queries):', userWalletAddress);
-        console.log('API key wallet address (for trade execution):', apiKeyWalletAddress);
+        console.log('Monitoring wallet address:', apiKeyWalletAddress);
 
         // Initialize CCXT instances
         // Hyperliquid uses Ethereum-style wallet authentication with API key wallet
         const monitorExchange = new ccxt.pro.hyperliquid({
-            privateKey: config.userApiKey, // Ethereum wallet private key
+            privateKey: apiKey, // Ethereum wallet private key
             walletAddress: apiKeyWalletAddress, // API key wallet for trade execution
         });
 
         const executeExchange = new ccxt.hyperliquid({
-            privateKey: config.userApiKey, // Ethereum wallet private key
+            privateKey: apiKey, // Ethereum wallet private key
             walletAddress: apiKeyWalletAddress, // API key wallet for trade execution
         });
 

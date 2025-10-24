@@ -15,15 +15,14 @@ import { updateSessionConfig } from '../services/sessionPersistence.js';
  * @param {function} checkFormValidityFn - Function to check overall form validity
  */
 export function setupValidationListeners(elements, checkFormValidityFn) {
-  // Save API key checkbox listener
-  const saveApiKeyCheckbox = document.getElementById('save-api-key');
-  if (saveApiKeyCheckbox) {
-    saveApiKeyCheckbox.addEventListener('change', () => {
+  // Save Hyperliquid API key checkbox listener
+  if (elements.saveHyperliquidApiKeyCheckbox) {
+    elements.saveHyperliquidApiKeyCheckbox.addEventListener('change', () => {
       saveSettings(config); // Update storage when checkbox changes
-      if (!saveApiKeyCheckbox.checked) {
-        console.log('API key will not be saved (more secure)');
+      if (!elements.saveHyperliquidApiKeyCheckbox.checked) {
+        console.log('Hyperliquid API key will not be saved (more secure)');
       } else {
-        console.log('API key will be saved in localStorage (less secure)');
+        console.log('Hyperliquid API key will be saved in localStorage (less secure)');
       }
     });
   }
@@ -90,16 +89,44 @@ export function setupValidationListeners(elements, checkFormValidityFn) {
     checkFormValidityFn();
   });
 
-  // API key validation
-  elements.apiKeyInput.addEventListener('blur', () => {
-    const result = validateApiKey(elements.apiKeyInput.value);
-    displayValidationError(elements, 'api-key', result);
-    if (result.valid) {
-      config.userApiKey = result.key;
-      saveSettings(config); // Auto-save on valid input
-    }
-    checkFormValidityFn();
-  });
+  // Hyperliquid API key validation
+  if (elements.hyperliquidApiKeyInput) {
+    elements.hyperliquidApiKeyInput.addEventListener('blur', () => {
+      const result = validateApiKey(elements.hyperliquidApiKeyInput.value);
+      displayValidationError(elements, 'hyperliquid-api-key', result);
+      if (result.valid) {
+        config.hyperliquidApiKey = result.key;
+        saveSettings(config); // Auto-save on valid input
+      }
+      checkFormValidityFn();
+    });
+  }
+
+  // Monitoring API key validation (for Moonlander mode)
+  if (elements.monitoringApiKeyInput) {
+    elements.monitoringApiKeyInput.addEventListener('blur', () => {
+      const result = validateApiKey(elements.monitoringApiKeyInput.value);
+      displayValidationError(elements, 'monitoring-api-key', result);
+      if (result.valid) {
+        config.monitoringApiKey = result.key;
+        saveSettings(config); // Auto-save on valid input
+      }
+      checkFormValidityFn();
+    });
+  }
+
+  // Moonlander private key validation
+  if (elements.moonlanderPrivateKeyInput) {
+    elements.moonlanderPrivateKeyInput.addEventListener('blur', () => {
+      const result = validateApiKey(elements.moonlanderPrivateKeyInput.value);
+      displayValidationError(elements, 'moonlander-private-key', result);
+      if (result.valid) {
+        config.moonlander.privateKey = result.key;
+        saveSettings(config); // Auto-save on valid input
+      }
+      checkFormValidityFn();
+    });
+  }
 
   // Trade value validation
   elements.copyBalanceInput.addEventListener('blur', () => {
@@ -137,7 +164,22 @@ export function displayValidationError(elements, fieldId, result) {
  */
 export function checkFormValidity(elements, isCopyTradingActive) {
   const addressValid = validateAddress(elements.traderAddressInput.value).valid;
-  const apiKeyValid = validateApiKey(elements.apiKeyInput.value).valid;
+
+  // Check the correct API key based on platform
+  const platform = elements.executionPlatformSelect?.value || 'hyperliquid';
+  let apiKeyValid = false;
+  let moonlanderPrivateKeyValid = true; // Only required when Moonlander is selected
+
+  if (platform === 'moonlander') {
+    // For Moonlander, we need both monitoring API key AND Moonlander private key
+    const monitoringKeyValid = validateApiKey(elements.monitoringApiKeyInput?.value || '').valid;
+    moonlanderPrivateKeyValid = validateApiKey(elements.moonlanderPrivateKeyInput?.value || '').valid;
+    apiKeyValid = monitoringKeyValid && moonlanderPrivateKeyValid;
+  } else {
+    // For Hyperliquid, we need Hyperliquid API key
+    apiKeyValid = validateApiKey(elements.hyperliquidApiKeyInput?.value || '').valid;
+  }
+
   const copyBalanceValid = validateCopyBalance(elements.copyBalanceInput.value).valid;
 
   const allValid = addressValid && apiKeyValid && copyBalanceValid;

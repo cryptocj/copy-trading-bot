@@ -6,10 +6,21 @@
 // Application configuration
 export const config = {
   traderAddress: '',
-  userApiKey: '',
   copyBalance: 0, // Total balance for copying (replaces tradeValue and maxLeverage)
   useLatestPrice: false, // Use latest market price instead of trader's entry price
   isDryRun: true, // Dry-run mode (simulate trades without executing real orders)
+  executionPlatform: 'moonlander', // 'hyperliquid' or 'moonlander' - default to moonlander
+
+  // API Keys (platform-specific)
+  hyperliquidApiKey: '', // Used for Hyperliquid execution OR monitoring when Moonlander is selected
+  monitoringApiKey: '', // Used for Hyperliquid monitoring when Moonlander is selected (same as hyperliquidApiKey in most cases)
+
+  // Moonlander-specific configuration
+  moonlander: {
+    network: 'testnet', // 'testnet' or 'mainnet'
+    privateKey: '', // User's private key for Moonlander execution
+    // Other config (RPC, contracts, etc.) comes from moonlander.js config file
+  },
 };
 
 // Copy trading session state
@@ -67,4 +78,17 @@ export function clearOrderList() {
  */
 export function getOrderList() {
   return orderList;
+}
+
+/**
+ * Get the appropriate API key based on the selected execution platform
+ * For Hyperliquid: Use hyperliquidApiKey for both monitoring and execution
+ * For Moonlander: Use monitoringApiKey for Hyperliquid monitoring
+ * @returns {string} The API key to use for the current platform
+ */
+export function getApiKey() {
+  if (config.executionPlatform === 'moonlander') {
+    return config.monitoringApiKey;
+  }
+  return config.hyperliquidApiKey;
 }

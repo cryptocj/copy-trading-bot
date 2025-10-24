@@ -12,12 +12,31 @@ export function initializeElements() {
   return {
     // Form inputs
     traderAddressInput: document.getElementById('trader-address'),
-    apiKeyInput: document.getElementById('api-key'),
+    executionPlatformSelect: document.getElementById('execution-platform'),
     copyBalanceInput: document.getElementById('copy-balance'),
+
+    // API Key fields (platform-specific)
+    hyperliquidApiKeyField: document.getElementById('hyperliquid-api-key-field'),
+    hyperliquidApiKeyInput: document.getElementById('hyperliquid-api-key'),
+    hyperliquidApiKeyError: document.getElementById('hyperliquid-api-key-error'),
+    saveHyperliquidApiKeyCheckbox: document.getElementById('save-hyperliquid-api-key'),
+
+    monitoringApiKeyField: document.getElementById('monitoring-api-key-field'),
+    monitoringApiKeyInput: document.getElementById('monitoring-api-key'),
+    monitoringApiKeyError: document.getElementById('monitoring-api-key-error'),
+
+    // Moonlander configuration
+    moonlanderConfig: document.getElementById('moonlander-config'),
+    moonlanderNetworkSelect: document.getElementById('moonlander-network'),
+    moonlanderPrivateKeyInput: document.getElementById('moonlander-private-key'),
+    moonlanderPrivateKeyError: document.getElementById('moonlander-private-key-error'),
+    saveMoonlanderPrivateKeyCheckbox: document.getElementById('save-moonlander-private-key'),
+    moonlanderDiamondDisplay: document.getElementById('moonlander-diamond-display'),
+    moonlanderUsdcDisplay: document.getElementById('moonlander-usdc-display'),
+    moonlanderPairsDisplay: document.getElementById('moonlander-pairs-display'),
 
     // Validation errors
     traderAddressError: document.getElementById('trader-address-error'),
-    apiKeyError: document.getElementById('api-key-error'),
     copyBalanceError: document.getElementById('copy-balance-error'),
 
     // Buttons and controls
@@ -27,6 +46,10 @@ export function initializeElements() {
     calculationTestResults: document.getElementById('calculation-test-results'),
     loadMyWalletButton: document.getElementById('load-my-wallet-button'),
     myWalletAddress: document.getElementById('my-wallet-address'),
+    manualWalletInput: document.getElementById('manual-wallet-input'),
+    derivedWalletDisplay: document.getElementById('derived-wallet-display'),
+    derivedWalletAddress: document.getElementById('derived-wallet-address'),
+    refreshDerivedWalletButton: document.getElementById('refresh-derived-wallet'),
     dryRunModeCheckbox: document.getElementById('dry-run-mode'),
     useLatestPriceCheckbox: document.getElementById('use-latest-price'),
 

@@ -10,14 +10,21 @@ export const STORAGE_KEYS = {
   getCopyBalanceKey: (wallet) => `copyTrading.copyBalance.${wallet}`,
   getIsDryRunKey: (wallet) => `copyTrading.isDryRun.${wallet}`,
   getUseLatestPriceKey: (wallet) => `copyTrading.useLatestPrice.${wallet}`,
+  getExecutionPlatformKey: (wallet) => `copyTrading.executionPlatform.${wallet}`,
   LAST_MONITORED_WALLET: 'copyTrading.lastMonitoredWallet', // Track last active wallet
 
   // Global settings (shared across tabs)
-  API_KEY: 'copyTrading.apiKey',
-  SAVE_API_KEY: 'copyTrading.saveApiKey',
+  HYPERLIQUID_API_KEY: 'copyTrading.hyperliquidApiKey',
+  SAVE_HYPERLIQUID_API_KEY: 'copyTrading.saveHyperliquidApiKey',
+  MONITORING_API_KEY: 'copyTrading.monitoringApiKey',
   HISTORY_COLLAPSED: 'copyTrading.historyCollapsed',
   WALLETS_COLLAPSED: 'copyTrading.walletsCollapsed',
   MY_WALLET_ADDRESS: 'copyTrading.myWalletAddress', // Custom wallet address for "My Wallet"
+
+  // Moonlander settings (minimal - most config comes from config file)
+  MOONLANDER_NETWORK: 'copyTrading.moonlander.network', // 'testnet' or 'mainnet'
+  MOONLANDER_PRIVATE_KEY: 'copyTrading.moonlander.privateKey',
+  SAVE_MOONLANDER_PRIVATE_KEY: 'copyTrading.moonlander.savePrivateKey',
 };
 
 /**
@@ -43,21 +50,25 @@ export function loadSavedSettings(elements, config, checkFormValidityFn, refresh
     const copyBalanceKey = STORAGE_KEYS.getCopyBalanceKey(lastWallet);
     const isDryRunKey = STORAGE_KEYS.getIsDryRunKey(lastWallet);
     const useLatestPriceKey = STORAGE_KEYS.getUseLatestPriceKey(lastWallet);
+    const executionPlatformKey = STORAGE_KEYS.getExecutionPlatformKey(lastWallet);
 
     savedTraderAddress = localStorage.getItem(traderAddressKey);
     savedCopyBalance = localStorage.getItem(copyBalanceKey);
     const savedIsDryRun = localStorage.getItem(isDryRunKey);
     const savedUseLatestPrice = localStorage.getItem(useLatestPriceKey);
+    const savedExecutionPlatform = localStorage.getItem(executionPlatformKey);
 
     console.log(`🔑 Loading config with keys:`);
     console.log(`  - traderAddressKey: ${traderAddressKey}`);
     console.log(`  - copyBalanceKey: ${copyBalanceKey}`);
     console.log(`  - isDryRunKey: ${isDryRunKey}`);
     console.log(`  - useLatestPriceKey: ${useLatestPriceKey}`);
+    console.log(`  - executionPlatformKey: ${executionPlatformKey}`);
     console.log(`  - traderAddress: ${savedTraderAddress || 'not found'}`);
     console.log(`  - copyBalance: ${savedCopyBalance || 'not found'}`);
     console.log(`  - isDryRun: ${savedIsDryRun || 'not found'}`);
     console.log(`  - useLatestPrice: ${savedUseLatestPrice || 'not found'}`);
+    console.log(`  - executionPlatform: ${savedExecutionPlatform || 'not found'}`);
 
     if (savedTraderAddress) {
       elements.traderAddressInput.value = savedTraderAddress;
@@ -85,24 +96,79 @@ export function loadSavedSettings(elements, config, checkFormValidityFn, refresh
       }
     }
 
+    // Load execution platform (default to hyperliquid if not set)
+    if (savedExecutionPlatform) {
+      config.executionPlatform = savedExecutionPlatform;
+      if (elements.executionPlatformSelect) {
+        elements.executionPlatformSelect.value = savedExecutionPlatform;
+        // Show/hide Moonlander config based on platform
+        if (savedExecutionPlatform === 'moonlander') {
+          elements.moonlanderConfig?.classList.remove('hidden');
+        }
+      }
+    }
+
     console.log(`✅ Loaded configuration for wallet: ${lastWallet}`);
   } else {
     console.log('⚠️ No last monitored wallet found');
   }
 
-  // Load API key only if user opted in (global setting)
-  const saveApiKey = localStorage.getItem(STORAGE_KEYS.SAVE_API_KEY) === 'true';
-  const saveApiKeyCheckbox = document.getElementById('save-api-key');
-  if (saveApiKeyCheckbox) {
-    saveApiKeyCheckbox.checked = saveApiKey;
+  // Load Moonlander configuration (global settings)
+  const savedMoonlanderNetwork = localStorage.getItem(STORAGE_KEYS.MOONLANDER_NETWORK);
+  if (savedMoonlanderNetwork) {
+    config.moonlander.network = savedMoonlanderNetwork;
+    if (elements.moonlanderNetworkSelect) {
+      elements.moonlanderNetworkSelect.value = savedMoonlanderNetwork;
+    }
   }
 
-  let savedApiKey = null;
-  if (saveApiKey) {
-    savedApiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
-    if (savedApiKey) {
-      elements.apiKeyInput.value = savedApiKey;
-      config.userApiKey = savedApiKey;
+  // Load Moonlander private key (only if save checkbox is checked)
+  const saveMoonlanderPrivateKey = localStorage.getItem(STORAGE_KEYS.SAVE_MOONLANDER_PRIVATE_KEY) === 'true';
+  if (elements.saveMoonlanderPrivateKeyCheckbox) {
+    elements.saveMoonlanderPrivateKeyCheckbox.checked = saveMoonlanderPrivateKey;
+  }
+
+  if (saveMoonlanderPrivateKey) {
+    const savedMoonlanderPrivateKey = localStorage.getItem(STORAGE_KEYS.MOONLANDER_PRIVATE_KEY);
+    if (savedMoonlanderPrivateKey) {
+      config.moonlander.privateKey = savedMoonlanderPrivateKey;
+      if (elements.moonlanderPrivateKeyInput) {
+        elements.moonlanderPrivateKeyInput.value = savedMoonlanderPrivateKey;
+      }
+
+      // Trigger wallet derivation if Moonlander is selected
+      if (config.executionPlatform === 'moonlander') {
+        // Import and call deriveMoonlanderWalletAddress
+        // Note: This will be handled by the initialization in main.js
+        console.log('🔑 Moonlander private key loaded, will derive wallet address');
+      }
+    }
+  }
+
+  // Load API keys (global settings)
+  const saveHyperliquidApiKey = localStorage.getItem(STORAGE_KEYS.SAVE_HYPERLIQUID_API_KEY) === 'true';
+  if (elements.saveHyperliquidApiKeyCheckbox) {
+    elements.saveHyperliquidApiKeyCheckbox.checked = saveHyperliquidApiKey;
+  }
+
+  // Load Hyperliquid API key
+  let savedHyperliquidApiKey = null;
+  if (saveHyperliquidApiKey) {
+    savedHyperliquidApiKey = localStorage.getItem(STORAGE_KEYS.HYPERLIQUID_API_KEY);
+    if (savedHyperliquidApiKey) {
+      config.hyperliquidApiKey = savedHyperliquidApiKey;
+      if (elements.hyperliquidApiKeyInput) {
+        elements.hyperliquidApiKeyInput.value = savedHyperliquidApiKey;
+      }
+    }
+  }
+
+  // Load Monitoring API key (for Moonlander mode)
+  const savedMonitoringApiKey = localStorage.getItem(STORAGE_KEYS.MONITORING_API_KEY);
+  if (savedMonitoringApiKey) {
+    config.monitoringApiKey = savedMonitoringApiKey;
+    if (elements.monitoringApiKeyInput) {
+      elements.monitoringApiKeyInput.value = savedMonitoringApiKey;
     }
   }
 
@@ -120,7 +186,8 @@ export function loadSavedSettings(elements, config, checkFormValidityFn, refresh
     lastMonitoredWallet: lastWallet || 'none',
     traderAddress: savedTraderAddress ? '✓' : '✗',
     copyBalance: savedCopyBalance ? '✓' : '✗',
-    apiKey: saveApiKey && savedApiKey ? '✓' : '✗',
+    hyperliquidApiKey: saveHyperliquidApiKey && savedHyperliquidApiKey ? '✓' : '✗',
+    monitoringApiKey: savedMonitoringApiKey ? '✓' : '✗',
     myWalletAddress: savedMyWalletAddress ? '✓' : '✗',
   });
 
@@ -133,8 +200,8 @@ export function loadSavedSettings(elements, config, checkFormValidityFn, refresh
         console.error('Failed to auto-load wallet by address:', error);
       });
     }, 100);
-  } else if (saveApiKey && savedApiKey) {
-    // Fall back to API key if no custom address saved
+  } else if (saveHyperliquidApiKey && savedHyperliquidApiKey) {
+    // Fall back to Hyperliquid API key if no custom address saved
     console.log('API key found, automatically loading wallet info...');
     // Use setTimeout to ensure DOM is fully initialized
     setTimeout(() => {
@@ -177,6 +244,10 @@ export function saveSettings(config) {
     // Save useLatestPrice with wallet-specific key
     localStorage.setItem(useLatestPriceKey, config.useLatestPrice ? 'true' : 'false');
 
+    // Save execution platform with wallet-specific key
+    const executionPlatformKey = STORAGE_KEYS.getExecutionPlatformKey(walletKey);
+    localStorage.setItem(executionPlatformKey, config.executionPlatform || 'hyperliquid');
+
     // Track this as the last monitored wallet
     localStorage.setItem(STORAGE_KEYS.LAST_MONITORED_WALLET, walletKey);
 
@@ -195,16 +266,41 @@ export function saveSettings(config) {
     console.log('⚠️ No trader address to save');
   }
 
-  // Save global settings (API key - shared across all wallets)
-  const saveApiKeyCheckbox = document.getElementById('save-api-key');
-  if (saveApiKeyCheckbox && saveApiKeyCheckbox.checked) {
-    localStorage.setItem(STORAGE_KEYS.SAVE_API_KEY, 'true');
-    if (config.userApiKey) {
-      localStorage.setItem(STORAGE_KEYS.API_KEY, config.userApiKey);
+  // Save global settings (API keys - shared across all wallets)
+  const saveHyperliquidApiKeyCheckbox = document.getElementById('save-hyperliquid-api-key');
+  if (saveHyperliquidApiKeyCheckbox?.checked) {
+    localStorage.setItem(STORAGE_KEYS.SAVE_HYPERLIQUID_API_KEY, 'true');
+    if (config.hyperliquidApiKey) {
+      localStorage.setItem(STORAGE_KEYS.HYPERLIQUID_API_KEY, config.hyperliquidApiKey);
     }
   } else {
-    localStorage.setItem(STORAGE_KEYS.SAVE_API_KEY, 'false');
-    localStorage.removeItem(STORAGE_KEYS.API_KEY);
+    localStorage.setItem(STORAGE_KEYS.SAVE_HYPERLIQUID_API_KEY, 'false');
+    localStorage.removeItem(STORAGE_KEYS.HYPERLIQUID_API_KEY);
+  }
+
+  // Save monitoring API key (for Moonlander mode)
+  if (config.monitoringApiKey) {
+    localStorage.setItem(STORAGE_KEYS.MONITORING_API_KEY, config.monitoringApiKey);
+  }
+
+  // Save Moonlander configuration (global settings)
+  if (config.moonlander) {
+    // Save network selection
+    if (config.moonlander.network) {
+      localStorage.setItem(STORAGE_KEYS.MOONLANDER_NETWORK, config.moonlander.network);
+    }
+
+    // Save private key (only if save checkbox is checked)
+    const saveMoonlanderPrivateKeyCheckbox = document.getElementById('save-moonlander-private-key');
+    if (saveMoonlanderPrivateKeyCheckbox?.checked) {
+      localStorage.setItem(STORAGE_KEYS.SAVE_MOONLANDER_PRIVATE_KEY, 'true');
+      if (config.moonlander.privateKey) {
+        localStorage.setItem(STORAGE_KEYS.MOONLANDER_PRIVATE_KEY, config.moonlander.privateKey);
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEYS.SAVE_MOONLANDER_PRIVATE_KEY, 'false');
+      localStorage.removeItem(STORAGE_KEYS.MOONLANDER_PRIVATE_KEY);
+    }
   }
 }
 

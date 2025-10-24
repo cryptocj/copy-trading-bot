@@ -38,7 +38,9 @@ export const SESSION_STORAGE_KEYS = {
  * @property {number} tradeCounter - Number of trades executed in this session
  * @property {Object} config - Copy trading configuration
  * @property {string} config.traderAddress - Monitored wallet address
- * @property {string} config.userApiKey - User's API key (encrypted)
+ * @property {string} config.executionPlatform - Execution platform ('hyperliquid' or 'moonlander')
+ * @property {string} config.hyperliquidApiKey - Hyperliquid API key (for Hyperliquid execution)
+ * @property {string} config.monitoringApiKey - Monitoring API key (for Moonlander execution)
  * @property {number} config.copyBalance - Total balance for copying in USD
  * @property {string} monitoredWallet - Current monitored wallet address
  * @property {number} lastUpdate - Last update timestamp
@@ -59,7 +61,9 @@ export function createEmptySessionState() {
     tradeCounter: 0,
     config: {
       traderAddress: '',
-      userApiKey: '',
+      executionPlatform: 'hyperliquid',
+      hyperliquidApiKey: '',
+      monitoringApiKey: '',
       copyBalance: 0,
     },
     monitoredWallet: '',
@@ -101,14 +105,16 @@ export function isValidSessionState(state) {
     return false;
   }
 
-  const requiredConfigFields = ['traderAddress', 'userApiKey', 'copyBalance'];
-  for (const field of requiredConfigFields) {
-    if (!(field in state.config)) {
-      return false;
-    }
-  }
+  // Check for required config fields (support both old and new structure)
+  const hasTraderAddress = 'traderAddress' in state.config;
+  const hasCopyBalance = 'copyBalance' in state.config;
 
-  return true;
+  // Support both old userApiKey and new platform-specific keys
+  const hasApiKey = 'userApiKey' in state.config ||
+                    'hyperliquidApiKey' in state.config ||
+                    'monitoringApiKey' in state.config;
+
+  return hasTraderAddress && hasCopyBalance && hasApiKey;
 }
 
 /**
@@ -117,6 +123,14 @@ export function isValidSessionState(state) {
  * @returns {SessionState}
  */
 export function migrateSessionState(state) {
+  // Migrate old userApiKey to new platform-specific keys
+  if (state.config && state.config.userApiKey && !state.config.hyperliquidApiKey) {
+    console.log('Migrating old userApiKey to hyperliquidApiKey');
+    state.config.hyperliquidApiKey = state.config.userApiKey;
+    state.config.executionPlatform = 'hyperliquid';
+    delete state.config.userApiKey;
+  }
+
   // Currently only version 1 exists
   if (state.version === SESSION_STATE_VERSION) {
     return state;
@@ -201,19 +215,20 @@ export function loadSessionState(monitoredWallet) {
     }
 
     // Parse and validate
-    const state = JSON.parse(stateJson);
+    let state = JSON.parse(stateJson);
+
+    // Always run migration to handle old userApiKey structure
+    state = migrateSessionState(state);
+
     if (!isValidSessionState(state)) {
       console.warn('Saved session state is invalid, clearing');
       clearSessionState(monitoredWallet);
       return null;
     }
 
-    // Check version and migrate if needed
-    if (state.version !== SESSION_STATE_VERSION) {
-      console.log(`Migrating session state from v${state.version} to v${SESSION_STATE_VERSION}`);
-      const migratedState = migrateSessionState(state);
-      saveSessionState(migratedState, monitoredWallet); // Save migrated state
-      return migratedState;
+    // Save migrated state if migration occurred
+    if (state.config && (state.config.hyperliquidApiKey || state.config.monitoringApiKey)) {
+      saveSessionState(state, monitoredWallet);
     }
 
     console.log(`Session state loaded for wallet: ${monitoredWallet}`);
