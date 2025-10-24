@@ -658,11 +658,37 @@ async function startCopyTrading() {
       console.log('  - Using wallet derived from API key:', myWalletAddress);
     }
 
-    // Fetch user's current positions using the wallet address
-    const userPositions = await fetchPositionsForAddress(myWalletAddress);
-    console.log('  - Your positions:', userPositions.length);
+    // Fetch user's current positions - platform-aware
+    let userPositions = [];
+    if (config.executionPlatform === 'moonlander') {
+      console.log('🌙 Fetching user positions from Moonlander...');
+      if (config.moonlander.privateKey) {
+        try {
+          const { MoonlanderExchange } = await import('./services/moonlander-browser.js');
+          const { getMoonlanderConfig } = await import('./config/moonlander.js');
+          const moonlanderConfig = getMoonlanderConfig(config.moonlander.network);
 
-    // Fetch trader's positions
+          const exchange = new MoonlanderExchange({
+            privateKey: config.moonlander.privateKey,
+            ...moonlanderConfig,
+          });
+          await exchange.initialize();
+
+          userPositions = await exchange.fetchPositions();
+          console.log(`  - Moonlander user positions: ${userPositions.length}`);
+        } catch (error) {
+          console.error('Failed to fetch Moonlander user positions:', error);
+          userPositions = [];
+        }
+      }
+    } else {
+      console.log('⚡ Fetching user positions from Hyperliquid...');
+      userPositions = await fetchPositionsForAddress(myWalletAddress);
+      console.log(`  - Hyperliquid user positions: ${userPositions.length}`);
+    }
+
+    // Fetch trader's positions (always from Hyperliquid for monitoring)
+    console.log('⚡ Fetching trader positions from Hyperliquid...');
     const traderPositions = await fetchPositionsForAddress(config.traderAddress);
     console.log('  - Trader positions:', traderPositions.length);
 
