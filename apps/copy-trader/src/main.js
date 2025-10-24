@@ -698,10 +698,43 @@ async function startCopyTrading() {
     if (userPositions.length > 0) {
       console.log('  - Your open positions:', userPositions.map(p => ({ symbol: p.symbol, side: p.side, size: p.size })));
 
-      // Find overlapping symbols
-      const userSymbols = new Set(userPositions.map(p => p.symbol));
-      const traderSymbols = new Set(traderPositions.map(p => p.symbol));
-      const conflicts = [...userSymbols].filter(symbol => traderSymbols.has(symbol));
+      // Normalize symbol format for comparison
+      // Hyperliquid: BTC/USDC:USDC, BTC/USD:USD, BTC/USDCC
+      // Moonlander: BTC/USD
+      // Normalize to: BTC
+      const normalizeSymbol = (symbol) => {
+        return symbol
+          .replace('/USDC:USDC', '')
+          .replace('/USD:USD', '')
+          .replace('/USDCC', '')
+          .replace('/USD', '')
+          .replace('/USDC', '');
+      };
+
+      // Create maps with normalized symbols for comparison
+      const userSymbolMap = new Map();
+      userPositions.forEach(p => {
+        const normalized = normalizeSymbol(p.symbol);
+        userSymbolMap.set(normalized, p.symbol);
+      });
+
+      const traderSymbolMap = new Map();
+      traderPositions.forEach(p => {
+        const normalized = normalizeSymbol(p.symbol);
+        traderSymbolMap.set(normalized, p.symbol);
+      });
+
+      // Find overlapping symbols (using normalized keys)
+      const userSymbols = new Set([...userSymbolMap.values()]);
+      const traderSymbols = new Set([...traderSymbolMap.values()]);
+
+      // Find conflicts by comparing normalized symbols
+      const conflictingNormalized = [...userSymbolMap.keys()].filter(normalized =>
+        traderSymbolMap.has(normalized)
+      );
+
+      // Convert back to original symbols for display and skipping
+      const conflicts = conflictingNormalized.map(normalized => traderSymbolMap.get(normalized));
 
       if (conflicts.length > 0) {
         const remainingPositions = traderPositions.length - conflicts.length;
