@@ -4,6 +4,7 @@
  */
 
 // Cronos Mainnet Configuration
+// NOTE: Moonlander mainnet may not be deployed yet. Verify contract addresses before using!
 export const MOONLANDER_MAINNET = {
   name: 'Moonlander',
   network: 'Cronos Mainnet',
@@ -11,20 +12,54 @@ export const MOONLANDER_MAINNET = {
   rpcUrl: 'https://evm.cronos.org',
 
   // Diamond proxy contract (main trading contract)
-  diamondAddress: '0x...', // TODO: Add actual diamond address
+  // WARNING: This is a placeholder - verify actual mainnet contract address!
+  diamondAddress: '0xE6F6351fb66f3a35313fEEFF9116698665FBEeC9', // TODO: Update with actual mainnet address
 
-  // Supported margin tokens
+  // Supported margin tokens on Cronos Mainnet
   marginTokens: {
     USDC: {
-      address: '0x...', // TODO: Add USDC address on Cronos
+      address: '0xc21223249CA28397B4B6541dfFaEcC539BfF0c59', // USDC on Cronos Mainnet
       decimals: 6,
       symbol: 'USDC',
     },
     USDT: {
-      address: '0x...', // TODO: Add USDT address on Cronos
+      address: '0x66e428c3f67a68878562e79A0234c1F83c208770', // USDT on Cronos Mainnet
       decimals: 6,
       symbol: 'USDT',
     },
+  },
+
+  // Pair contract addresses on Cronos Mainnet
+  // Source: /Users/jingchen/ai/moonlander-contracts/config/cronos.ts
+  // NOTE: Using checksummed addresses (required by ethers.js)
+  pairAddresses: {
+    // Major crypto pairs (checksummed and verified)
+    'BTC/USD': '0x062E66477Faf219F25D27dCED647BF57C3107d52',
+    'ETH/USD': '0xe44Fd7fCb2b1581822D0c862B68222998a0c299a',
+    'SOL/USD': '0xc9DE0F3e08162312528FF72559db82590b481800',
+    'CRO/USD': '0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23',
+
+    // Layer 1 chains
+    'AVAX/USD': '0x8d58088D4E8Ffe75A8b6357ba5ff17B93B912640',
+    'DOT/USD': '0x994047FE66406CbD646cd85B990E11D7F5dB8fC7',
+    'ATOM/USD': '0xB888d8Dd1733d72681b30c00ee76BDE93ae7aa93', // Cosmos
+    'NEAR/USD': '0xAFE470AE215e48c144c7158EAe3CcF0C451cb0CB',
+    'ADA/USD': '0x0e517979C2c1c1522ddB0c73905e0D39b3F990c0',
+    'ALGO/USD': '0x2fEfe47989214c2e74A6319076c138d395681407',
+    'TON/USD': '0x8d96EA3c7F7B7A824e2C8277495007c7Fbd769ea',
+    'SUI/USD': '0x81710203A7FC16797aC9899228a87fd622df9706',
+    'HBAR/USD': '0xe0C7226a58f54db71eDc6289Ba2dc80349B41974',
+
+    // Major altcoins
+    'LINK/USD': '0xBc6f24649CCd67eC42342AccdCECCB2eFA27c9d9',
+    'UNI/USD': '0x16aD43896f7C47a5d9Ee546c44A22205738B329c',
+    'AAVE/USD': '0xE657b115bc45c0786274c824f83e3e02CE809185',
+    'XRP/USD': '0xb9Ce0dd29C91E02d4620F57a66700Fc5e41d6D15',
+
+    // Leveraged pairs (500x) - VERIFIED from successful mainnet transaction
+    '500BTC/USD': '0xBAd4ccc91EF0dfFfbCAb1402C519601fbAf244EF',
+
+    // Note: Other pair addresses need to be verified with correct checksums before using
   },
 
   // Pyth oracle endpoint
@@ -163,15 +198,16 @@ export function convertSymbolToMoonlander(symbol) {
   }
 
   // Try to parse and convert
-  // Examples: BTC/USD:USD -> BTC/USD, BTCUSD -> BTC/USD
+  // Examples: BTC/USD:USD -> BTC/USD, BTCUSD -> BTC/USD, BTC -> BTC/USD
   let normalized = symbol;
 
   // Remove perpetual/futures suffix
   normalized = normalized.replace(/:USD$/, '').replace(/-PERP$/, '');
 
-  // Add slash if missing (BTCUSD -> BTC/USD)
-  if (!normalized.includes('/') && normalized.length > 3) {
-    normalized = `${normalized.slice(0, 3)}/${normalized.slice(3)}`;
+  // Add /USD if missing
+  if (!normalized.includes('/')) {
+    // If it's just the base currency (e.g., "BTC"), add "/USD"
+    normalized = `${normalized}/USD`;
   }
 
   return normalized;
@@ -186,10 +222,28 @@ export function getMoonlanderConfig(network = 'testnet') {
   const isTestnet = network === 'testnet';
   const baseConfig = isTestnet ? MOONLANDER_TESTNET : MOONLANDER_MAINNET;
 
+  // Validate mainnet configuration before using
+  if (!isTestnet) {
+    if (baseConfig.diamondAddress === '0x0000000000000000000000000000000000000000') {
+      throw new Error(
+        '⚠️  MOONLANDER MAINNET NOT CONFIGURED!\n' +
+          '   The mainnet diamond contract address is not set.\n' +
+          '   Please verify Moonlander mainnet is deployed and update the address in moonlander.js\n' +
+          '   For now, use --moonlander (testnet) without --mainnet flag.'
+      );
+    }
+
+    // Additional safety check
+    console.warn('⚠️  WARNING: Using Moonlander MAINNET with real funds!');
+    console.warn('   Diamond Address:', baseConfig.diamondAddress);
+    console.warn('   USDC Address:', baseConfig.marginTokens.USDC.address);
+  }
+
   // Extract USDC address from marginTokens for MoonlanderExchange
   const usdcAddress = baseConfig.marginTokens?.USDC?.address;
 
   return {
+    name: baseConfig.name,
     rpcUrl: baseConfig.rpcUrl,
     diamondAddress: baseConfig.diamondAddress,
     marginTokenAddress: usdcAddress, // MoonlanderExchange expects marginTokenAddress (string), not marginTokens (object)

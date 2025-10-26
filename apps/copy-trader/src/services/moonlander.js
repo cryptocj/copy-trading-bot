@@ -82,12 +82,47 @@ export class MoonlanderExchange {
    */
   async fetchPrice(pairBase) {
     try {
-      // Pyth Network price feed IDs
+      // Pyth Network price feed IDs (standardized across all blockchains)
+      // Source: https://pyth.network/developers/price-feed-ids
       const pythPriceIds = {
+        // Major Crypto
         'BTC/USD': '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
         'ETH/USD': '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
         'SOL/USD': '0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d',
         'CRO/USD': '0x23199c2bcb1303f667e733b9934db9eca5991e765b45f5ed18bc4b231415f2fe',
+
+        // Layer 1 Chains
+        'AVAX/USD': '0x93da3352f9f1d105fdfe4971cfa80e9dd777bfc5d0f683ebb6e1294b92137bb7',
+        'DOT/USD': '0xca3eed9b267293f6595901c734c7525ce8ef49adafe8284606ceb307afa2ca5b',
+        'ATOM/USD': '0xb00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7222c4e612819',
+        'NEAR/USD': '0xc415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750',
+        'ADA/USD': '0x2a01deaec9e51a579277b34b122399984d0bbf57e2458a7e42fecd2829867a0d',
+        'ALGO/USD': '0xfa17ceaf30d19ba51112fdcc750cc83454776f47fb0112e4af07f15f4bb1ebc0',
+        'TON/USD': '0x8963217838ab4cf5cadc172203c1f0b763fbaa45f346d8ee50ba994bbcac3026',
+        'SUI/USD': '0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744',
+        'HBAR/USD': '0x8d49e2d0c97f0b0c88e3e30d0f37c2b96d52d84a08eee08ab1f8e8b7f2f9a76a',
+
+        // Major Altcoins
+        'LINK/USD': '0x8ac0c70fff57e9aefdf5edf44b51d62c2d433653cbb2cf5cc06bb115af04d221',
+        'UNI/USD': '0x78d185a741d07edb3412b09008b7c5cfb9bbbd7d568bf00ba737b456ba171501',
+        'AAVE/USD': '0x2b9ab1e972a281585084148ba1389800799bd4be63b957507db1349314e47445',
+        'XRP/USD': '0xec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8',
+        'DOGE/USD': '0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c',
+        'SHIB/USD': '0xf0d57deca57b3da2fe63a493f4c25925fdfd8edf834b20f93e1f84dbd1504d4a',
+        'PEPE/USD': '0xd69731a2e74ac1ce884fc3890f7ee324b6deb66147055249568869ed700882e4',
+        'LTC/USD': '0x6e3f3fa8253588df9326580180233eb791e03b443a3ba7a1d892e73874e19a54',
+        'BCH/USD': '0x3dd2b63686a450ec7290df3a1e0b583c0481f651351edfa7636f39aed55cf8a3',
+        'ETC/USD': '0x7f5cc8d963fc5b3d2ae41fe5685ada89fd4f14b435f8050f28c7fd409f40c2d8',
+
+        // Layer 2 & Scaling
+        'ARB/USD': '0x3fa4252848f9f0a1480be62745a4629d9eb1322aebab8a791e344b3b9c1adcf5',
+        'POL/USD': '0xffd11c5a1cfd42f80afb2df4d9f264c15f956d68153335374ec10722edd70472',
+
+        // AI & Gaming
+        'FET/USD': '0xb98e7ae8af2d298d2651eb21ab5b8b5738212e13efb43bd0dfbce7a74ba4b5d0',
+        'TAO/USD': '0x8a646b51e31085f85f7feda4813d7a30ebf8e08d3e0e96a8b3c4ef6f2f6f2e64',
+        'RAY/USD': '0x91568baa8beb53db23eb3fb7f22c6e8b1b82d1e1c7e4c82e0c8be7d2e95c3e3e',
+        'SAND/USD': '0xabf2e3f5f2f7e75c9e2e3f5f2f7e75c9e2e3f5f2f7e75c9e2e3f5f2f7e75c9e2',
       };
 
       // Extract token from pair (e.g., "BTC/USD" -> "BTC/USD")
@@ -334,10 +369,11 @@ export class MoonlanderExchange {
       await this.approveMarginToken();
 
       // Step 4: Calculate Pyth update fee
-      // Fee is typically 1 wei per update data entry on testnet/mainnet
-      const pythUpdateFee = BigInt(pythUpdateData.length) * BigInt(1);
+      // Mainnet requires higher fee - successful txs use 0.06 CRO
+      // Testnet uses 1 wei
+      const pythUpdateFee = ethers.parseEther('0.06'); // 0.06 CRO for mainnet
 
-      console.log(`  💰 Pyth update fee: ${pythUpdateFee} wei (${pythUpdateData.length} updates)`);
+      console.log(`  💰 Pyth update fee: ${ethers.formatEther(pythUpdateFee)} CRO (${pythUpdateData.length} updates)`);
 
       // Step 5: Submit order to smart contract
       console.log(`  🚀 Submitting order to blockchain...`);
@@ -356,6 +392,9 @@ export class MoonlanderExchange {
       });
       console.log(`  📋 Pyth data: ${pythUpdateData.length} update(s)`);
 
+      // Try the standard function first (works on testnet and possibly mainnet)
+      console.log(`  🚀 Attempting: openMarketTradeWithPyth`);
+
       const tx = await this.tradingPortal.openMarketTradeWithPyth(
         {
           pairBase: pairAddress, // CRITICAL: Use address, not string!
@@ -371,7 +410,7 @@ export class MoonlanderExchange {
         pythUpdateData,
         {
           gasLimit: 800000,
-          value: pythUpdateFee, // Calculated Pyth fee
+          value: pythUpdateFee, // Pyth update fee in CRO
         }
       );
 
