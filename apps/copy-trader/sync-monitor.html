@@ -150,16 +150,26 @@
             <h2 class="text-lg font-semibold text-primary mb-3">⚙️ Configuration</h2>
             <form id="config-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Trader Address</label>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Select Trader</label>
+                    <select id="trader-select"
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                        <option value="">-- Select a trader --</option>
+                        <option value="0x1b7a7d099a670256207a30dd0ae13d35f278010f">Gemini 2.5 Pro</option>
+                        <option value="0x67293d914eafb26878534571add81f6bd2d9fe06">GPT-5</option>
+                        <option value="0x7a8fd8bba33e37361ca6b0cb4518a44681bad2f3">Qwen3 Max</option>
+                        <option value="0x59fa085d106541a834017b97060bcbbb0aa82869">Claude Sonnet 4.5</option>
+                        <option value="0x56d652e62998251b56c8398fb11fcfe464c08f84">Grok-4</option>
+                        <option value="0xc20ac4dc4188660cbf555448af52694ca62b0734">DeepSeek V3.1</option>
+                        <option value="custom">Custom Address...</option>
+                    </select>
+                </div>
+
+                <div id="custom-address-container" style="display: none;">
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Custom Trader Address</label>
                     <input type="text" id="trader-address" placeholder="0x..." required
                         class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Monitoring API Key (Hyperliquid)</label>
-                    <input type="password" id="monitoring-api-key" placeholder="0x..." required
-                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
-                </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Moonlander Private Key (Copy Trading)</label>
@@ -168,10 +178,10 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Copy Balance ($)</label>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Total Equity ($)</label>
                     <input type="number" id="copy-balance" placeholder="Auto-fetch from wallet" value="" min="100" step="1" readonly
                         class="w-full px-2.5 py-1.5 text-sm bg-dark-900 border border-dark-500 rounded text-gray-400 cursor-not-allowed">
-                    <p class="text-xs text-gray-500 mt-1">Auto-fetched from Moonlander wallet (min $100)</p>
+                    <p class="text-xs text-gray-500 mt-1">Free balance + positions value (min $100)</p>
                 </div>
 
                 <div>
@@ -319,8 +329,8 @@
         // ============================================
 
         // Trading Parameters
-        const MIN_COPY_BALANCE = 100; // Minimum copy balance in USD
-        const MIN_POSITION_VALUE = 200; // Minimum position value in USD
+        const MIN_COPY_BALANCE = 50; // Minimum copy balance in USD
+        const MIN_POSITION_VALUE = 10; // Minimum position value in USD ($10 minimum to avoid dust positions)
         const DEFAULT_SLIPPAGE_PERCENT = 10; // 10% slippage tolerance
         const DEFAULT_BROKER_ID = 1; // Moonlander broker ID
 
@@ -347,6 +357,8 @@
         // Sync Settings
         const DEFAULT_SYNC_INTERVAL = 10; // seconds
         const MAX_LOG_ENTRIES = 100; // Maximum activity log entries
+        const MAX_SCALING_FACTOR = 1.0; // Maximum scaling factor (100% - never copy more than trader)
+        const SAFETY_BUFFER_PERCENT = 0.8; // Use 80% of available balance for safety
 
         // ============================================
         // STATE VARIABLES
@@ -368,8 +380,9 @@
 
         // UI Elements
         const elements = {
+            traderSelect: document.getElementById('trader-select'),
             traderAddress: document.getElementById('trader-address'),
-            monitoringApiKey: document.getElementById('monitoring-api-key'),
+            customAddressContainer: document.getElementById('custom-address-container'),
             moonlanderPrivateKey: document.getElementById('moonlander-private-key'),
             copyBalance: document.getElementById('copy-balance'),
             syncIntervalInput: document.getElementById('sync-interval'),
@@ -394,6 +407,27 @@
         };
 
         // Event listeners
+        // Handle trader selection dropdown
+        elements.traderSelect.addEventListener('change', (e) => {
+            const selectedValue = e.target.value;
+            if (selectedValue === 'custom') {
+                // Show custom address input
+                elements.customAddressContainer.style.display = 'block';
+                elements.traderAddress.value = '';
+                elements.traderAddress.required = true;
+            } else if (selectedValue) {
+                // Use preset address
+                elements.customAddressContainer.style.display = 'none';
+                elements.traderAddress.value = selectedValue;
+                elements.traderAddress.required = false;
+            } else {
+                // No selection
+                elements.customAddressContainer.style.display = 'none';
+                elements.traderAddress.value = '';
+                elements.traderAddress.required = true;
+            }
+        });
+
         elements.startButton.addEventListener('click', startMonitoring);
         elements.stopButton.addEventListener('click', stopMonitoring);
         elements.clearLogBtn.addEventListener('click', clearLog);
@@ -650,30 +684,47 @@
             'function decimals() view returns (uint8)'
         ];
 
-        // Fetch Moonlander wallet USDC balance
+        // Fetch Moonlander wallet total equity (free balance + position value)
         async function fetchMoonlanderBalance(walletAddress) {
             try {
                 const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
                 const usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
 
+                // Get free USDC balance
                 const [balance, decimals] = await Promise.all([
                     usdcContract.balanceOf(walletAddress),
                     usdcContract.decimals()
                 ]);
 
-                const balanceFormatted = Number(ethers.formatUnits(balance, decimals));
+                const freeBalance = Number(ethers.formatUnits(balance, decimals));
 
-                // Enforce minimum balance
-                if (balanceFormatted < MIN_COPY_BALANCE) {
-                    log('warning', `⚠️  Wallet balance ($${balanceFormatted.toFixed(2)}) is below minimum $${MIN_COPY_BALANCE}`);
-                    return MIN_COPY_BALANCE;
+                // Get current positions value (margin locked in positions)
+                const positions = await fetchMoonlanderPositions(walletAddress);
+                const positionsValue = positions.reduce((sum, pos) => sum + pos.margin, 0);
+
+                // Total equity = free balance + positions margin
+                const totalEquity = freeBalance + positionsValue;
+
+                // Enforce minimum equity
+                if (totalEquity < MIN_COPY_BALANCE) {
+                    log('warning', `⚠️  Total equity ($${totalEquity.toFixed(2)}) is below minimum $${MIN_COPY_BALANCE}`);
                 }
 
-                log('success', `💰 Wallet balance: $${balanceFormatted.toFixed(2)} USDC`);
-                return balanceFormatted;
+                log('success', `💰 Free: $${freeBalance.toFixed(2)} + Positions: $${positionsValue.toFixed(2)} = Total equity: $${totalEquity.toFixed(2)} USDC`);
+
+                // Return object with both free balance and total equity
+                return {
+                    freeBalance,
+                    totalEquity,
+                    positionsValue
+                };
             } catch (error) {
                 log('error', `Failed to fetch balance: ${error.message}`);
-                return MIN_COPY_BALANCE; // Default to minimum
+                return {
+                    freeBalance: MIN_COPY_BALANCE,
+                    totalEquity: MIN_COPY_BALANCE,
+                    positionsValue: 0
+                };
             }
         }
 
@@ -740,7 +791,7 @@
                         pythPrice.pythUpdateData,
                         {
                             gasLimit: GAS_LIMIT_OPEN_TRADE,
-                            // value: ethers.parseEther(PYTH_UPDATE_FEE)
+                            value: ethers.parseEther(PYTH_UPDATE_FEE)
                         }
                     );
 
@@ -902,32 +953,59 @@
         }
 
         // Calculate target positions (from positionCalculator.js)
-        function calculateTargetPositions(traderPositions, copyBalance, traderBalance) {
+        function calculateTargetPositions(traderPositions, copyBalance) {
             if (!traderPositions || traderPositions.length === 0) return [];
 
+            // Calculate trader's total margin from their actual positions (same as positionCalculator.js)
             const traderTotalMargin = traderPositions.reduce((sum, pos) => {
-                return sum + (pos.size * pos.entryPrice) / pos.leverage;
+                return sum + pos.margin; // Use actual margin from API
             }, 0);
 
-            const scalingFactor = traderTotalMargin > 0 ? copyBalance / traderTotalMargin : 0;
+            // Scale down using safety buffer for margin (same as positionCalculator.js:200)
+            // Cap at maximum scaling factor - never scale up beyond trader's size
+            let scalingFactor = traderTotalMargin > 0 ? (copyBalance * SAFETY_BUFFER_PERCENT) / traderTotalMargin : 0;
+            if (scalingFactor > MAX_SCALING_FACTOR) {
+                scalingFactor = MAX_SCALING_FACTOR;
+                console.log(`⚠️  Scaling capped at ${(MAX_SCALING_FACTOR * 100).toFixed(0)}% (user has more capital than trader)`);
+            }
 
-            return traderPositions.map(pos => {
-                const traderMargin = (pos.size * pos.entryPrice) / pos.leverage;
+            console.log(`Scaling factor: ${(scalingFactor * 100).toFixed(2)}% | Trader margin: $${traderTotalMargin.toFixed(2)} | User balance: $${copyBalance.toFixed(2)}`);
+
+            const scaledPositions = traderPositions.map(pos => {
+                // Use actual margin from API (same as positionCalculator.js logic)
+                const traderMargin = pos.margin;
                 const copyMargin = traderMargin * scalingFactor;
                 const copySize = (copyMargin * pos.leverage) / pos.entryPrice;
+
+                // Ensure copy size never exceeds trader's size (cap at 100% per position)
+                const finalSize = Math.min(copySize, pos.size);
+                const finalMargin = Math.min(copyMargin, traderMargin);
 
                 return {
                     symbol: pos.symbol,
                     side: pos.side,
-                    size: copySize,
+                    size: finalSize,
                     entryPrice: pos.entryPrice,
                     leverage: pos.leverage,
-                    margin: copyMargin
+                    margin: finalMargin
                 };
-            }).filter(pos => {
-                const positionValue = pos.size * pos.entryPrice;
-                return positionValue >= MIN_POSITION_VALUE;
             });
+
+            // Filter out positions below minimum value
+            const filteredPositions = scaledPositions.filter(pos => {
+                const positionValue = pos.size * pos.entryPrice;
+                const isValid = positionValue >= MIN_POSITION_VALUE;
+                if (!isValid) {
+                    console.log(`  ⏭️  Skipping ${pos.symbol}: Position value $${positionValue.toFixed(2)} < minimum $${MIN_POSITION_VALUE}`);
+                }
+                return isValid;
+            });
+
+            if (filteredPositions.length < scaledPositions.length) {
+                console.log(`  ⚠️  Filtered ${scaledPositions.length - filteredPositions.length} positions below minimum value`);
+            }
+
+            return filteredPositions;
         }
 
         // Calculate position diff (from positionDiff.js)
@@ -969,8 +1047,27 @@
             try {
                 log('info', '🔄 Starting sync...');
 
+                // Fetch user's real-time available balance each sync round
+                let balanceInfo = { freeBalance: MIN_COPY_BALANCE, totalEquity: MIN_COPY_BALANCE, positionsValue: 0 };
+                if (elements.moonlanderPrivateKey.value) {
+                    const { Wallet } = ethers;
+                    const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
+                    balanceInfo = await fetchMoonlanderBalance(moonlanderWallet.address);
+
+                    // Update stats with total equity for display
+                    stats.balance = balanceInfo.totalEquity;
+                    elements.copyBalance.value = balanceInfo.totalEquity.toFixed(2);
+                }
+
                 const traderPositions = await fetchTraderPositions(traderAddress);
-                const targetPositions = calculateTargetPositions(traderPositions, stats.balance, stats.balance);
+
+                // Calculate trader's total margin (same as positionSyncer.js)
+                const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
+
+                // Use total equity (free + positions) for scaling to match trader's total exposure
+                log('info', `📊 Trader margin: $${traderTotalMargin.toFixed(2)} | User total equity: $${balanceInfo.totalEquity.toFixed(2)}`);
+
+                const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity);
 
                 // Fetch Moonlander user positions if key provided
                 if (elements.moonlanderPrivateKey.value) {
@@ -1049,25 +1146,20 @@
 
         // Start monitoring
         async function startMonitoring() {
+            // Get trader address from either dropdown selection or custom input
             const traderAddress = elements.traderAddress.value;
-            const apiKey = elements.monitoringApiKey.value;
             const interval = parseInt(elements.syncIntervalInput.value) * 1000;
 
-            if (!traderAddress || !apiKey) {
-                log('error', '❌ Please provide trader address and API key');
+            if (!traderAddress) {
+                log('error', '❌ Please select or enter a trader address');
                 return;
             }
 
             try {
                 log('info', '🚀 Initializing monitor...');
 
-                // Create exchange
-                const { Wallet } = ethers;
-                const wallet = new Wallet(apiKey);
-
+                // Create exchange for fetching public data (no API key needed)
                 monitorExchange = new ccxt.hyperliquid({
-                    privateKey: apiKey,
-                    walletAddress: wallet.address,
                     urls: {
                         api: {
                             public: HYPERLIQUID_API_URL,
@@ -1078,9 +1170,11 @@
 
                 // Fetch Moonlander wallet balance if private key provided
                 if (elements.moonlanderPrivateKey.value) {
+                    const { Wallet } = ethers;
                     const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
-                    stats.balance = await fetchMoonlanderBalance(moonlanderWallet.address);
-                    elements.copyBalance.value = stats.balance.toFixed(2);
+                    const balanceInfo = await fetchMoonlanderBalance(moonlanderWallet.address);
+                    stats.balance = balanceInfo.totalEquity;
+                    elements.copyBalance.value = balanceInfo.totalEquity.toFixed(2);
                 } else {
                     stats.balance = MIN_COPY_BALANCE; // Default minimum
                     elements.copyBalance.value = MIN_COPY_BALANCE.toFixed(2);
