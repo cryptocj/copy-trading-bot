@@ -217,29 +217,6 @@
             </form>
         </section>
 
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
-                <div class="text-xs text-gray-400 mb-1">💰 Copy Balance</div>
-                <div class="text-2xl font-bold text-gray-200" id="stat-balance">$0.00</div>
-            </div>
-            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
-                <div class="text-xs text-gray-400 mb-1">📊 Syncs</div>
-                <div class="text-2xl font-bold text-gray-200" id="stat-syncs">0</div>
-            </div>
-            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
-                <div class="text-xs text-gray-400 mb-1">➕ Added</div>
-                <div class="text-2xl font-bold text-green-400" id="stat-added">0</div>
-            </div>
-            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
-                <div class="text-xs text-gray-400 mb-1">➖ Removed</div>
-                <div class="text-2xl font-bold text-red-400" id="stat-removed">0</div>
-            </div>
-            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
-                <div class="text-xs text-gray-400 mb-1">❌ Errors</div>
-                <div class="text-2xl font-bold text-red-400" id="stat-errors">0</div>
-            </div>
-        </div>
 
         <!-- Positions Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
@@ -333,11 +310,20 @@
 
         <!-- Activity Log -->
         <section class="bg-dark-700 rounded-lg shadow-lg">
-            <div class="p-4 border-b border-dark-500 flex justify-between items-center">
-                <h2 class="text-lg font-semibold text-primary">📜 Activity Log</h2>
-                <button id="clear-log-btn" class="px-3 py-1.5 text-xs font-medium bg-dark-600 hover:bg-dark-500 text-gray-200 rounded transition">
-                    Clear
-                </button>
+            <div class="p-4 border-b border-dark-500">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-semibold text-primary">📜 Activity Log</h2>
+                    <button id="clear-log-btn" class="px-3 py-1.5 text-xs font-medium bg-dark-600 hover:bg-dark-500 text-gray-200 rounded transition">
+                        Clear
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-4 text-xs text-gray-400">
+                    <span>💰 Balance: <span class="text-gray-200 font-medium" id="stat-balance">$0.00</span></span>
+                    <span>📊 Syncs: <span class="text-gray-200 font-medium" id="stat-syncs">0</span></span>
+                    <span>➕ Added: <span class="text-green-400 font-medium" id="stat-added">0</span></span>
+                    <span>➖ Removed: <span class="text-red-400 font-medium" id="stat-removed">0</span></span>
+                    <span>❌ Errors: <span class="text-red-400 font-medium" id="stat-errors">0</span></span>
+                </div>
             </div>
             <div class="p-4">
                 <div id="activity-log" class="bg-dark-800 rounded p-3 border border-dark-500">
@@ -356,7 +342,7 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '0.1.0';
+        const VERSION = '0.1.1';
         const BUILD_DATE = '2025-10-27';
 
         // ============================================
