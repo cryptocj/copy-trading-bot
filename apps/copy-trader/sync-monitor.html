@@ -346,7 +346,7 @@
         // Trading Parameters
         const MIN_COPY_BALANCE = 50; // Minimum copy balance in USD
         const MIN_POSITION_VALUE = 10; // Minimum position value in USD ($10 minimum to avoid dust positions)
-        const SIZE_TOLERANCE = 0.05; // 5% position size tolerance before triggering adjustment
+        const SIZE_TOLERANCE = 0.15; // 15% position size tolerance before triggering adjustment (increased to prevent churn from price movements)
         const DEFAULT_SLIPPAGE_PERCENT = 10; // 10% slippage tolerance
         const DEFAULT_BROKER_ID = 1; // Moonlander broker ID
 
@@ -1106,12 +1106,15 @@
                     const sizeRatio = target.size > 0 ? sizeDiff / target.size : 0;
 
                     if (sizeRatio > SIZE_TOLERANCE) {
-                        // Size difference > 5% - close old position and reopen with new size
+                        // Size difference > tolerance threshold - close old position and reopen with new size
                         console.log(`⚖️  Position size adjustment needed for ${target.symbol}:`);
-                        console.log(`   Current: ${user.size.toFixed(4)} | Target: ${target.size.toFixed(4)} | Diff: ${(sizeRatio * 100).toFixed(2)}%`);
+                        console.log(`   Current: ${user.size.toFixed(4)} | Target: ${target.size.toFixed(4)} | Diff: ${(sizeRatio * 100).toFixed(2)}% (>${(SIZE_TOLERANCE * 100).toFixed(0)}% threshold)`);
 
                         toRemove.push(user);
                         toAdd.push(target);
+                    } else if (sizeRatio > 0.01) {
+                        // Size difference exists but within tolerance - no action
+                        console.log(`✓ ${target.symbol} size within tolerance: ${(sizeRatio * 100).toFixed(2)}% diff (≤${(SIZE_TOLERANCE * 100).toFixed(0)}% threshold)`);
                     }
                 }
             }
