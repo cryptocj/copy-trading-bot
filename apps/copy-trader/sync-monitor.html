@@ -169,13 +169,14 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Copy Balance ($)</label>
-                    <input type="number" id="copy-balance" placeholder="100" value="100" min="50" step="1" required
-                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                    <input type="number" id="copy-balance" placeholder="Auto-fetch from wallet" value="" min="100" step="1" readonly
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-900 border border-dark-500 rounded text-gray-400 cursor-not-allowed">
+                    <p class="text-xs text-gray-500 mt-1">Auto-fetched from Moonlander wallet (min $100)</p>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Sync Interval (seconds)</label>
-                    <input type="number" id="sync-interval" placeholder="30" value="30" min="10" max="300" step="5" required
+                    <input type="number" id="sync-interval" placeholder="10" value="10" min="5" max="300" step="5" required
                         class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
                 </div>
 
@@ -313,12 +314,50 @@
         // Position Sync Monitor - Browser Implementation
         // Similar to test-position-sync.js but runs entirely in the browser
 
+        // ============================================
+        // CONFIGURATION CONSTANTS
+        // ============================================
+
+        // Trading Parameters
+        const MIN_COPY_BALANCE = 100; // Minimum copy balance in USD
+        const MIN_POSITION_VALUE = 200; // Minimum position value in USD
+        const DEFAULT_SLIPPAGE_PERCENT = 10; // 10% slippage tolerance
+        const DEFAULT_BROKER_ID = 1; // Moonlander broker ID
+
+        // Gas Limits
+        const GAS_LIMIT_OPEN_TRADE = 800000;
+        const GAS_LIMIT_CLOSE_TRADE = 600000;
+        const PYTH_UPDATE_FEE = '0.06'; // CRO fee for Pyth oracle update
+
+        // Decimals
+        const DECIMALS_USDC = 6; // USDC token decimals
+        const DECIMALS_QTY = 10; // Position quantity decimals
+        const DECIMALS_PRICE = 18; // Price decimals
+
+        // Price Calculation
+        const STOP_LOSS_PERCENT_LONG = 50; // 50% of entry for long
+        const STOP_LOSS_PERCENT_SHORT = 150; // 150% of entry for short
+        const TAKE_PROFIT_PERCENT_LONG = 150; // 150% of entry for long
+        const TAKE_PROFIT_PERCENT_SHORT = 50; // 50% of entry for short
+
+        // API Endpoints
+        const HYPERLIQUID_API_URL = 'https://api.hyperliquid.xyz';
+        const PYTH_API_URL = 'https://hermes.pyth.network/api';
+
+        // Sync Settings
+        const DEFAULT_SYNC_INTERVAL = 10; // seconds
+        const MAX_LOG_ENTRIES = 100; // Maximum activity log entries
+
+        // ============================================
+        // STATE VARIABLES
+        // ============================================
+
         let monitorExchange = null;
         let moonlanderExchange = null;
         let syncInterval = null;
         let isMonitoring = false;
         let stats = {
-            balance: 100,
+            balance: MIN_COPY_BALANCE,
             syncs: 0,
             added: 0,
             removed: 0,
@@ -369,8 +408,8 @@
             elements.activityLog.appendChild(entry);
             elements.activityLog.scrollTop = elements.activityLog.scrollHeight;
 
-            // Keep only last 100 entries
-            while (elements.activityLog.children.length > 100) {
+            // Keep only last MAX_LOG_ENTRIES entries
+            while (elements.activityLog.children.length > MAX_LOG_ENTRIES) {
                 elements.activityLog.removeChild(elements.activityLog.firstChild);
             }
         }
@@ -606,8 +645,37 @@
         const USDC_ADDRESS = '0xc21223249CA28397B4B6541dfFaEcC539BfF0c59'; // Cronos mainnet
         const ERC20_ABI = [
             'function approve(address spender, uint256 amount) returns (bool)',
-            'function allowance(address owner, address spender) view returns (uint256)'
+            'function allowance(address owner, address spender) view returns (uint256)',
+            'function balanceOf(address account) view returns (uint256)',
+            'function decimals() view returns (uint8)'
         ];
+
+        // Fetch Moonlander wallet USDC balance
+        async function fetchMoonlanderBalance(walletAddress) {
+            try {
+                const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
+                const usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
+
+                const [balance, decimals] = await Promise.all([
+                    usdcContract.balanceOf(walletAddress),
+                    usdcContract.decimals()
+                ]);
+
+                const balanceFormatted = Number(ethers.formatUnits(balance, decimals));
+
+                // Enforce minimum balance
+                if (balanceFormatted < MIN_COPY_BALANCE) {
+                    log('warning', `⚠️  Wallet balance ($${balanceFormatted.toFixed(2)}) is below minimum $${MIN_COPY_BALANCE}`);
+                    return MIN_COPY_BALANCE;
+                }
+
+                log('success', `💰 Wallet balance: $${balanceFormatted.toFixed(2)} USDC`);
+                return balanceFormatted;
+            } catch (error) {
+                log('error', `Failed to fetch balance: ${error.message}`);
+                return MIN_COPY_BALANCE; // Default to minimum
+            }
+        }
 
         // Execute copy trade on Moonlander
         async function executeCopyTrade(position, action) {
@@ -635,11 +703,15 @@
 
                     // Calculate parameters
                     const isLong = position.side === 'long' || position.side === 'buy';
-                    const amountIn = ethers.parseUnits(position.margin.toFixed(6), 6); // USDC has 6 decimals
-                    const qtyWei = ethers.parseUnits(position.size.toFixed(10), 10); // qty uses 10 decimals
+                    const amountIn = ethers.parseUnits(position.margin.toFixed(DECIMALS_USDC), DECIMALS_USDC);
+                    const qtyWei = ethers.parseUnits(position.size.toFixed(DECIMALS_QTY), DECIMALS_QTY);
                     const acceptablePrice = calculateAcceptablePrice(pythPrice.price, isLong);
-                    const stopLossPrice = isLong ? (pythPrice.price * 50n) / 100n : (pythPrice.price * 150n) / 100n;
-                    const takeProfitPrice = isLong ? (pythPrice.price * 150n) / 100n : (pythPrice.price * 50n) / 100n;
+                    const stopLossPrice = isLong
+                        ? (pythPrice.price * BigInt(STOP_LOSS_PERCENT_LONG)) / 100n
+                        : (pythPrice.price * BigInt(STOP_LOSS_PERCENT_SHORT)) / 100n;
+                    const takeProfitPrice = isLong
+                        ? (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_LONG)) / 100n
+                        : (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_SHORT)) / 100n;
 
                     // Approve USDC if needed
                     const usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
@@ -663,12 +735,12 @@
                             price: acceptablePrice,
                             stopLoss: stopLossPrice,
                             takeProfit: takeProfitPrice,
-                            broker: 1
+                            broker: DEFAULT_BROKER_ID
                         },
                         pythPrice.pythUpdateData,
                         {
-                            gasLimit: 800000,
-                            value: ethers.parseEther('0.06') // Pyth fee
+                            gasLimit: GAS_LIMIT_OPEN_TRADE,
+                            // value: ethers.parseEther(PYTH_UPDATE_FEE)
                         }
                     );
 
@@ -683,7 +755,7 @@
                     const signer = new ethers.Wallet(moonlanderKey, provider);
                     const tradingPortal = new ethers.Contract(MOONLANDER_CONFIG.diamondAddress, TRADING_PORTAL_ABI, signer);
 
-                    const tx = await tradingPortal.closeTrade(position.tradeHash, { gasLimit: 600000 });
+                    const tx = await tradingPortal.closeTrade(position.tradeHash, { gasLimit: GAS_LIMIT_CLOSE_TRADE });
 
                     log('info', `  ⏳ Waiting for confirmation...`);
                     const receipt = await tx.wait();
@@ -785,7 +857,7 @@
         }
 
         // Calculate acceptable price with slippage
-        function calculateAcceptablePrice(currentPrice, isLong, slippagePercent = 10) {
+        function calculateAcceptablePrice(currentPrice, isLong, slippagePercent = DEFAULT_SLIPPAGE_PERCENT) {
             const multiplier = isLong ? 100 + slippagePercent : 100 - slippagePercent;
             return (currentPrice * BigInt(multiplier)) / 100n;
         }
@@ -854,7 +926,7 @@
                 };
             }).filter(pos => {
                 const positionValue = pos.size * pos.entryPrice;
-                return positionValue >= 200;
+                return positionValue >= MIN_POSITION_VALUE;
             });
         }
 
@@ -998,17 +1070,27 @@
                     walletAddress: wallet.address,
                     urls: {
                         api: {
-                            public: 'https://api.hyperliquid.xyz',
-                            private: 'https://api.hyperliquid.xyz'
+                            public: HYPERLIQUID_API_URL,
+                            private: HYPERLIQUID_API_URL
                         }
                     }
                 });
 
-                stats.balance = parseFloat(elements.copyBalance.value);
+                // Fetch Moonlander wallet balance if private key provided
+                if (elements.moonlanderPrivateKey.value) {
+                    const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
+                    stats.balance = await fetchMoonlanderBalance(moonlanderWallet.address);
+                    elements.copyBalance.value = stats.balance.toFixed(2);
+                } else {
+                    stats.balance = MIN_COPY_BALANCE; // Default minimum
+                    elements.copyBalance.value = MIN_COPY_BALANCE.toFixed(2);
+                }
+
                 updateStats();
 
                 log('success', '✅ Monitor initialized');
                 log('info', `👤 Trader: ${traderAddress.slice(0, 6)}...${traderAddress.slice(-4)}`);
+                log('info', `💰 Copy Balance: $${stats.balance.toFixed(2)}`);
                 log('info', `⏱️  Sync interval: ${interval/1000}s`);
 
                 // Start sync loop
