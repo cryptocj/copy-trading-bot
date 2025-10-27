@@ -233,92 +233,20 @@
             </div>
         </div>
 
-        <!-- Balance Info Section -->
-        <section class="bg-dark-700 rounded-lg shadow-lg mb-4">
-            <div class="p-4 border-b border-dark-500">
-                <h2 class="text-lg font-semibold text-primary">💳 Balance Information</h2>
-            </div>
-            <div class="p-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Trader Balance Info -->
-                    <div class="bg-dark-800 rounded-lg p-4 border border-dark-500">
-                        <div class="text-sm text-gray-400 mb-2">Trader Account</div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Total Balance:</span>
-                                <span class="text-sm font-semibold text-gray-200" id="balance-trader-total">$0.00</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Used Margin:</span>
-                                <span class="text-sm font-semibold text-yellow-400" id="balance-trader-margin">$0.00</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Free Balance:</span>
-                                <span class="text-sm font-semibold text-green-400" id="balance-trader-free">$0.00</span>
-                            </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-dark-600">
-                                <span class="text-xs text-gray-500">Margin Ratio:</span>
-                                <span class="text-sm font-bold text-blue-400" id="balance-trader-ratio">0.0%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Your Balance Info -->
-                    <div class="bg-dark-800 rounded-lg p-4 border border-dark-500">
-                        <div class="text-sm text-gray-400 mb-2">Your Account</div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Total Balance:</span>
-                                <span class="text-sm font-semibold text-gray-200" id="balance-user-total">$0.00</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Used Margin:</span>
-                                <span class="text-sm font-semibold text-yellow-400" id="balance-user-margin">$0.00</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Free Balance:</span>
-                                <span class="text-sm font-semibold text-green-400" id="balance-user-free">$0.00</span>
-                            </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-dark-600">
-                                <span class="text-xs text-gray-500">Margin Ratio:</span>
-                                <span class="text-sm font-bold text-blue-400" id="balance-user-ratio">0.0%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Scaling Info -->
-                    <div class="bg-dark-800 rounded-lg p-4 border border-dark-500">
-                        <div class="text-sm text-gray-400 mb-2">Scaling Parameters</div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Max Safety Buffer:</span>
-                                <span class="text-sm font-semibold text-purple-400" id="balance-max-buffer">0.0%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Current Scaling:</span>
-                                <span class="text-sm font-semibold text-cyan-400" id="balance-scaling-factor">0.0%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-gray-500">Capital Ratio:</span>
-                                <span class="text-sm font-semibold text-gray-300" id="balance-capital-ratio">0.0x</span>
-                            </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-dark-600">
-                                <span class="text-xs text-gray-500">Available to Copy:</span>
-                                <span class="text-sm font-bold text-green-400" id="balance-available-copy">$0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <!-- Positions Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <!-- Trader Positions -->
             <section class="bg-dark-700 rounded-lg shadow-lg">
-                <div class="p-4 border-b border-dark-500 flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-primary">👤 Trader Positions</h2>
-                    <span class="text-sm text-gray-400" id="trader-position-count">0 positions</span>
+                <div class="p-4 border-b border-dark-500">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-lg font-semibold text-primary">👤 Trader Positions</h2>
+                        <span class="text-sm text-gray-400" id="trader-position-count">0 positions</span>
+                    </div>
+                    <div class="text-xs text-gray-500 flex gap-4">
+                        <span>Balance: <span class="text-gray-300 font-medium" id="balance-trader-total">$0.00</span></span>
+                        <span>Margin: <span class="text-yellow-400 font-medium" id="balance-trader-margin">$0.00</span></span>
+                        <span>Ratio: <span class="text-blue-400 font-medium" id="balance-trader-ratio">0.0%</span></span>
+                    </div>
                 </div>
                 <div class="p-4">
                     <div class="table-container">
@@ -343,9 +271,17 @@
 
             <!-- Your Positions -->
             <section class="bg-dark-700 rounded-lg shadow-lg">
-                <div class="p-4 border-b border-dark-500 flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-primary">📍 Your Positions</h2>
-                    <span class="text-sm text-gray-400" id="user-position-count">0 positions</span>
+                <div class="p-4 border-b border-dark-500">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-lg font-semibold text-primary">📍 Your Positions</h2>
+                        <span class="text-sm text-gray-400" id="user-position-count">0 positions</span>
+                    </div>
+                    <div class="text-xs text-gray-500 flex gap-4">
+                        <span>Balance: <span class="text-gray-300 font-medium" id="balance-user-total">$0.00</span></span>
+                        <span>Margin: <span class="text-yellow-400 font-medium" id="balance-user-margin">$0.00</span></span>
+                        <span>Ratio: <span class="text-blue-400 font-medium" id="balance-user-ratio">0.0%</span></span>
+                        <span class="ml-2 text-purple-400">Scaling: <span class="font-medium" id="balance-scaling-factor">0.0%</span></span>
+                    </div>
                 </div>
                 <div class="p-4">
                     <div class="table-container">
@@ -488,12 +424,8 @@
             balanceUserRatio: document.getElementById('balance-user-ratio'),
             balanceTraderTotal: document.getElementById('balance-trader-total'),
             balanceTraderMargin: document.getElementById('balance-trader-margin'),
-            balanceTraderFree: document.getElementById('balance-trader-free'),
             balanceTraderRatio: document.getElementById('balance-trader-ratio'),
-            balanceMaxBuffer: document.getElementById('balance-max-buffer'),
             balanceScalingFactor: document.getElementById('balance-scaling-factor'),
-            balanceCapitalRatio: document.getElementById('balance-capital-ratio'),
-            balanceAvailableCopy: document.getElementById('balance-available-copy'),
 
             actionsContent: document.getElementById('actions-content'),
             activityLog: document.getElementById('activity-log'),
@@ -1134,27 +1066,18 @@
 
             elements.balanceTraderTotal.textContent = `$${traderTotal.toFixed(2)}`;
             elements.balanceTraderMargin.textContent = `$${traderTotalMargin.toFixed(2)}`;
-            elements.balanceTraderFree.textContent = `$${traderFree.toFixed(2)}`;
             elements.balanceTraderRatio.textContent = `${traderRatio.toFixed(1)}%`;
 
             // User balance info
             const userMargin = userPositions.reduce((sum, pos) => sum + pos.margin, 0);
-            const userFree = userBalance - userMargin;
             const userRatio = userBalance > 0 ? (userMargin / userBalance) * 100 : 0;
 
             elements.balanceUserTotal.textContent = `$${userBalance.toFixed(2)}`;
             elements.balanceUserMargin.textContent = `$${userMargin.toFixed(2)}`;
-            elements.balanceUserFree.textContent = `$${userFree.toFixed(2)}`;
             elements.balanceUserRatio.textContent = `${userRatio.toFixed(1)}%`;
 
-            // Scaling info
-            const capitalRatio = traderTotal > 0 ? userBalance / traderTotal : 0;
-            const availableToCopy = userBalance * dynamicSafetyBuffer;
-
-            elements.balanceMaxBuffer.textContent = `${(dynamicSafetyBuffer * 100).toFixed(1)}%`;
+            // Scaling factor
             elements.balanceScalingFactor.textContent = `${(scalingFactor * 100).toFixed(2)}%`;
-            elements.balanceCapitalRatio.textContent = `${capitalRatio.toFixed(3)}x`;
-            elements.balanceAvailableCopy.textContent = `$${availableToCopy.toFixed(2)}`;
         }
 
         // Calculate position diff (from positionDiff.js)
