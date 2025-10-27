@@ -233,6 +233,85 @@
             </div>
         </div>
 
+        <!-- Balance Info Section -->
+        <section class="bg-dark-700 rounded-lg shadow-lg mb-4">
+            <div class="p-4 border-b border-dark-500">
+                <h2 class="text-lg font-semibold text-primary">💳 Balance Information</h2>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Trader Balance Info -->
+                    <div class="bg-dark-800 rounded-lg p-4 border border-dark-500">
+                        <div class="text-sm text-gray-400 mb-2">Trader Account</div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Total Balance:</span>
+                                <span class="text-sm font-semibold text-gray-200" id="balance-trader-total">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Used Margin:</span>
+                                <span class="text-sm font-semibold text-yellow-400" id="balance-trader-margin">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Free Balance:</span>
+                                <span class="text-sm font-semibold text-green-400" id="balance-trader-free">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-1 border-t border-dark-600">
+                                <span class="text-xs text-gray-500">Margin Ratio:</span>
+                                <span class="text-sm font-bold text-blue-400" id="balance-trader-ratio">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Your Balance Info -->
+                    <div class="bg-dark-800 rounded-lg p-4 border border-dark-500">
+                        <div class="text-sm text-gray-400 mb-2">Your Account</div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Total Balance:</span>
+                                <span class="text-sm font-semibold text-gray-200" id="balance-user-total">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Used Margin:</span>
+                                <span class="text-sm font-semibold text-yellow-400" id="balance-user-margin">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Free Balance:</span>
+                                <span class="text-sm font-semibold text-green-400" id="balance-user-free">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-1 border-t border-dark-600">
+                                <span class="text-xs text-gray-500">Margin Ratio:</span>
+                                <span class="text-sm font-bold text-blue-400" id="balance-user-ratio">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scaling Info -->
+                    <div class="bg-dark-800 rounded-lg p-4 border border-dark-500">
+                        <div class="text-sm text-gray-400 mb-2">Scaling Parameters</div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Max Safety Buffer:</span>
+                                <span class="text-sm font-semibold text-purple-400" id="balance-max-buffer">0.0%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Current Scaling:</span>
+                                <span class="text-sm font-semibold text-cyan-400" id="balance-scaling-factor">0.0%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Capital Ratio:</span>
+                                <span class="text-sm font-semibold text-gray-300" id="balance-capital-ratio">0.0x</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-1 border-t border-dark-600">
+                                <span class="text-xs text-gray-500">Available to Copy:</span>
+                                <span class="text-sm font-bold text-green-400" id="balance-available-copy">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Positions Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <!-- Trader Positions -->
@@ -331,6 +410,7 @@
         // Trading Parameters
         const MIN_COPY_BALANCE = 50; // Minimum copy balance in USD
         const MIN_POSITION_VALUE = 10; // Minimum position value in USD ($10 minimum to avoid dust positions)
+        const SIZE_TOLERANCE = 0.05; // 5% position size tolerance before triggering adjustment
         const DEFAULT_SLIPPAGE_PERCENT = 10; // 10% slippage tolerance
         const DEFAULT_BROKER_ID = 1; // Moonlander broker ID
 
@@ -358,7 +438,7 @@
         const DEFAULT_SYNC_INTERVAL = 10; // seconds
         const MAX_LOG_ENTRIES = 100; // Maximum activity log entries
         const MAX_SCALING_FACTOR = 1.0; // Maximum scaling factor (100% - never copy more than trader)
-        const SAFETY_BUFFER_PERCENT = 0.8; // Use 80% of available balance for safety
+        const SAFETY_BUFFER_PERCENT = 0.8; // Maximum safety buffer (80% cap) - actual buffer is min(trader_margin_ratio, 0.8)
 
         // ============================================
         // STATE VARIABLES
@@ -400,6 +480,20 @@
             userPositionsBody: document.getElementById('user-positions-body'),
             traderPositionCount: document.getElementById('trader-position-count'),
             userPositionCount: document.getElementById('user-position-count'),
+
+            // Balance Info Elements
+            balanceUserTotal: document.getElementById('balance-user-total'),
+            balanceUserMargin: document.getElementById('balance-user-margin'),
+            balanceUserFree: document.getElementById('balance-user-free'),
+            balanceUserRatio: document.getElementById('balance-user-ratio'),
+            balanceTraderTotal: document.getElementById('balance-trader-total'),
+            balanceTraderMargin: document.getElementById('balance-trader-margin'),
+            balanceTraderFree: document.getElementById('balance-trader-free'),
+            balanceTraderRatio: document.getElementById('balance-trader-ratio'),
+            balanceMaxBuffer: document.getElementById('balance-max-buffer'),
+            balanceScalingFactor: document.getElementById('balance-scaling-factor'),
+            balanceCapitalRatio: document.getElementById('balance-capital-ratio'),
+            balanceAvailableCopy: document.getElementById('balance-available-copy'),
 
             actionsContent: document.getElementById('actions-content'),
             activityLog: document.getElementById('activity-log'),
@@ -479,7 +573,7 @@
             `;
         }
 
-        // Fetch trader positions (reusing logic from positionSyncer.js:225-254)
+        // Fetch trader positions and account data (reusing logic from positionSyncer.js:225-254)
         async function fetchTraderPositions(traderAddress) {
             try {
                 // Fetch positions via Hyperliquid API (same as positionSyncer.js)
@@ -507,11 +601,12 @@
                         margin: parseFloat(pos.position.marginUsed),
                     }));
 
-                return positions;
+                // Return both positions and full account data for balance calculations
+                return { positions, accountData: data };
             } catch (error) {
                 log('error', `Failed to fetch trader positions: ${error.message}`);
                 stats.errors++;
-                return [];
+                return { positions: [], accountData: null };
             }
         }
 
@@ -953,7 +1048,7 @@
         }
 
         // Calculate target positions (from positionCalculator.js)
-        function calculateTargetPositions(traderPositions, copyBalance) {
+        function calculateTargetPositions(traderPositions, copyBalance, traderAccountData = null, userAccountData = null) {
             if (!traderPositions || traderPositions.length === 0) return [];
 
             // Calculate trader's total margin from their actual positions (same as positionCalculator.js)
@@ -961,9 +1056,24 @@
                 return sum + pos.margin; // Use actual margin from API
             }, 0);
 
-            // Scale down using safety buffer for margin (same as positionCalculator.js:200)
+            // Calculate dynamic safety buffer based on trader's margin ratio
+            // If trader uses 60% of their balance for margin, we use max 60% of our balance
+            let dynamicSafetyBuffer = SAFETY_BUFFER_PERCENT; // Default 80%
+
+            if (traderAccountData) {
+                const traderTotalBalance = parseFloat(traderAccountData.marginSummary.accountValue);
+                const traderMarginRatio = traderTotalBalance > 0 ? traderTotalMargin / traderTotalBalance : 0;
+
+                // Use trader's margin ratio as the max safety buffer (capped at configured SAFETY_BUFFER_PERCENT)
+                dynamicSafetyBuffer = Math.min(traderMarginRatio, SAFETY_BUFFER_PERCENT);
+
+                console.log(`📊 Trader margin ratio: ${(traderMarginRatio * 100).toFixed(2)}% ($${traderTotalMargin.toFixed(2)} / $${traderTotalBalance.toFixed(2)})`);
+                console.log(`📊 Dynamic safety buffer: ${(dynamicSafetyBuffer * 100).toFixed(2)}% (max ${(SAFETY_BUFFER_PERCENT * 100).toFixed(0)}%)`);
+            }
+
+            // Scale down using dynamic safety buffer for margin
             // Cap at maximum scaling factor - never scale up beyond trader's size
-            let scalingFactor = traderTotalMargin > 0 ? (copyBalance * SAFETY_BUFFER_PERCENT) / traderTotalMargin : 0;
+            let scalingFactor = traderTotalMargin > 0 ? (copyBalance * dynamicSafetyBuffer) / traderTotalMargin : 0;
             if (scalingFactor > MAX_SCALING_FACTOR) {
                 scalingFactor = MAX_SCALING_FACTOR;
                 console.log(`⚠️  Scaling capped at ${(MAX_SCALING_FACTOR * 100).toFixed(0)}% (user has more capital than trader)`);
@@ -1005,7 +1115,44 @@
                 console.log(`  ⚠️  Filtered ${scaledPositions.length - filteredPositions.length} positions below minimum value`);
             }
 
+            // Update balance info display if account data is provided
+            if (traderAccountData && userAccountData) {
+                updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, copyBalance, dynamicSafetyBuffer, scalingFactor);
+            }
+
             return filteredPositions;
+        }
+
+        // Update balance info display
+        function updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, userBalance, dynamicSafetyBuffer, scalingFactor) {
+            // Trader balance info
+            const traderTotal = parseFloat(traderAccountData.marginSummary.accountValue);
+            const traderFree = traderTotal - traderTotalMargin;
+            const traderRatio = traderTotal > 0 ? (traderTotalMargin / traderTotal) * 100 : 0;
+
+            elements.balanceTraderTotal.textContent = `$${traderTotal.toFixed(2)}`;
+            elements.balanceTraderMargin.textContent = `$${traderTotalMargin.toFixed(2)}`;
+            elements.balanceTraderFree.textContent = `$${traderFree.toFixed(2)}`;
+            elements.balanceTraderRatio.textContent = `${traderRatio.toFixed(1)}%`;
+
+            // User balance info
+            const userMargin = userPositions.reduce((sum, pos) => sum + pos.margin, 0);
+            const userFree = userBalance - userMargin;
+            const userRatio = userBalance > 0 ? (userMargin / userBalance) * 100 : 0;
+
+            elements.balanceUserTotal.textContent = `$${userBalance.toFixed(2)}`;
+            elements.balanceUserMargin.textContent = `$${userMargin.toFixed(2)}`;
+            elements.balanceUserFree.textContent = `$${userFree.toFixed(2)}`;
+            elements.balanceUserRatio.textContent = `${userRatio.toFixed(1)}%`;
+
+            // Scaling info
+            const capitalRatio = traderTotal > 0 ? userBalance / traderTotal : 0;
+            const availableToCopy = userBalance * dynamicSafetyBuffer;
+
+            elements.balanceMaxBuffer.textContent = `${(dynamicSafetyBuffer * 100).toFixed(1)}%`;
+            elements.balanceScalingFactor.textContent = `${(scalingFactor * 100).toFixed(2)}%`;
+            elements.balanceCapitalRatio.textContent = `${capitalRatio.toFixed(3)}x`;
+            elements.balanceAvailableCopy.textContent = `$${availableToCopy.toFixed(2)}`;
         }
 
         // Calculate position diff (from positionDiff.js)
@@ -1024,16 +1171,35 @@
             for (const target of targetPositions) {
                 const normalizedSymbol = normalizeSymbol(target.symbol);
                 const user = userMap.get(normalizedSymbol);
+
                 if (!user) {
+                    // Position doesn't exist - add it
                     toAdd.push(target);
+                } else {
+                    // Position exists - check if size adjustment is needed
+                    const sizeDiff = Math.abs(user.size - target.size);
+                    const sizeRatio = target.size > 0 ? sizeDiff / target.size : 0;
+
+                    if (sizeRatio > SIZE_TOLERANCE) {
+                        // Size difference > 5% - close old position and reopen with new size
+                        console.log(`⚖️  Position size adjustment needed for ${target.symbol}:`);
+                        console.log(`   Current: ${user.size.toFixed(4)} | Target: ${target.size.toFixed(4)} | Diff: ${(sizeRatio * 100).toFixed(2)}%`);
+
+                        toRemove.push(user);
+                        toAdd.push(target);
+                    }
                 }
             }
 
             for (const user of userPositions) {
                 const normalizedSymbol = normalizeSymbol(user.symbol);
                 const target = targetMap.get(normalizedSymbol);
+
                 if (!target) {
-                    toRemove.push(user);
+                    // Position should not exist - remove it (if not already marked for removal)
+                    if (!toRemove.find(p => normalizeSymbol(p.symbol) === normalizedSymbol)) {
+                        toRemove.push(user);
+                    }
                 }
             }
 
@@ -1059,7 +1225,7 @@
                     elements.copyBalance.value = balanceInfo.totalEquity.toFixed(2);
                 }
 
-                const traderPositions = await fetchTraderPositions(traderAddress);
+                const { positions: traderPositions, accountData: traderAccountData } = await fetchTraderPositions(traderAddress);
 
                 // Calculate trader's total margin (same as positionSyncer.js)
                 const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
@@ -1067,15 +1233,23 @@
                 // Use total equity (free + positions) for scaling to match trader's total exposure
                 log('info', `📊 Trader margin: $${traderTotalMargin.toFixed(2)} | User total equity: $${balanceInfo.totalEquity.toFixed(2)}`);
 
-                const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity);
-
                 // Fetch Moonlander user positions if key provided
+                let userAccountData = null;
                 if (elements.moonlanderPrivateKey.value) {
                     const { Wallet } = ethers;
                     const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
                     const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
                     userPositions = moonlanderPositions;
+
+                    // Create user account data structure for balance display
+                    userAccountData = {
+                        marginSummary: {
+                            accountValue: balanceInfo.totalEquity.toString()
+                        }
+                    };
                 }
+
+                const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity, traderAccountData, userAccountData);
 
                 // Detect trader changes
                 let hasTraderChanges = false;
