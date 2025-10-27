@@ -312,6 +312,19 @@ export class PositionSyncer {
   }
 
   /**
+   * Normalize symbol for cross-exchange comparison
+   * BTC/USD, BTC-USD → BTC
+   */
+  normalizeSymbol(symbol) {
+    if (!symbol) return '';
+    return symbol
+      .toUpperCase()
+      .replace(/[-/:].*$/, '') // Remove everything after -, /, or :
+      .replace(/USD$|USDT$|USDC$/, '')
+      .trim();
+  }
+
+  /**
    * Calculate differences between target and actual positions
    */
   calculateDifferences(targetPositions, userPositions) {
@@ -330,13 +343,18 @@ export class PositionSyncer {
       return true;
     });
 
-    // Build maps for easy lookup
-    const targetMap = new Map(filteredTargets.map((p) => [p.symbol, p]));
-    const userMap = new Map(userPositions.map((p) => [p.symbol, p]));
+    // Build maps with normalized symbols for easy lookup
+    const targetMap = new Map(
+      filteredTargets.map((p) => [this.normalizeSymbol(p.symbol), p])
+    );
+    const userMap = new Map(
+      userPositions.map((p) => [this.normalizeSymbol(p.symbol), p])
+    );
 
     // Find positions to add (in target but not in user)
     for (const target of filteredTargets) {
-      const user = userMap.get(target.symbol);
+      const normalizedSymbol = this.normalizeSymbol(target.symbol);
+      const user = userMap.get(normalizedSymbol);
 
       if (!user) {
         // Position missing - add it
@@ -370,7 +388,8 @@ export class PositionSyncer {
         continue;
       }
 
-      if (!targetMap.has(user.symbol)) {
+      const normalizedSymbol = this.normalizeSymbol(user.symbol);
+      if (!targetMap.has(normalizedSymbol)) {
         toRemove.push(user);
       }
     }
