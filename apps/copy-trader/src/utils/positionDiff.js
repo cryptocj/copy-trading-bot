@@ -42,11 +42,12 @@ function getDirection(side) {
  *
  * @param {Array} currentPositions - User's current positions
  * @param {Array} targetPositions - Target positions (from trader)
- * @param {Object} options - Options { sizeThreshold: 0.05 }
+ * @param {Object} options - Options { sizeThreshold: 0.05, minPositionValue: 200 }
  * @returns {Object} { toAdd, toRemove, toAdjust, toFlip }
  */
 export function calculatePositionDiff(currentPositions, targetPositions, options = {}) {
   const sizeThreshold = options.sizeThreshold || 0.05; // 5% default
+  const minPositionValue = options.minPositionValue || 200; // $200 minimum
 
   const actions = {
     toAdd: [],
@@ -55,8 +56,18 @@ export function calculatePositionDiff(currentPositions, targetPositions, options
     toFlip: [],
   };
 
+  // Filter out positions below minimum value threshold
+  const filteredTargets = targetPositions.filter((pos) => {
+    const positionValue = pos.size * pos.entryPrice;
+    if (positionValue < minPositionValue) {
+      console.log(`  ⏭️  Skipping small position: ${pos.symbol} ($${positionValue.toFixed(2)} < $${minPositionValue})`);
+      return false;
+    }
+    return true;
+  });
+
   // Check what needs to be added, adjusted, or flipped
-  targetPositions.forEach((target) => {
+  filteredTargets.forEach((target) => {
     const current = currentPositions.find(
       (p) => normalizeSymbol(p.symbol) === normalizeSymbol(target.symbol)
     );
@@ -91,9 +102,17 @@ export function calculatePositionDiff(currentPositions, targetPositions, options
     }
   });
 
-  // Check what needs to be removed
+  // Check what needs to be removed (only consider positions above minimum value)
   currentPositions.forEach((current) => {
-    const exists = targetPositions.find(
+    // Skip small current positions - let them stay
+    const currentValue = current.size * current.entryPrice;
+    if (currentValue < minPositionValue) {
+      console.log(`  ⏭️  Ignoring small current position: ${current.symbol} ($${currentValue.toFixed(2)} < $${minPositionValue})`);
+      return;
+    }
+
+    // Check if this position exists in filtered targets
+    const exists = filteredTargets.find(
       (p) => normalizeSymbol(p.symbol) === normalizeSymbol(current.symbol)
     );
     if (!exists) {

@@ -318,13 +318,24 @@ export class PositionSyncer {
     const toAdd = [];
     const toRemove = [];
     const toAdjust = [];
+    const minPositionValue = 200; // $200 minimum position value
+
+    // Filter out small target positions
+    const filteredTargets = targetPositions.filter((pos) => {
+      const positionValue = pos.size * pos.entryPrice;
+      if (positionValue < minPositionValue) {
+        console.log(`  ⏭️  Skipping small target position: ${pos.symbol} ($${positionValue.toFixed(2)} < $${minPositionValue})`);
+        return false;
+      }
+      return true;
+    });
 
     // Build maps for easy lookup
-    const targetMap = new Map(targetPositions.map((p) => [p.symbol, p]));
+    const targetMap = new Map(filteredTargets.map((p) => [p.symbol, p]));
     const userMap = new Map(userPositions.map((p) => [p.symbol, p]));
 
     // Find positions to add (in target but not in user)
-    for (const target of targetPositions) {
+    for (const target of filteredTargets) {
       const user = userMap.get(target.symbol);
 
       if (!user) {
@@ -348,8 +359,17 @@ export class PositionSyncer {
       }
     }
 
-    // Find positions to remove (in user but not in target)
+    // Find positions to remove (in user but not in filtered targets)
+    // Skip small current positions - let them stay
     for (const user of userPositions) {
+      const userValue = user.size * user.entryPrice;
+
+      // Ignore small positions
+      if (userValue < minPositionValue) {
+        console.log(`  ⏭️  Ignoring small current position: ${user.symbol} ($${userValue.toFixed(2)} < $${minPositionValue})`);
+        continue;
+      }
+
       if (!targetMap.has(user.symbol)) {
         toRemove.push(user);
       }
@@ -380,8 +400,10 @@ export class PositionSyncer {
           // Convert symbol format for Moonlander (BTC → BTC/USD)
           const moonlanderSymbol = convertSymbolToMoonlander(pos.symbol);
 
-          // Convert side: 'long' → 'buy', 'short' → 'sell'
-          const orderSide = pos.side === 'long' ? 'buy' : 'sell';
+          // Normalize side: handle both 'long'/'short' and 'buy'/'sell' formats
+          let orderSide = pos.side.toLowerCase();
+          if (orderSide === 'long') orderSide = 'buy';
+          if (orderSide === 'short') orderSide = 'sell';
 
           console.log(`     Symbol: ${moonlanderSymbol}`);
           console.log(`     Side: ${orderSide} (from ${pos.side})`);
