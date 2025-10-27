@@ -265,12 +265,15 @@
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
                                     <th class="text-right">Entry</th>
+                                    <th class="text-right">Liq Price</th>
                                     <th class="text-right">Leverage</th>
                                     <th class="text-right">Margin</th>
+                                    <th class="text-right">Position Value</th>
+                                    <th class="text-right">Margin %</th>
                                 </tr>
                             </thead>
                             <tbody id="trader-positions-body">
-                                <tr><td colspan="6" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                                <tr><td colspan="9" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -300,12 +303,15 @@
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
                                     <th class="text-right">Entry</th>
+                                    <th class="text-right">Liq Price</th>
                                     <th class="text-right">Leverage</th>
                                     <th class="text-right">Margin</th>
+                                    <th class="text-right">Position Value</th>
+                                    <th class="text-right">Margin %</th>
                                 </tr>
                             </thead>
                             <tbody id="user-positions-body">
-                                <tr><td colspan="6" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                                <tr><td colspan="9" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -350,7 +356,7 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '0.0.3';
+        const VERSION = '0.1.0';
         const BUILD_DATE = '2025-10-27';
 
         // ============================================
@@ -507,11 +513,39 @@
             elements.statErrors.textContent = stats.errors;
         }
 
-        // Render position row
-        function renderPositionRow(pos) {
+        // Render position row with liquidation price, position value, and margin percentage
+        function renderPositionRow(pos, totalBalance = null) {
             const sideClass = (pos.side === 'long' || pos.side === 'buy') ? 'side-long' : 'side-short';
             const sideText = (pos.side === 'long' || pos.side === 'buy') ? 'LONG' : 'SHORT';
-            const margin = (pos.size * pos.entryPrice) / pos.leverage;
+            const isLong = pos.side === 'long' || pos.side === 'buy';
+
+            // Use margin from pos if available, otherwise calculate
+            const margin = pos.margin !== undefined ? pos.margin : (pos.size * pos.entryPrice) / pos.leverage;
+
+            // Calculate position value at entry price
+            const positionValue = pos.size * pos.entryPrice;
+
+            // Calculate liquidation price
+            // For LONG: liquidationPrice = entryPrice * (1 - 1/leverage)
+            // For SHORT: liquidationPrice = entryPrice * (1 + 1/leverage)
+            // Using 90% maintenance margin ratio (typical for perpetuals)
+            const maintenanceMargin = 0.90; // 90% of margin before liquidation
+            let liquidationPrice = 0;
+            if (isLong) {
+                liquidationPrice = pos.entryPrice * (1 - (maintenanceMargin / pos.leverage));
+            } else {
+                liquidationPrice = pos.entryPrice * (1 + (maintenanceMargin / pos.leverage));
+            }
+
+            // Calculate margin percentage if total balance is provided
+            let marginPercent = '-';
+            if (totalBalance !== null && totalBalance > 0) {
+                marginPercent = ((margin / totalBalance) * 100).toFixed(2) + '%';
+            }
+
+            // Format displays
+            const liquidationPriceDisplay = liquidationPrice > 0 ? `<span class="text-orange-400">$${liquidationPrice.toLocaleString()}</span>` : '-';
+            const positionValueDisplay = `$${positionValue.toLocaleString()}`;
 
             return `
                 <tr>
@@ -519,8 +553,11 @@
                     <td><span class="${sideClass}">${sideText}</span></td>
                     <td class="text-right font-mono">${pos.size.toFixed(4)}</td>
                     <td class="text-right font-mono">$${pos.entryPrice.toLocaleString()}</td>
+                    <td class="text-right font-mono">${liquidationPriceDisplay}</td>
                     <td class="text-right">${pos.leverage.toFixed(1)}x</td>
                     <td class="text-right font-mono">$${margin.toFixed(2)}</td>
+                    <td class="text-right font-mono text-purple-400">${positionValueDisplay}</td>
+                    <td class="text-right font-mono text-blue-400">${marginPercent}</td>
                 </tr>
             `;
         }
@@ -990,23 +1027,31 @@
         }
 
         // Update positions display
-        function updatePositions(traderPositions, userPositions) {
+        function updatePositions(traderPositions, userPositions, traderAccountData = null, userAccountData = null) {
+            // Calculate total balances for margin percentage
+            const traderTotalBalance = traderAccountData?.marginSummary?.accountValue
+                ? parseFloat(traderAccountData.marginSummary.accountValue)
+                : null;
+            const userTotalBalance = userAccountData?.marginSummary?.accountValue
+                ? parseFloat(userAccountData.marginSummary.accountValue)
+                : null;
+
             // Trader positions
             if (traderPositions.length > 0) {
                 elements.traderPositionCount.textContent = `${traderPositions.length} position${traderPositions.length > 1 ? 's' : ''}`;
-                elements.traderPositionsBody.innerHTML = traderPositions.map(renderPositionRow).join('');
+                elements.traderPositionsBody.innerHTML = traderPositions.map(pos => renderPositionRow(pos, traderTotalBalance)).join('');
             } else {
                 elements.traderPositionCount.textContent = '0 positions';
-                elements.traderPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">No positions</td></tr>';
+                elements.traderPositionsBody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 py-4">No positions</td></tr>';
             }
 
             // User positions
             if (userPositions.length > 0) {
                 elements.userPositionCount.textContent = `${userPositions.length} position${userPositions.length > 1 ? 's' : ''}`;
-                elements.userPositionsBody.innerHTML = userPositions.map(renderPositionRow).join('');
+                elements.userPositionsBody.innerHTML = userPositions.map(pos => renderPositionRow(pos, userTotalBalance)).join('');
             } else {
                 elements.userPositionCount.textContent = '0 positions';
-                elements.userPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">No positions (execution via backend)</td></tr>';
+                elements.userPositionsBody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 py-4">No positions (execution via backend)</td></tr>';
             }
         }
 
@@ -1282,7 +1327,7 @@
                 lastTraderPositions = [...traderPositions];
                 stats.syncs++;
 
-                updatePositions(traderPositions, userPositions);
+                updatePositions(traderPositions, userPositions, traderAccountData, userAccountData);
                 updateActions(targetPositions);
                 updateStats();
 
