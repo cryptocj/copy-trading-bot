@@ -6,6 +6,21 @@
  */
 
 /**
+ * Normalize symbol for comparison across exchanges
+ * Converts "BTC/USD", "BTC-USD", "BTCUSD" → "BTC"
+ */
+function normalizeSymbol(symbol) {
+  if (!symbol) return '';
+
+  // Remove common suffixes and separators
+  return symbol
+    .toUpperCase()
+    .replace(/[-/:].*$/, '') // Remove everything after -, /, or :
+    .replace(/USD$|USDT$|USDC$/, '') // Remove USD-based quote currencies
+    .trim();
+}
+
+/**
  * Normalize side for comparison (long/short to buy/sell)
  */
 function normalizeSide(side) {
@@ -43,7 +58,7 @@ export function calculatePositionDiff(currentPositions, targetPositions, options
   // Check what needs to be added, adjusted, or flipped
   targetPositions.forEach((target) => {
     const current = currentPositions.find(
-      (p) => p.symbol === target.symbol
+      (p) => normalizeSymbol(p.symbol) === normalizeSymbol(target.symbol)
     );
 
     if (!current) {
@@ -78,7 +93,9 @@ export function calculatePositionDiff(currentPositions, targetPositions, options
 
   // Check what needs to be removed
   currentPositions.forEach((current) => {
-    const exists = targetPositions.find((p) => p.symbol === current.symbol);
+    const exists = targetPositions.find(
+      (p) => normalizeSymbol(p.symbol) === normalizeSymbol(current.symbol)
+    );
     if (!exists) {
       actions.toRemove.push(current);
     }
@@ -177,4 +194,4 @@ export function arePositionsInSync(actions) {
   );
 }
 
-export { normalizeSide, getDirection };
+export { normalizeSymbol, normalizeSide, getDirection };
