@@ -156,8 +156,14 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Monitoring API Key</label>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Monitoring API Key (Hyperliquid)</label>
                     <input type="password" id="monitoring-api-key" placeholder="0x..." required
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Moonlander Private Key (Copy Trading)</label>
+                    <input type="password" id="moonlander-private-key" placeholder="0x..."
                         class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
                 </div>
 
@@ -308,6 +314,7 @@
         // Similar to test-position-sync.js but runs entirely in the browser
 
         let monitorExchange = null;
+        let moonlanderExchange = null;
         let syncInterval = null;
         let isMonitoring = false;
         let stats = {
@@ -318,11 +325,13 @@
             errors: 0
         };
         let lastTraderPositions = [];
+        let userPositions = [];
 
         // UI Elements
         const elements = {
             traderAddress: document.getElementById('trader-address'),
             monitoringApiKey: document.getElementById('monitoring-api-key'),
+            moonlanderPrivateKey: document.getElementById('moonlander-private-key'),
             copyBalance: document.getElementById('copy-balance'),
             syncIntervalInput: document.getElementById('sync-interval'),
             startButton: document.getElementById('start-button'),
@@ -433,6 +442,157 @@
             }
         }
 
+        // Moonlander configuration
+        const MOONLANDER_CONFIG = {
+            rpcUrl: 'https://evm.cronos.org',
+            diamondAddress: '0xE6F6351fb66f3a35313fEEFF9116698665FBEeC9',
+            pairAddresses: {
+                'BTC/USD': '0x062E66477Faf219F25D27dCED647BF57C3107d52',
+                'ETH/USD': '0xe44Fd7fCb2b1581822D0c862B68222998a0c299a',
+                'SOL/USD': '0xc9DE0F3e08162312528FF72559db82590b481800',
+                'CRO/USD': '0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23',
+
+                // Layer 1 chains
+                'AVAX/USD': '0x8d58088D4E8Ffe75A8b6357ba5ff17B93B912640',
+                'DOT/USD': '0x994047FE66406CbD646cd85B990E11D7F5dB8fC7',
+                'ATOM/USD': '0xB888d8Dd1733d72681b30c00ee76BDE93ae7aa93', // Cosmos
+                'NEAR/USD': '0xAFE470AE215e48c144c7158EAe3CcF0C451cb0CB',
+                'ADA/USD': '0x0e517979C2c1c1522ddB0c73905e0D39b3F990c0',
+                'ALGO/USD': '0x2fEfe47989214c2e74A6319076c138d395681407',
+                'TON/USD': '0x8d96EA3c7F7B7A824e2C8277495007c7Fbd769ea',
+                'SUI/USD': '0x81710203A7FC16797aC9899228a87fd622df9706',
+                'HBAR/USD': '0xe0C7226a58f54db71eDc6289Ba2dc80349B41974',
+
+                // Major altcoins
+                'LINK/USD': '0xBc6f24649CCd67eC42342AccdCECCB2eFA27c9d9',
+                'UNI/USD': '0x16aD43896f7C47a5d9Ee546c44A22205738B329c',
+                'AAVE/USD': '0xE657b115bc45c0786274c824f83e3e02CE809185',
+                'XRP/USD': '0xb9Ce0dd29C91E02d4620F57a66700Fc5e41d6D15',
+
+                // Leveraged pairs (500x) - VERIFIED from successful mainnet transaction
+                '500BTC/USD': '0xBAd4ccc91EF0dfFfbCAb1402C519601fbAf244EF',
+            }
+        };
+
+        // TradingReaderFacet ABI (minimal - only getPositionsV2)
+        const TRADING_READER_ABI = [
+            {
+                "inputs": [
+                    {"internalType": "address", "name": "user", "type": "address"},
+                    {"internalType": "address", "name": "marginToken", "type": "address"}
+                ],
+                "name": "getPositionsV2",
+                "outputs": [{
+                    "components": [
+                        {"internalType": "bytes32", "name": "positionHash", "type": "bytes32"},
+                        {"internalType": "string", "name": "pair", "type": "string"},
+                        {"internalType": "address", "name": "pairBase", "type": "address"},
+                        {"internalType": "address", "name": "marginToken", "type": "address"},
+                        {"internalType": "bool", "name": "isLong", "type": "bool"},
+                        {"internalType": "uint96", "name": "margin", "type": "uint96"},
+                        {"internalType": "uint128", "name": "qty", "type": "uint128"},
+                        {"internalType": "uint128", "name": "entryPrice", "type": "uint128"},
+                        {"internalType": "uint128", "name": "stopLoss", "type": "uint128"},
+                        {"internalType": "uint128", "name": "takeProfit", "type": "uint128"},
+                        {"internalType": "int256", "name": "fundingFee", "type": "int256"},
+                        {"internalType": "uint40", "name": "timestamp", "type": "uint40"}
+                    ],
+                    "internalType": "struct ITradingReader.PositionWithPairInfo[]",
+                    "name": "",
+                    "type": "tuple[]"
+                }],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        // Fetch Moonlander positions (with contract interaction)
+        async function fetchMoonlanderPositions(userAddress) {
+            try {
+                log('info', `📍 Moonlander wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
+
+                // Create provider and contract
+                const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
+                const tradingReader = new ethers.Contract(
+                    MOONLANDER_CONFIG.diamondAddress,
+                    TRADING_READER_ABI,
+                    provider
+                );
+
+                // Fetch positions (ZeroAddress = all margin tokens)
+                const positions = await tradingReader.getPositionsV2(userAddress, ethers.ZeroAddress);
+
+                // Create address to symbol mapping
+                const addressToSymbol = {};
+                for (const [symbol, address] of Object.entries(MOONLANDER_CONFIG.pairAddresses)) {
+                    addressToSymbol[address.toLowerCase()] = symbol;
+                }
+
+                // Parse positions
+                const parsedPositions = positions.map(pos => {
+                    const pairAddress = pos.pairBase.toLowerCase();
+                    const symbol = addressToSymbol[pairAddress] || pos.pairBase;
+
+                    const size = Number(pos.qty) / 1e10; // 10 decimals
+                    const entryPrice = Number(pos.entryPrice) / 1e18; // 18 decimals
+                    const margin = Number(pos.margin) / 1e6; // 6 decimals (USDC)
+
+                    const positionValue = size * entryPrice;
+                    const leverage = margin > 0 ? positionValue / margin : 0;
+
+                    return {
+                        tradeHash: pos.positionHash,
+                        symbol,
+                        pairAddress: pos.pairBase,
+                        side: pos.isLong ? 'long' : 'short',
+                        size,
+                        entryPrice,
+                        margin,
+                        leverage,
+                        stopLoss: Number(pos.stopLoss) / 1e18,
+                        takeProfit: Number(pos.takeProfit) / 1e18,
+                        fundingFee: Number(pos.fundingFee) / 1e6,
+                        openTimestamp: Number(pos.timestamp)
+                    };
+                });
+
+                if (parsedPositions.length > 0) {
+                    log('success', `Found ${parsedPositions.length} Moonlander position(s)`);
+                }
+
+                return parsedPositions;
+            } catch (error) {
+                log('error', `Failed to fetch Moonlander positions: ${error.message}`);
+                return [];
+            }
+        }
+
+        // Execute copy trade on Moonlander
+        async function executeCopyTrade(position, action) {
+            try {
+                const moonlanderKey = elements.moonlanderPrivateKey.value;
+
+                // TODO: Full browser implementation with Moonlander contracts
+                // For now, log what would be executed
+
+                if (action === 'open') {
+                    log('info', `🌙 Would open Moonlander: ${position.symbol} ${position.side.toUpperCase()} ${position.size.toFixed(4)} @ market - Margin: $${position.margin.toFixed(2)}`);
+                } else if (action === 'close') {
+                    log('info', `🌙 Would close Moonlander: ${position.symbol}`);
+                }
+
+                // Note: Full implementation requires:
+                // - Contract ABIs (TradingPortalFacet, PriceFacadeFacet, etc.)
+                // - Pyth price feed integration
+                // - Contract initialization and calls
+                // See: apps/copy-trader/src/services/moonlander.js for reference
+
+            } catch (error) {
+                log('error', `❌ Execution error: ${error.message}`);
+                stats.errors++;
+            }
+        }
+
         // Update positions display
         function updatePositions(traderPositions, userPositions) {
             // Trader positions
@@ -444,9 +604,14 @@
                 elements.traderPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">No positions</td></tr>';
             }
 
-            // User positions (placeholder for now)
-            elements.userPositionCount.textContent = '0 positions';
-            elements.userPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">Execution not implemented</td></tr>';
+            // User positions
+            if (userPositions.length > 0) {
+                elements.userPositionCount.textContent = `${userPositions.length} position${userPositions.length > 1 ? 's' : ''}`;
+                elements.userPositionsBody.innerHTML = userPositions.map(renderPositionRow).join('');
+            } else {
+                elements.userPositionCount.textContent = '0 positions';
+                elements.userPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">No positions (execution via backend)</td></tr>';
+            }
         }
 
         // Calculate and display actions
@@ -467,7 +632,68 @@
             elements.actionsContent.innerHTML = html;
         }
 
-        // Perform sync
+        // Calculate target positions (from positionCalculator.js)
+        function calculateTargetPositions(traderPositions, copyBalance, traderBalance) {
+            if (!traderPositions || traderPositions.length === 0) return [];
+
+            const traderTotalMargin = traderPositions.reduce((sum, pos) => {
+                return sum + (pos.size * pos.entryPrice) / pos.leverage;
+            }, 0);
+
+            const scalingFactor = traderTotalMargin > 0 ? copyBalance / traderTotalMargin : 0;
+
+            return traderPositions.map(pos => {
+                const traderMargin = (pos.size * pos.entryPrice) / pos.leverage;
+                const copyMargin = traderMargin * scalingFactor;
+                const copySize = (copyMargin * pos.leverage) / pos.entryPrice;
+
+                return {
+                    symbol: pos.symbol,
+                    side: pos.side,
+                    size: copySize,
+                    entryPrice: pos.entryPrice,
+                    leverage: pos.leverage,
+                    margin: copyMargin
+                };
+            }).filter(pos => {
+                const positionValue = pos.size * pos.entryPrice;
+                return positionValue >= 200;
+            });
+        }
+
+        // Calculate position diff (from positionDiff.js)
+        function calculatePositionDiff(userPositions, targetPositions) {
+            const normalizeSymbol = (symbol) => {
+                if (!symbol) return '';
+                return symbol.toUpperCase().replace(/[-/:].*$/, '').replace(/USD$|USDT$|USDC$/, '').trim();
+            };
+
+            const targetMap = new Map(targetPositions.map(p => [normalizeSymbol(p.symbol), p]));
+            const userMap = new Map(userPositions.map(p => [normalizeSymbol(p.symbol), p]));
+
+            const toAdd = [];
+            const toRemove = [];
+
+            for (const target of targetPositions) {
+                const normalizedSymbol = normalizeSymbol(target.symbol);
+                const user = userMap.get(normalizedSymbol);
+                if (!user) {
+                    toAdd.push(target);
+                }
+            }
+
+            for (const user of userPositions) {
+                const normalizedSymbol = normalizeSymbol(user.symbol);
+                const target = targetMap.get(normalizedSymbol);
+                if (!target) {
+                    toRemove.push(user);
+                }
+            }
+
+            return { toAdd, toRemove };
+        }
+
+        // Perform sync (following test-position-sync.js pattern)
         async function performSync() {
             const traderAddress = elements.traderAddress.value;
 
@@ -475,37 +701,72 @@
                 log('info', '🔄 Starting sync...');
 
                 const traderPositions = await fetchTraderPositions(traderAddress);
+                const targetPositions = calculateTargetPositions(traderPositions, stats.balance, stats.balance);
 
-                // Detect changes (similar to test-position-sync.js:189-242)
+                // Fetch Moonlander user positions if key provided
+                if (elements.moonlanderPrivateKey.value) {
+                    const { Wallet } = ethers;
+                    const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
+                    const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
+                    userPositions = moonlanderPositions;
+                }
+
+                // Detect trader changes
+                let hasTraderChanges = false;
                 if (lastTraderPositions.length > 0) {
                     const added = traderPositions.filter(t => !lastTraderPositions.find(l => l.symbol === t.symbol));
                     const removed = lastTraderPositions.filter(l => !traderPositions.find(t => t.symbol === l.symbol));
+                    hasTraderChanges = added.length > 0 || removed.length > 0;
 
                     if (added.length > 0) {
-                        stats.added += added.length;
                         added.forEach(pos => {
                             const margin = (pos.size * pos.entryPrice) / pos.leverage;
-                            log('success', `➕ NEW: ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ $${pos.entryPrice.toLocaleString()} (${pos.leverage}x) - Margin: $${margin.toFixed(2)}`);
+                            log('success', `➕ NEW TRADER: ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ $${pos.entryPrice.toLocaleString()} (${pos.leverage}x) - Margin: $${margin.toFixed(2)}`);
                         });
                     }
                     if (removed.length > 0) {
-                        stats.removed += removed.length;
                         removed.forEach(pos => {
-                            log('warning', `➖ CLOSED: ${pos.symbol} ${pos.side.toUpperCase()}`);
+                            log('warning', `➖ CLOSED TRADER: ${pos.symbol} ${pos.side.toUpperCase()}`);
                         });
-                    }
-                    if (added.length === 0 && removed.length === 0) {
-                        log('info', '✅ No changes detected');
                     }
                 } else {
                     log('info', `Found ${traderPositions.length} trader position(s)`);
+                    hasTraderChanges = traderPositions.length > 0;
+                }
+
+                // Calculate required actions
+                const actions = calculatePositionDiff(userPositions, targetPositions);
+
+                // Execute actions if Moonlander key provided
+                if (elements.moonlanderPrivateKey.value && hasTraderChanges) {
+                    for (const pos of actions.toRemove) {
+                        stats.removed++;
+                        log('warning', `🔄 Closing: ${pos.symbol}`);
+                        await executeCopyTrade(pos, 'close');
+                    }
+
+                    for (const pos of actions.toAdd) {
+                        stats.added++;
+                        const margin = (pos.size * pos.entryPrice) / pos.leverage;
+                        log('success', `🔄 Opening: ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ market - Margin: $${margin.toFixed(2)}`);
+                        await executeCopyTrade(pos, 'open');
+                    }
+
+                    if (actions.toAdd.length === 0 && actions.toRemove.length === 0) {
+                        log('info', '✅ No actions needed - positions in sync');
+                    }
+                } else if (!elements.moonlanderPrivateKey.value) {
+                    log('warning', '⚠️  Moonlander private key not provided - skipping execution');
+                    if (actions.toAdd.length > 0 || actions.toRemove.length > 0) {
+                        log('info', `Would close ${actions.toRemove.length}, open ${actions.toAdd.length} positions`);
+                    }
                 }
 
                 lastTraderPositions = [...traderPositions];
                 stats.syncs++;
 
-                updatePositions(traderPositions, []);
-                updateActions(traderPositions);
+                updatePositions(traderPositions, userPositions);
+                updateActions(targetPositions);
                 updateStats();
 
             } catch (error) {
