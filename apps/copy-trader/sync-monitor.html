@@ -350,7 +350,7 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '0.0.1';
+        const VERSION = '0.0.3';
         const BUILD_DATE = '2025-10-27';
 
         // ============================================
@@ -359,7 +359,7 @@
 
         // Trading Parameters
         const MIN_COPY_BALANCE = 50; // Minimum copy balance in USD
-        const MIN_POSITION_VALUE = 30; // Minimum position value in USD ($30 minimum to avoid dust positions)
+        const MIN_POSITION_VALUE = 30; // Minimum position margin in USD ($30 minimum to avoid dust positions)
         const SIZE_TOLERANCE = 0.15; // 15% position size tolerance before triggering adjustment (increased to prevent churn from price movements)
         const DEFAULT_SLIPPAGE_PERCENT = 10; // 10% slippage tolerance
         const DEFAULT_BROKER_ID = 1; // Moonlander broker ID
@@ -813,6 +813,17 @@
                         ? (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_LONG)) / 100n
                         : (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_SHORT)) / 100n;
 
+                    // Debug logging
+                    console.log(`  📊 Trade Parameters:`);
+                    console.log(`     Position: ${position.symbol} ${isLong ? 'LONG' : 'SHORT'}`);
+                    console.log(`     Size: ${position.size} (${qtyWei.toString()} wei)`);
+                    console.log(`     Margin: $${position.margin.toFixed(2)} (${amountIn.toString()} wei)`);
+                    console.log(`     Pyth Price: ${pythPrice.price.toString()}`);
+                    console.log(`     Acceptable Price: ${acceptablePrice.toString()}`);
+                    console.log(`     Stop Loss: ${stopLossPrice.toString()}`);
+                    console.log(`     Take Profit: ${takeProfitPrice.toString()}`);
+                    console.log(`     Pair Address: ${pairAddress}`);
+
                     // Approve USDC if needed
                     const usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
                     const allowance = await usdcContract.allowance(signer.address, MOONLANDER_CONFIG.diamondAddress);
@@ -846,6 +857,11 @@
 
                     log('info', `  ⏳ Waiting for confirmation...`);
                     const receipt = await tx.wait();
+
+                    if (receipt.status === 0) {
+                        throw new Error(`Transaction reverted on-chain: ${receipt.hash}`);
+                    }
+
                     log('success', `  ✅ Trade opened: ${receipt.hash}`);
 
                 } else if (action === 'close') {
@@ -863,7 +879,18 @@
                 }
 
             } catch (error) {
-                log('error', `❌ Execution error: ${error.message}`);
+                console.error('  🔴 Full error:', error);
+                if (error.transaction) {
+                    console.error('  Transaction:', error.transaction);
+                }
+                if (error.receipt) {
+                    console.error('  Receipt:', error.receipt);
+                }
+                if (error.reason) {
+                    log('error', `❌ Execution error: ${error.reason}`);
+                } else {
+                    log('error', `❌ Execution error: ${error.message}`);
+                }
                 stats.errors++;
             }
         }
@@ -1055,12 +1082,12 @@
                 };
             });
 
-            // Filter out positions below minimum value
+            // Filter out positions below minimum margin (not position value, since we use leverage)
             const filteredPositions = scaledPositions.filter(pos => {
                 const positionValue = pos.size * pos.entryPrice;
-                const isValid = positionValue >= MIN_POSITION_VALUE;
+                const isValid = pos.margin >= MIN_POSITION_VALUE;
                 if (!isValid) {
-                    console.log(`  ⏭️  Skipping ${pos.symbol}: Position value $${positionValue.toFixed(2)} < minimum $${MIN_POSITION_VALUE}`);
+                    console.log(`  ⏭️  Skipping ${pos.symbol}: Margin $${pos.margin.toFixed(2)} < minimum $${MIN_POSITION_VALUE} (position value: $${positionValue.toFixed(2)}, ${pos.leverage}x leverage)`);
                 }
                 return isValid;
             });
