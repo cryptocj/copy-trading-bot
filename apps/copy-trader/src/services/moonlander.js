@@ -216,7 +216,7 @@ export class MoonlanderExchange {
         const takeProfit = Number(pos.takeProfit) / 1e18;
 
         return {
-          tradeHash: pos.tradeHash,
+          tradeHash: pos.positionHash, // Use positionHash as tradeHash for closing
           symbol,
           pairAddress: pos.pairBase, // Keep original address for reference
           side: pos.isLong ? 'long' : 'short',
@@ -226,8 +226,8 @@ export class MoonlanderExchange {
           leverage,
           stopLoss,
           takeProfit,
-          fundingFee: Number(pos.fundingFee) / 1e18,
-          openTimestamp: Number(pos.openTimestamp),
+          fundingFee: Number(pos.fundingFee) / 1e6, // fundingFee uses 6 decimals like margin
+          openTimestamp: Number(pos.timestamp), // Use timestamp field from contract
         };
       });
     } catch (error) {
@@ -475,36 +475,45 @@ export class MoonlanderExchange {
 
   /**
    * Close an existing position
-   * @param {string} tradeHash - Hash of the trade to close
-   * @returns {Promise<{txHash: string}>}
+   * @param {string} positionHash - Hash of the position to close
+   * @returns {Promise<{txHash: string, requestId: string, status: string}>}
    */
-  async closePosition(tradeHash) {
+  async closePosition(positionHash) {
     try {
-      console.log(`\n🌙 Closing position: ${tradeHash}`);
+      console.log(`\n🌙 Closing position: ${positionHash}`);
+      console.log(`  🚀 Submitting close request...`);
 
-      // Get position details
-      const position = await this.tradingReader.getPendingTrade(tradeHash);
-      const { price: currentPrice, pythUpdateData } = await this.fetchPrice(position.pairBase);
-
-      console.log(`  Current price: ${ethers.formatUnits(currentPrice, 18)}`);
-      console.log(`  🚀 Submitting close order...`);
-
-      const tx = await this.tradingPortal.closeMarketTradeWithPyth(
-        tradeHash,
-        currentPrice,
-        pythUpdateData,
-        {
-          gasLimit: 600000,
-          value: ethers.parseEther('0.000000001'),
-        }
-      );
+      // Call closeTrade - this creates a close request that will be executed by keeper
+      // No need to fetch price or provide Pyth data - keeper handles it
+      const tx = await this.tradingPortal.closeTrade(positionHash, {
+        gasLimit: 600000,
+      });
 
       const receipt = await tx.wait();
-      console.log(`  ✅ Position closed: ${receipt.hash}`);
+      console.log(`  ✅ Close request submitted: ${receipt.hash}`);
+
+      // Parse RequestPrice event to get request ID
+      const requestPriceEvent = receipt.logs
+        .map(log => {
+          try {
+            return this.priceFacade.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find(event => event && event.name === 'RequestPrice');
+
+      const requestId = requestPriceEvent?.args?.requestId;
+
+      if (requestId) {
+        console.log(`  📋 Request ID: ${requestId}`);
+        console.log(`  ⏳ Position will be closed by keeper`);
+      }
 
       return {
         txHash: receipt.hash,
-        status: 'closed',
+        requestId: requestId?.toString(),
+        status: 'pending_close',
       };
     } catch (error) {
       console.error('Failed to close position:', error.message);
