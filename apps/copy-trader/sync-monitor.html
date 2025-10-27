@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Position Sync Monitor</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4a9eff',
+                        dark: { 900: '#0a0e1a', 800: '#0f1420', 700: '#151b2e', 600: '#1a2137', 500: '#2a3550' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/ccxt@4.5.11/dist/ccxt.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+
+    <style>
+        /* Table styles */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #2a3550;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            background-color: #0f1420;
+        }
+        .table-container thead {
+            background: linear-gradient(to right, #1a2137, #151b2e);
+        }
+        .table-container thead tr th {
+            padding: 10px 12px;
+            text-align: left;
+            color: #d1d5db;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid #2a3550;
+        }
+        .table-container tbody tr {
+            border-bottom: 1px solid #2a3550;
+        }
+        .table-container tbody tr:nth-child(even) { background-color: #0f1420; }
+        .table-container tbody tr:nth-child(odd) { background-color: #151b2e; }
+        .table-container tbody tr:hover {
+            background-color: #1a2137 !important;
+        }
+        .table-container tbody td {
+            padding: 10px 12px;
+            color: #e5e7eb;
+            font-size: 0.75rem;
+        }
+
+        /* Side badges */
+        .side-long {
+            color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+        .side-short {
+            color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+
+        /* Activity log */
+        #activity-log {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+        }
+        #activity-log::-webkit-scrollbar {
+            width: 8px;
+        }
+        #activity-log::-webkit-scrollbar-track {
+            background: #0f1420;
+        }
+        #activity-log::-webkit-scrollbar-thumb {
+            background: #2a3550;
+            border-radius: 4px;
+        }
+        #activity-log::-webkit-scrollbar-thumb:hover {
+            background: #4a9eff;
+        }
+
+        .log-entry {
+            padding: 4px 8px;
+            border-left: 2px solid transparent;
+            margin-bottom: 2px;
+        }
+        .log-entry.success { border-left-color: #10b981; }
+        .log-entry.error { border-left-color: #ef4444; }
+        .log-entry.warning { border-left-color: #ffa726; }
+        .log-entry.info { border-left-color: #4a9eff; }
+
+        /* Monitoring Status Indicator */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .status-indicator.active {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Stat card animation */
+        @keyframes countUp {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+        .stat-card.updated {
+            animation: countUp 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-200">
+    <div class="container mx-auto px-4 py-4 max-w-[1600px]">
+
+        <!-- Header -->
+        <header class="text-center mb-4 bg-gradient-to-br from-dark-600 to-dark-800 rounded-lg p-4 shadow-lg">
+            <h1 class="text-3xl font-bold text-primary mb-1">🔄 Position Sync Monitor</h1>
+            <p class="text-gray-400 text-sm">Real-time copy trading synchronization</p>
+        </header>
+
+        <!-- Configuration Form -->
+        <section class="bg-dark-700 rounded-lg shadow-lg p-4 mb-4">
+            <h2 class="text-lg font-semibold text-primary mb-3">⚙️ Configuration</h2>
+            <form id="config-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Trader Address</label>
+                    <input type="text" id="trader-address" placeholder="0x..." required
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Monitoring API Key</label>
+                    <input type="password" id="monitoring-api-key" placeholder="0x..." required
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Copy Balance ($)</label>
+                    <input type="number" id="copy-balance" placeholder="100" value="100" min="50" step="1" required
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Sync Interval (seconds)</label>
+                    <input type="number" id="sync-interval" placeholder="30" value="30" min="10" max="300" step="5" required
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                </div>
+
+                <div class="md:col-span-2 lg:col-span-4 flex gap-2 items-center">
+                    <button type="button" id="start-button"
+                        class="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition">
+                        ▶️ Start Monitoring
+                    </button>
+                    <button type="button" id="stop-button" disabled
+                        class="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition">
+                        ⏸️ Stop
+                    </button>
+
+                    <!-- Status Indicator -->
+                    <div id="status-display" class="hidden ml-auto flex items-center gap-2 px-3 py-1.5 bg-dark-800 rounded border border-dark-500">
+                        <div class="status-indicator w-3 h-3 rounded-full bg-green-500 active"></div>
+                        <span class="text-sm font-medium text-gray-200">Monitoring Active</span>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
+                <div class="text-xs text-gray-400 mb-1">💰 Copy Balance</div>
+                <div class="text-2xl font-bold text-gray-200" id="stat-balance">$0.00</div>
+            </div>
+            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
+                <div class="text-xs text-gray-400 mb-1">📊 Syncs</div>
+                <div class="text-2xl font-bold text-gray-200" id="stat-syncs">0</div>
+            </div>
+            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
+                <div class="text-xs text-gray-400 mb-1">➕ Added</div>
+                <div class="text-2xl font-bold text-green-400" id="stat-added">0</div>
+            </div>
+            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
+                <div class="text-xs text-gray-400 mb-1">➖ Removed</div>
+                <div class="text-2xl font-bold text-red-400" id="stat-removed">0</div>
+            </div>
+            <div class="stat-card bg-dark-700 rounded-lg p-4 shadow-lg border border-dark-500">
+                <div class="text-xs text-gray-400 mb-1">❌ Errors</div>
+                <div class="text-2xl font-bold text-red-400" id="stat-errors">0</div>
+            </div>
+        </div>
+
+        <!-- Positions Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <!-- Trader Positions -->
+            <section class="bg-dark-700 rounded-lg shadow-lg">
+                <div class="p-4 border-b border-dark-500 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-primary">👤 Trader Positions</h2>
+                    <span class="text-sm text-gray-400" id="trader-position-count">0 positions</span>
+                </div>
+                <div class="p-4">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th class="text-right">Size</th>
+                                    <th class="text-right">Entry</th>
+                                    <th class="text-right">Leverage</th>
+                                    <th class="text-right">Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trader-positions-body">
+                                <tr><td colspan="6" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Your Positions -->
+            <section class="bg-dark-700 rounded-lg shadow-lg">
+                <div class="p-4 border-b border-dark-500 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-primary">📍 Your Positions</h2>
+                    <span class="text-sm text-gray-400" id="user-position-count">0 positions</span>
+                </div>
+                <div class="p-4">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th class="text-right">Size</th>
+                                    <th class="text-right">Entry</th>
+                                    <th class="text-right">Leverage</th>
+                                    <th class="text-right">Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-positions-body">
+                                <tr><td colspan="6" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Actions Panel -->
+        <section class="bg-dark-700 rounded-lg shadow-lg mb-4">
+            <div class="p-4 border-b border-dark-500">
+                <h2 class="text-lg font-semibold text-primary">🔄 Required Actions</h2>
+            </div>
+            <div class="p-4">
+                <div id="actions-content" class="space-y-2">
+                    <div class="text-center text-gray-500 py-4">Start monitoring to see actions</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Activity Log -->
+        <section class="bg-dark-700 rounded-lg shadow-lg">
+            <div class="p-4 border-b border-dark-500 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-primary">📜 Activity Log</h2>
+                <button id="clear-log-btn" class="px-3 py-1.5 text-xs font-medium bg-dark-600 hover:bg-dark-500 text-gray-200 rounded transition">
+                    Clear
+                </button>
+            </div>
+            <div class="p-4">
+                <div id="activity-log" class="bg-dark-800 rounded p-3 border border-dark-500">
+                    <div class="log-entry info">
+                        <span class="text-gray-500">[Ready]</span> Configure and start monitoring
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script type="module">
+        // Position Sync Monitor - Browser Implementation
+        // Similar to test-position-sync.js but runs entirely in the browser
+
+        let monitorExchange = null;
+        let syncInterval = null;
+        let isMonitoring = false;
+        let stats = {
+            balance: 100,
+            syncs: 0,
+            added: 0,
+            removed: 0,
+            errors: 0
+        };
+        let lastTraderPositions = [];
+
+        // UI Elements
+        const elements = {
+            traderAddress: document.getElementById('trader-address'),
+            monitoringApiKey: document.getElementById('monitoring-api-key'),
+            copyBalance: document.getElementById('copy-balance'),
+            syncIntervalInput: document.getElementById('sync-interval'),
+            startButton: document.getElementById('start-button'),
+            stopButton: document.getElementById('stop-button'),
+            statusDisplay: document.getElementById('status-display'),
+
+            statBalance: document.getElementById('stat-balance'),
+            statSyncs: document.getElementById('stat-syncs'),
+            statAdded: document.getElementById('stat-added'),
+            statRemoved: document.getElementById('stat-removed'),
+            statErrors: document.getElementById('stat-errors'),
+
+            traderPositionsBody: document.getElementById('trader-positions-body'),
+            userPositionsBody: document.getElementById('user-positions-body'),
+            traderPositionCount: document.getElementById('trader-position-count'),
+            userPositionCount: document.getElementById('user-position-count'),
+
+            actionsContent: document.getElementById('actions-content'),
+            activityLog: document.getElementById('activity-log'),
+            clearLogBtn: document.getElementById('clear-log-btn')
+        };
+
+        // Event listeners
+        elements.startButton.addEventListener('click', startMonitoring);
+        elements.stopButton.addEventListener('click', stopMonitoring);
+        elements.clearLogBtn.addEventListener('click', clearLog);
+
+        // Logging
+        function log(level, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${level}`;
+            entry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
+
+            elements.activityLog.appendChild(entry);
+            elements.activityLog.scrollTop = elements.activityLog.scrollHeight;
+
+            // Keep only last 100 entries
+            while (elements.activityLog.children.length > 100) {
+                elements.activityLog.removeChild(elements.activityLog.firstChild);
+            }
+        }
+
+        function clearLog() {
+            elements.activityLog.innerHTML = '<div class="log-entry info"><span class="text-gray-500">[Cleared]</span> Log cleared</div>';
+        }
+
+        // Update stats display
+        function updateStats() {
+            elements.statBalance.textContent = `$${stats.balance.toFixed(2)}`;
+            elements.statSyncs.textContent = stats.syncs;
+            elements.statAdded.textContent = stats.added;
+            elements.statRemoved.textContent = stats.removed;
+            elements.statErrors.textContent = stats.errors;
+        }
+
+        // Render position row
+        function renderPositionRow(pos) {
+            const sideClass = (pos.side === 'long' || pos.side === 'buy') ? 'side-long' : 'side-short';
+            const sideText = (pos.side === 'long' || pos.side === 'buy') ? 'LONG' : 'SHORT';
+            const margin = (pos.size * pos.entryPrice) / pos.leverage;
+
+            return `
+                <tr>
+                    <td class="font-semibold">${pos.symbol}</td>
+                    <td><span class="${sideClass}">${sideText}</span></td>
+                    <td class="text-right font-mono">${pos.size.toFixed(4)}</td>
+                    <td class="text-right font-mono">$${pos.entryPrice.toLocaleString()}</td>
+                    <td class="text-right">${pos.leverage.toFixed(1)}x</td>
+                    <td class="text-right font-mono">$${margin.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+
+        // Fetch trader positions (reusing logic from positionSyncer.js:225-254)
+        async function fetchTraderPositions(traderAddress) {
+            try {
+                // Fetch positions via Hyperliquid API (same as positionSyncer.js)
+                const response = await fetch(`${monitorExchange.urls.api.public}/info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'clearinghouseState',
+                        user: traderAddress,
+                    }),
+                });
+
+                const data = await response.json();
+
+                // Convert to standard format
+                const positions = data.assetPositions
+                    .filter((pos) => Math.abs(pos.position.szi) > 0)
+                    .map((pos) => ({
+                        symbol: pos.position.coin,
+                        side: parseFloat(pos.position.szi) > 0 ? 'long' : 'short',
+                        size: Math.abs(parseFloat(pos.position.szi)),
+                        entryPrice: parseFloat(pos.position.entryPx),
+                        leverage: parseFloat(pos.position.leverage.value),
+                        unrealizedPnl: parseFloat(pos.position.unrealizedPnl),
+                        margin: parseFloat(pos.position.marginUsed),
+                    }));
+
+                return positions;
+            } catch (error) {
+                log('error', `Failed to fetch trader positions: ${error.message}`);
+                stats.errors++;
+                return [];
+            }
+        }
+
+        // Update positions display
+        function updatePositions(traderPositions, userPositions) {
+            // Trader positions
+            if (traderPositions.length > 0) {
+                elements.traderPositionCount.textContent = `${traderPositions.length} position${traderPositions.length > 1 ? 's' : ''}`;
+                elements.traderPositionsBody.innerHTML = traderPositions.map(renderPositionRow).join('');
+            } else {
+                elements.traderPositionCount.textContent = '0 positions';
+                elements.traderPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">No positions</td></tr>';
+            }
+
+            // User positions (placeholder for now)
+            elements.userPositionCount.textContent = '0 positions';
+            elements.userPositionsBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">Execution not implemented</td></tr>';
+        }
+
+        // Calculate and display actions
+        function updateActions(traderPositions) {
+            if (traderPositions.length === 0) {
+                elements.actionsContent.innerHTML = '<div class="text-center text-green-400 py-4">✅ No trader positions</div>';
+                return;
+            }
+
+            let html = '<div class="bg-blue-900/20 border border-blue-500/30 rounded p-3">';
+            html += '<div class="text-sm font-semibold text-blue-400 mb-2">ℹ️ Detected Positions</div>';
+            traderPositions.forEach(pos => {
+                const margin = (pos.size * pos.entryPrice) / pos.leverage;
+                html += `<div class="text-xs text-gray-300 mb-1">• ${pos.symbol}: ${pos.side.toUpperCase()} ${pos.size} @ $${pos.entryPrice.toLocaleString()} - Margin: $${margin.toFixed(2)}</div>`;
+            });
+            html += '</div>';
+
+            elements.actionsContent.innerHTML = html;
+        }
+
+        // Perform sync
+        async function performSync() {
+            const traderAddress = elements.traderAddress.value;
+
+            try {
+                log('info', '🔄 Starting sync...');
+
+                const traderPositions = await fetchTraderPositions(traderAddress);
+
+                // Detect changes (similar to test-position-sync.js:189-242)
+                if (lastTraderPositions.length > 0) {
+                    const added = traderPositions.filter(t => !lastTraderPositions.find(l => l.symbol === t.symbol));
+                    const removed = lastTraderPositions.filter(l => !traderPositions.find(t => t.symbol === l.symbol));
+
+                    if (added.length > 0) {
+                        stats.added += added.length;
+                        added.forEach(pos => {
+                            const margin = (pos.size * pos.entryPrice) / pos.leverage;
+                            log('success', `➕ NEW: ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ $${pos.entryPrice.toLocaleString()} (${pos.leverage}x) - Margin: $${margin.toFixed(2)}`);
+                        });
+                    }
+                    if (removed.length > 0) {
+                        stats.removed += removed.length;
+                        removed.forEach(pos => {
+                            log('warning', `➖ CLOSED: ${pos.symbol} ${pos.side.toUpperCase()}`);
+                        });
+                    }
+                    if (added.length === 0 && removed.length === 0) {
+                        log('info', '✅ No changes detected');
+                    }
+                } else {
+                    log('info', `Found ${traderPositions.length} trader position(s)`);
+                }
+
+                lastTraderPositions = [...traderPositions];
+                stats.syncs++;
+
+                updatePositions(traderPositions, []);
+                updateActions(traderPositions);
+                updateStats();
+
+            } catch (error) {
+                log('error', `❌ Sync failed: ${error.message}`);
+                stats.errors++;
+                updateStats();
+            }
+        }
+
+        // Start monitoring
+        async function startMonitoring() {
+            const traderAddress = elements.traderAddress.value;
+            const apiKey = elements.monitoringApiKey.value;
+            const interval = parseInt(elements.syncIntervalInput.value) * 1000;
+
+            if (!traderAddress || !apiKey) {
+                log('error', '❌ Please provide trader address and API key');
+                return;
+            }
+
+            try {
+                log('info', '🚀 Initializing monitor...');
+
+                // Create exchange
+                const { Wallet } = ethers;
+                const wallet = new Wallet(apiKey);
+
+                monitorExchange = new ccxt.hyperliquid({
+                    privateKey: apiKey,
+                    walletAddress: wallet.address,
+                    urls: {
+                        api: {
+                            public: 'https://api.hyperliquid.xyz',
+                            private: 'https://api.hyperliquid.xyz'
+                        }
+                    }
+                });
+
+                stats.balance = parseFloat(elements.copyBalance.value);
+                updateStats();
+
+                log('success', '✅ Monitor initialized');
+                log('info', `👤 Trader: ${traderAddress.slice(0, 6)}...${traderAddress.slice(-4)}`);
+                log('info', `⏱️  Sync interval: ${interval/1000}s`);
+
+                // Start sync loop
+                isMonitoring = true;
+                elements.startButton.disabled = true;
+                elements.stopButton.disabled = false;
+                elements.statusDisplay.classList.remove('hidden');
+
+                // First sync
+                await performSync();
+
+                // Setup interval
+                syncInterval = setInterval(performSync, interval);
+
+            } catch (error) {
+                log('error', `❌ Failed to start: ${error.message}`);
+                stats.errors++;
+                updateStats();
+            }
+        }
+
+        // Stop monitoring
+        function stopMonitoring() {
+            if (syncInterval) {
+                clearInterval(syncInterval);
+                syncInterval = null;
+            }
+
+            isMonitoring = false;
+            elements.startButton.disabled = false;
+            elements.stopButton.disabled = true;
+            elements.statusDisplay.classList.add('hidden');
+
+            log('warning', '⏸️  Monitoring stopped');
+        }
+    </script>
+</body>
+</html>
