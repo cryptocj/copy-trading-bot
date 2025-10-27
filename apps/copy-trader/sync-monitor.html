@@ -621,14 +621,17 @@
                     const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
                     const signer = new ethers.Wallet(moonlanderKey, provider);
 
+                    // Convert symbol: "BTC" -> "BTC/USD"
+                    const moonlanderSymbol = position.symbol.includes('/') ? position.symbol : `${position.symbol}/USD`;
+
                     // Get pair address
-                    const pairAddress = MOONLANDER_CONFIG.pairAddresses[position.symbol];
+                    const pairAddress = MOONLANDER_CONFIG.pairAddresses[moonlanderSymbol];
                     if (!pairAddress) {
-                        throw new Error(`Pair ${position.symbol} not found in config`);
+                        throw new Error(`Pair ${moonlanderSymbol} not found in config`);
                     }
 
                     // Fetch Pyth price
-                    const pythPrice = await fetchPythPrice(position.symbol);
+                    const pythPrice = await fetchPythPrice(moonlanderSymbol);
 
                     // Calculate parameters
                     const isLong = position.side === 'long' || position.side === 'buy';
@@ -736,7 +739,7 @@
                 'SAND/USD': '0xabf2e3f5f2f7e75c9e2e3f5f2f7e75c9e2e3f5f2f7e75c9e2e3f5f2f7e75c9e2',
             };
 
-            const priceId = pythIds[symbol];
+            const priceId = pythPriceIds[symbol];
             if (!priceId) {
                 throw new Error(`Pyth price ID not found for ${symbol}`);
             }
@@ -744,18 +747,39 @@
             const response = await fetch(`https://hermes.pyth.network/api/latest_vaas?ids[]=${priceId}`);
             const data = await response.json();
 
-            // Convert base64 to hex without Buffer (browser-compatible)
-            const pythUpdateData = data.map(d => {
-                const binaryString = atob(d.vaa);
-                let hex = '0x';
-                for (let i = 0; i < binaryString.length; i++) {
-                    hex += ('0' + binaryString.charCodeAt(i).toString(16)).slice(-2);
+            if (!data || data.length === 0) {
+                throw new Error(`No Pyth data returned for ${symbol}`);
+            }
+
+            // The response is an array of base64-encoded VAAs
+            const pythUpdateData = data.map(vaaBase64 => {
+                try {
+                    // Decode base64 to binary string
+                    const binaryString = atob(vaaBase64);
+                    let hex = '0x';
+                    for (let i = 0; i < binaryString.length; i++) {
+                        hex += ('0' + binaryString.charCodeAt(i).toString(16)).slice(-2);
+                    }
+                    return hex;
+                } catch (error) {
+                    console.error('Failed to decode VAA:', error);
+                    throw new Error(`Failed to decode Pyth VAA data: ${error.message}`);
                 }
-                return hex;
             });
 
+            // Fetch current price separately from latest_price_feeds endpoint
+            const priceResponse = await fetch(`https://hermes.pyth.network/api/latest_price_feeds?ids[]=${priceId}`);
+            const priceData = await priceResponse.json();
+
+            if (!priceData || priceData.length === 0) {
+                throw new Error(`No price data returned for ${symbol}`);
+            }
+
+            const priceInfo = priceData[0].price;
+            const price = BigInt(priceInfo.price) * (10n ** BigInt(18 + priceInfo.expo));
+
             return {
-                price: BigInt(data[0].price.price) * (10n ** 10n), // Convert to 18 decimals
+                price,
                 pythUpdateData
             };
         }
@@ -910,8 +934,10 @@
                 // Calculate required actions
                 const actions = calculatePositionDiff(userPositions, targetPositions);
 
-                // Execute actions if Moonlander key provided
-                if (elements.moonlanderPrivateKey.value && hasTraderChanges) {
+                // Execute actions if Moonlander key provided AND there are actions to take
+                if (elements.moonlanderPrivateKey.value && (actions.toAdd.length > 0 || actions.toRemove.length > 0)) {
+                    log('info', `📋 Actions needed: Close ${actions.toRemove.length}, Open ${actions.toAdd.length}`);
+
                     for (const pos of actions.toRemove) {
                         stats.removed++;
                         log('warning', `🔄 Closing: ${pos.symbol}`);
@@ -925,14 +951,14 @@
                         await executeCopyTrade(pos, 'open');
                     }
 
-                    if (actions.toAdd.length === 0 && actions.toRemove.length === 0) {
-                        log('info', '✅ No actions needed - positions in sync');
-                    }
+                    log('success', '✅ All actions completed');
                 } else if (!elements.moonlanderPrivateKey.value) {
                     log('warning', '⚠️  Moonlander private key not provided - skipping execution');
                     if (actions.toAdd.length > 0 || actions.toRemove.length > 0) {
                         log('info', `Would close ${actions.toRemove.length}, open ${actions.toAdd.length} positions`);
                     }
+                } else if (actions.toAdd.length === 0 && actions.toRemove.length === 0) {
+                    log('info', '✅ No actions needed - positions in sync');
                 }
 
                 lastTraderPositions = [...traderPositions];
