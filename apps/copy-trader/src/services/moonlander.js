@@ -192,19 +192,44 @@ export class MoonlanderExchange {
         ethers.ZeroAddress
       );
 
-      return positions.map((pos) => ({
-        tradeHash: pos.tradeHash,
-        symbol: pos.pairBase,
-        side: pos.isLong ? 'long' : 'short',
-        margin: pos.margin,
-        leverage: pos.leverage,
-        entryPrice: pos.entryPrice,
-        size: pos.qty,
-        stopLoss: pos.stopLoss,
-        takeProfit: pos.takeProfit,
-        fundingFee: pos.fundingFee,
-        openTimestamp: pos.openTimestamp,
-      }));
+      // Create reverse mapping: address → symbol
+      const addressToSymbol = {};
+      for (const [symbol, address] of Object.entries(this.pairAddresses)) {
+        addressToSymbol[address.toLowerCase()] = symbol;
+      }
+
+      return positions.map((pos) => {
+        // Convert pairBase address to symbol
+        const pairAddress = pos.pairBase.toLowerCase();
+        const symbol = addressToSymbol[pairAddress] || pos.pairBase;
+
+        // Parse BigInt values to numbers with correct decimals
+        const size = Number(pos.qty) / 1e10; // qty uses 10 decimals
+        const entryPrice = Number(pos.entryPrice) / 1e18; // price uses 18 decimals
+        const margin = Number(pos.margin) / 1e6; // margin uses 6 decimals (USDC)
+
+        // Calculate leverage: (size * price) / margin
+        const positionValue = size * entryPrice;
+        const leverage = margin > 0 ? positionValue / margin : 0;
+
+        const stopLoss = Number(pos.stopLoss) / 1e18;
+        const takeProfit = Number(pos.takeProfit) / 1e18;
+
+        return {
+          tradeHash: pos.tradeHash,
+          symbol,
+          pairAddress: pos.pairBase, // Keep original address for reference
+          side: pos.isLong ? 'long' : 'short',
+          size,
+          entryPrice,
+          margin,
+          leverage,
+          stopLoss,
+          takeProfit,
+          fundingFee: Number(pos.fundingFee) / 1e18,
+          openTimestamp: Number(pos.openTimestamp),
+        };
+      });
     } catch (error) {
       console.error('Failed to fetch positions:', error.message);
       return [];
@@ -259,7 +284,9 @@ export class MoonlanderExchange {
       // If allowance is already high (> 90% of max), skip approval
       const threshold = maxApproval / 10n; // 10% of max as threshold
       if (currentAllowance >= threshold) {
-        console.log(`  ✅ Already approved (allowance: ${ethers.formatUnits(currentAllowance, 6)} USDC)`);
+        console.log(
+          `  ✅ Already approved (allowance: ${ethers.formatUnits(currentAllowance, 6)} USDC)`
+        );
         return true;
       }
 
@@ -373,7 +400,9 @@ export class MoonlanderExchange {
       // Testnet uses 1 wei
       const pythUpdateFee = ethers.parseEther('0.06'); // 0.06 CRO for mainnet
 
-      console.log(`  💰 Pyth update fee: ${ethers.formatEther(pythUpdateFee)} CRO (${pythUpdateData.length} updates)`);
+      console.log(
+        `  💰 Pyth update fee: ${ethers.formatEther(pythUpdateFee)} CRO (${pythUpdateData.length} updates)`
+      );
 
       // Step 5: Submit order to smart contract
       console.log(`  🚀 Submitting order to blockchain...`);
@@ -419,7 +448,11 @@ export class MoonlanderExchange {
       console.log(`  ✅ Order submitted: ${receipt.hash}`);
 
       // Step 5: Extract trade hash from MarketPendingTrade event
-      const marketPendingTradeEvent = this.parseEvent(this.tradingPortal.interface, receipt, 'MarketPendingTrade');
+      const marketPendingTradeEvent = this.parseEvent(
+        this.tradingPortal.interface,
+        receipt,
+        'MarketPendingTrade'
+      );
 
       if (!marketPendingTradeEvent) {
         throw new Error('MarketPendingTrade event not found in receipt');

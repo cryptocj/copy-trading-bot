@@ -153,8 +153,12 @@ export class PositionSyncer {
       this.scalingFactor = scalingResult.scalingFactor || 1.0;
 
       console.log(`  Scaling Factor: ${(this.scalingFactor * 100).toFixed(2)}%`);
-      console.log(`  Original Trader Margin: $${(scalingResult.originalTotalCost || 0).toFixed(2)}`);
-      console.log(`  Scaled Estimated Cost: $${(scalingResult.totalEstimatedCost || 0).toFixed(2)}`);
+      console.log(
+        `  Original Trader Margin: $${(scalingResult.originalTotalCost || 0).toFixed(2)}`
+      );
+      console.log(
+        `  Scaled Estimated Cost: $${(scalingResult.totalEstimatedCost || 0).toFixed(2)}`
+      );
       console.log(`  Balance Utilization: ${(scalingResult.utilizationPercent || 0).toFixed(1)}%`);
 
       // Step 4: Calculate target positions (scaled trader positions)
@@ -220,17 +224,14 @@ export class PositionSyncer {
    */
   async fetchTraderPositions() {
     // Fetch positions via Hyperliquid API
-    const response = await fetch(
-      `${this.config.monitorExchange.urls.api.public}/info`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'clearinghouseState',
-          user: this.config.traderAddress,
-        }),
-      }
-    );
+    const response = await fetch(`${this.config.monitorExchange.urls.api.public}/info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'clearinghouseState',
+        user: this.config.traderAddress,
+      }),
+    });
 
     const data = await response.json();
 
@@ -261,14 +262,39 @@ export class PositionSyncer {
     if (isMoonlander) {
       // Moonlander: Use fetchPositions from smart contract
       const positions = await this.config.executeExchange.fetchPositions();
-      return positions.map((pos) => ({
-        symbol: pos.symbol,
-        side: pos.side,
-        size: parseFloat(pos.size),
-        entryPrice: parseFloat(pos.entryPrice),
-        leverage: parseFloat(pos.leverage),
-        margin: parseFloat(pos.margin),
-      }));
+
+      return positions
+        .map((pos) => ({
+          symbol: pos.symbol,
+          side: pos.side,
+          size: parseFloat(pos.size),
+          entryPrice: parseFloat(pos.entryPrice),
+          leverage: parseFloat(pos.leverage),
+          margin: parseFloat(pos.margin),
+          tradeHash: pos.tradeHash, // Keep for closing positions
+        }))
+        .filter((pos) => {
+          // Debug: log all positions before filtering
+          // console.log(`  🔍 Position data:`, JSON.stringify(pos, null, 2));
+
+          // Filter out invalid positions (NaN values or invalid data)
+          const isValid =
+            !Number.isNaN(pos.size) &&
+            !Number.isNaN(pos.entryPrice) &&
+            !Number.isNaN(pos.leverage) &&
+            pos.size > 0 &&
+            pos.entryPrice > 0 &&
+            pos.leverage > 0 &&
+            typeof pos.symbol === 'string' &&
+            pos.symbol.length > 0 &&
+            !pos.symbol.startsWith('0x'); // Ignore if still showing address
+
+          // if (!isValid) {
+          //   console.log(`  ⚠️  Filtering out invalid position: ${JSON.stringify(pos)}`);
+          // }
+
+          return isValid;
+        });
     } else {
       // Hyperliquid: Use CCXT fetchPositions
       const positions = await this.config.executeExchange.fetchPositions();
@@ -340,7 +366,9 @@ export class PositionSyncer {
 
     for (const pos of positions) {
       try {
-        console.log(`  📌 Opening: ${pos.side.toUpperCase()} ${pos.size} ${pos.symbol} @ ${pos.entryPrice} (${pos.leverage}x)`);
+        console.log(
+          `  📌 Opening: ${pos.side.toUpperCase()} ${pos.size} ${pos.symbol} @ ${pos.entryPrice} (${pos.leverage}x)`
+        );
 
         // Check if dry-run mode
         if (this.config.dryRun) {
@@ -408,7 +436,7 @@ export class PositionSyncer {
           // Note: Moonlander needs tradeHash to close position
           // We need to fetch positions first to get tradeHash
           const userPositions = await this.config.executeExchange.fetchPositions();
-          const positionToClose = userPositions.find(p => p.symbol === pos.symbol);
+          const positionToClose = userPositions.find((p) => p.symbol === pos.symbol);
 
           if (!positionToClose || !positionToClose.tradeHash) {
             throw new Error(`Position ${pos.symbol} not found or missing tradeHash`);
@@ -457,7 +485,7 @@ export class PositionSyncer {
           // For Moonlander: close old position and open new one
           // Step 1: Fetch current position to get tradeHash
           const userPositions = await this.config.executeExchange.fetchPositions();
-          const currentPosition = userPositions.find(p => p.symbol === adj.symbol);
+          const currentPosition = userPositions.find((p) => p.symbol === adj.symbol);
 
           if (!currentPosition || !currentPosition.tradeHash) {
             throw new Error(`Position ${adj.symbol} not found or missing tradeHash`);
@@ -465,12 +493,15 @@ export class PositionSyncer {
 
           // Step 2: Close current position
           console.log(`    Closing old position...`);
-          const closeResult = await this.config.executeExchange.closePosition(currentPosition.tradeHash);
+          const closeResult = await this.config.executeExchange.closePosition(
+            currentPosition.tradeHash
+          );
           console.log(`    ✅ Closed (TX: ${closeResult.txHash})`);
 
           // Step 3: Open new position with target size
           console.log(`    Opening new position with target size...`);
-          const requiredMargin = (adj.targetSize * currentPosition.entryPrice) / currentPosition.leverage;
+          const requiredMargin =
+            (adj.targetSize * currentPosition.entryPrice) / currentPosition.leverage;
 
           // Convert symbol format for Moonlander (BTC → BTC/USD)
           const moonlanderSymbol = convertSymbolToMoonlander(adj.symbol);

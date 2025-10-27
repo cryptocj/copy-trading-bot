@@ -35,6 +35,58 @@ function roundToDecimals(num, decimals) {
 }
 
 /**
+ * Get size decimals (szDecimals) for a symbol from Hyperliquid
+ * According to Hyperliquid docs: "Sizes are rounded to the szDecimals of that asset"
+ *
+ * @param {object} exchange - CCXT exchange instance with loaded markets
+ * @param {string} symbol - Trading symbol (e.g., 'BTC', 'ETH')
+ * @returns {number} - Number of decimal places for size (szDecimals)
+ */
+function getMarketPrecision(exchange, symbol) {
+  if (!exchange || !exchange.markets) {
+    return 4; // Conservative default (works for most assets)
+  }
+
+  // Try with /USD:USD suffix (Hyperliquid perp format)
+  let marketSymbol = symbol.includes('/') ? symbol : `${symbol}/USD:USD`;
+  let market = exchange.markets[marketSymbol];
+
+  // If not found, try without :USD
+  if (!market) {
+    marketSymbol = symbol.includes('/') ? symbol : `${symbol}/USD`;
+    market = exchange.markets[marketSymbol];
+  }
+
+  // If still not found, try just the base symbol
+  if (!market && !symbol.includes('/')) {
+    marketSymbol = symbol;
+    market = exchange.markets[marketSymbol];
+  }
+
+  if (!market) {
+    console.warn(`Market info not found for ${symbol}, using default precision 4`);
+    return 4;
+  }
+
+  // Hyperliquid stores szDecimals in market.precision.amount
+  // This is the number of decimal places for SIZE rounding
+  if (market.precision && typeof market.precision.amount === 'number') {
+    const precision = market.precision.amount;
+
+    // If precision is < 1, it's a tick size (e.g., 0.01 = 2 decimals)
+    if (precision < 1 && precision > 0) {
+      const decimals = -Math.floor(Math.log10(precision));
+      return Math.max(0, decimals);
+    }
+
+    // Otherwise it's already decimal places (szDecimals)
+    return Math.round(precision);
+  }
+
+  return 4; // Default
+}
+
+/**
  * Calculate initial positions to copy based on trader's LATEST open positions and user's balance
  *
  * Important: This function expects CURRENT positions from the trader (fetched fresh from API)
@@ -46,6 +98,7 @@ function roundToDecimals(num, decimals) {
  *
  * @param {Array<{symbol: string, side: string, size: number, entryPrice: number, notional: number, leverage: number}>} traderPositions - Trader's CURRENT open positions (must be fresh data)
  * @param {number} userCopyBalance - User's total balance for copying (USD)
+ * @param {object} [exchange] - CCXT exchange instance with loaded markets (optional, for precise scaling)
  * @returns {{
  *   positions: Array<{
  *     symbol: string,
@@ -67,7 +120,7 @@ function roundToDecimals(num, decimals) {
  *   originalTotalValue: number
  * }}
  */
-export function calculateInitialPositions(traderPositions, userCopyBalance) {
+export function calculateInitialPositions(traderPositions, userCopyBalance, exchange = null) {
   // Validate inputs
   if (!Array.isArray(traderPositions)) {
     throw new Error('traderPositions must be an array');
@@ -146,24 +199,36 @@ export function calculateInitialPositions(traderPositions, userCopyBalance) {
     // Calculate scaling factor to fit within 80% of balance (safety margin)
     scalingFactor = (userCopyBalance * 0.8) / totalEstimatedCost;
 
-    // Scale down all positions proportionally, preserving original precision
+    // Scale down all positions proportionally
     scaledPositions = calculatedPositions.map((pos) => {
-      // Detect precision from trader's original size
-      const sizePrecision = getDecimalPrecision(pos.size);
+      // Get szDecimals from market info (Hyperliquid's size precision)
+      // If exchange not provided, use conservative default of 4 decimals
+      const szDecimals = exchange ? getMarketPrecision(exchange, pos.symbol) : 4;
 
-      // Scale size and round to original precision
-      const scaledSize = roundToDecimals(pos.size * scalingFactor, sizePrecision);
+      // Calculate scaled size
+      const scaledSizeRaw = pos.size * scalingFactor;
+
+      // Round to szDecimals (Hyperliquid requirement)
+      const scaledSize = roundToDecimals(scaledSizeRaw, szDecimals);
+
+      // Skip positions that round to 0 (too small to trade)
+      if (scaledSize === 0) {
+        warnings.push(
+          `⚠️ ${pos.symbol}: Position too small after scaling (${scaledSizeRaw.toFixed(8)} → 0 with ${szDecimals} decimals), skipped`
+        );
+        return null;
+      }
 
       return {
         symbol: pos.symbol,
         side: pos.side, // Already converted to 'buy'/'sell' in calculatedPositions
-        size: scaledSize, // Scaled size with original precision
+        size: scaledSize, // Scaled size rounded to szDecimals
         entryPrice: pos.entryPrice, // Keep trader's exact entry price
         estimatedCost: pos.estimatedCost * scalingFactor,
         leverage: pos.leverage,
         marketValue: pos.marketValue * scalingFactor,
       };
-    });
+    }).filter((pos) => pos !== null); // Remove positions that were too small
 
     scaledTotalCost = totalEstimatedCost * scalingFactor;
     scaledTotalValue = totalMarketValue * scalingFactor;
