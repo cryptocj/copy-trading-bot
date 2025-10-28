@@ -6,6 +6,14 @@
     <title>Position Sync Monitor</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
 
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-NN3P9KC9');</script>
+    <!-- End Google Tag Manager -->
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -342,8 +350,8 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '0.1.1';
-        const BUILD_DATE = '2025-10-27';
+        const VERSION = '0.1.3';
+        const BUILD_DATE = '2025-10-28';
 
         // ============================================
         // CONFIGURATION CONSTANTS
@@ -1328,6 +1336,14 @@
         async function startMonitoring() {
             // Get trader address from either dropdown selection or custom input
             const traderAddress = elements.traderAddress.value;
+
+            // Track analytics event
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'start_monitoring', {
+                    trader_type: elements.traderSelect.value === 'custom' ? 'custom' : 'preset',
+                    trader_address: traderAddress.substring(0, 10) + '...' // Anonymize
+                });
+            }
             const interval = parseInt(elements.syncIntervalInput.value) * 1000;
 
             if (!traderAddress) {
@@ -1388,6 +1404,16 @@
 
         // Stop monitoring
         function stopMonitoring() {
+            // Track analytics event
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'stop_monitoring', {
+                    total_syncs: stats.syncs,
+                    positions_added: stats.added,
+                    positions_removed: stats.removed,
+                    errors: stats.errors
+                });
+            }
+
             if (syncInterval) {
                 clearInterval(syncInterval);
                 syncInterval = null;
@@ -1402,4 +1428,8 @@
         }
     </script>
 </body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NN3P9KC9"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 </html>
