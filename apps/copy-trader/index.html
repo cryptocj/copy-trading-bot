@@ -374,6 +374,14 @@
         const DECIMALS_QTY = 10; // Position quantity decimals
         const DECIMALS_PRICE = 18; // Price decimals
 
+        // Decimal conversion helpers (DRY principle - avoid magic numbers)
+        const USDC_DIVISOR = 10 ** DECIMALS_USDC; // 1e6
+        const QTY_DIVISOR = 10 ** DECIMALS_QTY; // 1e10
+        const PRICE_DIVISOR = 10 ** DECIMALS_PRICE; // 1e18
+
+        // Liquidation calculation
+        const MAINTENANCE_MARGIN_RATIO = 0.90; // 90% of margin before liquidation
+
         // Price Calculation
         const STOP_LOSS_PERCENT_LONG = 50; // 50% of entry for long
         const STOP_LOSS_PERCENT_SHORT = 150; // 150% of entry for short
@@ -408,6 +416,57 @@
         let lastTraderPositions = [];
         let userPositions = [];
         let lastTradeTimestamp = null;
+        let cachedMoonlanderWallet = null;
+
+        // ============================================
+        // UTILITY FUNCTIONS (DRY, KISS principles)
+        // ============================================
+
+        // Get or create Moonlander wallet (avoids repeated wallet instantiation)
+        function getMoonlanderWallet() {
+            const privateKey = elements.moonlanderPrivateKey.value;
+            if (!privateKey) {
+                return null;
+            }
+
+            // Cache wallet (create once per session)
+            if (!cachedMoonlanderWallet) {
+                cachedMoonlanderWallet = new ethers.Wallet(privateKey);
+            }
+
+            return cachedMoonlanderWallet;
+        }
+
+        // Symbol utilities for consistent symbol handling (Single Responsibility)
+        const SymbolUtils = {
+            // Convert to Moonlander format: "BTC" -> "BTC/USD"
+            toMoonlanderFormat(symbol) {
+                if (!symbol) return '';
+                return symbol.includes('/') ? symbol : `${symbol}/USD`;
+            },
+
+            // Normalize for comparison: "BTC/USD" -> "BTC"
+            normalize(symbol) {
+                if (!symbol) return '';
+                return symbol.toUpperCase()
+                    .replace(/[-/:].*$/, '')
+                    .replace(/USD$|USDT$|USDC$/, '')
+                    .trim();
+            }
+        };
+
+        // Extract balance information from account data (DRY - avoid duplication)
+        function extractBalanceInfo(accountData, margin = 0) {
+            if (!accountData?.marginSummary?.accountValue) {
+                return { total: null, free: null, ratio: null };
+            }
+
+            const total = parseFloat(accountData.marginSummary.accountValue);
+            const free = total - margin;
+            const ratio = total > 0 ? (margin / total) * 100 : 0;
+
+            return { total, free, ratio };
+        }
 
         // UI Elements
         const elements = {
@@ -522,14 +581,12 @@
 
             // Calculate liquidation price
             // For LONG: liquidationPrice = entryPrice * (1 - 1/leverage)
-            // For SHORT: liquidationPrice = entryPrice * (1 + 1/leverage)
-            // Using 90% maintenance margin ratio (typical for perpetuals)
-            const maintenanceMargin = 0.90; // 90% of margin before liquidation
+            // FOR SHORT: liquidationPrice = entryPrice * (1 + 1/leverage)
             let liquidationPrice = 0;
             if (isLong) {
-                liquidationPrice = pos.entryPrice * (1 - (maintenanceMargin / pos.leverage));
+                liquidationPrice = pos.entryPrice * (1 - (MAINTENANCE_MARGIN_RATIO / pos.leverage));
             } else {
-                liquidationPrice = pos.entryPrice * (1 + (maintenanceMargin / pos.leverage));
+                liquidationPrice = pos.entryPrice * (1 + (MAINTENANCE_MARGIN_RATIO / pos.leverage));
             }
 
             // Calculate margin percentage if total balance is provided
@@ -714,9 +771,9 @@
                     const pairAddress = pos.pairBase.toLowerCase();
                     const symbol = addressToSymbol[pairAddress] || pos.pairBase;
 
-                    const size = Number(pos.qty) / 1e10; // 10 decimals
-                    const entryPrice = Number(pos.entryPrice) / 1e18; // 18 decimals
-                    const margin = Number(pos.margin) / 1e6; // 6 decimals (USDC)
+                    const size = Number(pos.qty) / QTY_DIVISOR;
+                    const entryPrice = Number(pos.entryPrice) / PRICE_DIVISOR;
+                    const margin = Number(pos.margin) / USDC_DIVISOR;
 
                     const positionValue = size * entryPrice;
                     const leverage = margin > 0 ? positionValue / margin : 0;
@@ -730,9 +787,9 @@
                         entryPrice,
                         margin,
                         leverage,
-                        stopLoss: Number(pos.stopLoss) / 1e18,
-                        takeProfit: Number(pos.takeProfit) / 1e18,
-                        fundingFee: Number(pos.fundingFee) / 1e6,
+                        stopLoss: Number(pos.stopLoss) / PRICE_DIVISOR,
+                        takeProfit: Number(pos.takeProfit) / PRICE_DIVISOR,
+                        fundingFee: Number(pos.fundingFee) / USDC_DIVISOR,
                         openTimestamp: Number(pos.timestamp)
                     };
                 });
@@ -849,7 +906,7 @@
                     const signer = new ethers.Wallet(moonlanderKey, provider);
 
                     // Convert symbol: "BTC" -> "BTC/USD"
-                    const moonlanderSymbol = position.symbol.includes('/') ? position.symbol : `${position.symbol}/USD`;
+                    const moonlanderSymbol = SymbolUtils.toMoonlanderFormat(position.symbol);
 
                     // Get pair address
                     const pairAddress = MOONLANDER_CONFIG.pairAddresses[moonlanderSymbol];
@@ -1196,19 +1253,14 @@
 
         // Calculate position diff (from positionDiff.js)
         function calculatePositionDiff(userPositions, targetPositions) {
-            const normalizeSymbol = (symbol) => {
-                if (!symbol) return '';
-                return symbol.toUpperCase().replace(/[-/:].*$/, '').replace(/USD$|USDT$|USDC$/, '').trim();
-            };
-
-            const targetMap = new Map(targetPositions.map(p => [normalizeSymbol(p.symbol), p]));
-            const userMap = new Map(userPositions.map(p => [normalizeSymbol(p.symbol), p]));
+            const targetMap = new Map(targetPositions.map(p => [SymbolUtils.normalize(p.symbol), p]));
+            const userMap = new Map(userPositions.map(p => [SymbolUtils.normalize(p.symbol), p]));
 
             const toAdd = [];
             const toRemove = [];
 
             for (const target of targetPositions) {
-                const normalizedSymbol = normalizeSymbol(target.symbol);
+                const normalizedSymbol = SymbolUtils.normalize(target.symbol);
                 const user = userMap.get(normalizedSymbol);
 
                 if (!user) {
@@ -1234,18 +1286,41 @@
             }
 
             for (const user of userPositions) {
-                const normalizedSymbol = normalizeSymbol(user.symbol);
+                const normalizedSymbol = SymbolUtils.normalize(user.symbol);
                 const target = targetMap.get(normalizedSymbol);
 
                 if (!target) {
                     // Position should not exist - remove it (if not already marked for removal)
-                    if (!toRemove.find(p => normalizeSymbol(p.symbol) === normalizedSymbol)) {
+                    if (!toRemove.find(p => SymbolUtils.normalize(p.symbol) === normalizedSymbol)) {
                         toRemove.push(user);
                     }
                 }
             }
 
             return { toAdd, toRemove };
+        }
+
+        // Fetch all positions (trader + user) - DRY principle to eliminate duplication
+        async function fetchAllPositions(traderAddress, balanceInfo) {
+            const { positions: traderPositions, accountData: traderAccountData } =
+                await fetchTraderPositions(traderAddress);
+
+            let userAccountData = null;
+            const moonlanderWallet = getMoonlanderWallet();
+
+            if (moonlanderWallet) {
+                const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
+                userPositions = moonlanderPositions;
+
+                // Create user account data structure for balance display
+                userAccountData = {
+                    marginSummary: {
+                        accountValue: balanceInfo.totalEquity.toString()
+                    }
+                };
+            }
+
+            return { traderPositions, traderAccountData, userAccountData };
         }
 
         // Perform sync (following test-position-sync.js pattern)
@@ -1257,9 +1332,8 @@
 
                 // Fetch user's real-time available balance each sync round
                 let balanceInfo = { freeBalance: MIN_COPY_BALANCE, totalEquity: MIN_COPY_BALANCE, positionsValue: 0 };
-                if (elements.moonlanderPrivateKey.value) {
-                    const { Wallet } = ethers;
-                    const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
+                const moonlanderWallet = getMoonlanderWallet();
+                if (moonlanderWallet) {
                     balanceInfo = await fetchMoonlanderBalance(moonlanderWallet.address);
 
                     // Update stats with total equity for display
@@ -1274,23 +1348,8 @@
 
                     if (!hasNewTrade) {
                         // No new trades - just refresh position display without adjustments
-                        const { positions: traderPositions, accountData: traderAccountData } = await fetchTraderPositions(traderAddress);
-
-                        // Fetch Moonlander user positions if key provided
-                        let userAccountData = null;
-                        if (elements.moonlanderPrivateKey.value) {
-                            const { Wallet } = ethers;
-                            const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
-                            const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
-                            userPositions = moonlanderPositions;
-
-                            // Create user account data structure for balance display
-                            userAccountData = {
-                                marginSummary: {
-                                    accountValue: balanceInfo.totalEquity.toString()
-                                }
-                            };
-                        }
+                        const { traderPositions, traderAccountData, userAccountData } =
+                            await fetchAllPositions(traderAddress, balanceInfo);
 
                         // Update position display
                         updatePositions(traderPositions, userPositions, traderAccountData, userAccountData);
@@ -1311,23 +1370,8 @@
                 }
 
                 // Fetch current positions for processing
-                const { positions: traderPositions, accountData: traderAccountData } = await fetchTraderPositions(traderAddress);
-
-                // Fetch Moonlander user positions if key provided
-                let userAccountData = null;
-                if (elements.moonlanderPrivateKey.value) {
-                    const { Wallet } = ethers;
-                    const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
-                    const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
-                    userPositions = moonlanderPositions;
-
-                    // Create user account data structure for balance display
-                    userAccountData = {
-                        marginSummary: {
-                            accountValue: balanceInfo.totalEquity.toString()
-                        }
-                    };
-                }
+                const { traderPositions, traderAccountData, userAccountData } =
+                    await fetchAllPositions(traderAddress, balanceInfo);
 
                 // Calculate trader's total margin (same as positionSyncer.js)
                 const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
@@ -1423,9 +1467,8 @@
                 });
 
                 // Fetch Moonlander wallet balance if private key provided
-                if (elements.moonlanderPrivateKey.value) {
-                    const { Wallet } = ethers;
-                    const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
+                const moonlanderWallet = getMoonlanderWallet();
+                if (moonlanderWallet) {
                     const balanceInfo = await fetchMoonlanderBalance(moonlanderWallet.address);
                     stats.balance = balanceInfo.totalEquity;
                     elements.copyBalance.value = balanceInfo.totalEquity.toFixed(2);
