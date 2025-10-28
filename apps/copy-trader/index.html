@@ -143,6 +143,7 @@
             animation: countUp 0.3s ease-in-out;
         }
     </style>
+
 </head>
 <body class="bg-dark-900 text-gray-200">
     <div class="container mx-auto px-4 py-4 max-w-[1600px]">
@@ -350,7 +351,7 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '0.2.0';
+        const VERSION = '0.2.1';
         const BUILD_DATE = '2025-10-28';
 
         // ============================================
@@ -1527,6 +1528,16 @@
 
             log('warning', '⏸️  Monitoring stopped');
         }
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PEGGJKETQ0"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-PEGGJKETQ0');
     </script>
 </body>
 <!-- Google Tag Manager (noscript) -->
