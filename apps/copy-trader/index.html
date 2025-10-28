@@ -1267,31 +1267,51 @@
                     elements.copyBalance.value = balanceInfo.totalEquity.toFixed(2);
                 }
 
-                // Check trader's last trade timestamp
-                const currentTradeTimestamp = await fetchLastTradeTimestamp(traderAddress);
-                const hasNewTrade = currentTradeTimestamp !== lastTradeTimestamp;
+                // Only check for new trades after the first sync
+                if (lastTradeTimestamp !== null) {
+                    const currentTradeTimestamp = await fetchLastTradeTimestamp(traderAddress);
+                    const hasNewTrade = currentTradeTimestamp !== lastTradeTimestamp;
 
-                if (!hasNewTrade && lastTradeTimestamp !== null) {
-                    log('info', '⏭️  No new trades from trader - skipping adjustment check');
-                    stats.syncs++;
-                    updateStats();
-                    return;
-                }
+                    if (!hasNewTrade) {
+                        // No new trades - just refresh position display without adjustments
+                        const { positions: traderPositions, accountData: traderAccountData } = await fetchTraderPositions(traderAddress);
 
-                // Update last trade timestamp
-                if (currentTradeTimestamp) {
-                    lastTradeTimestamp = currentTradeTimestamp;
+                        // Fetch Moonlander user positions if key provided
+                        let userAccountData = null;
+                        if (elements.moonlanderPrivateKey.value) {
+                            const { Wallet } = ethers;
+                            const moonlanderWallet = new Wallet(elements.moonlanderPrivateKey.value);
+                            const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
+                            userPositions = moonlanderPositions;
+
+                            // Create user account data structure for balance display
+                            userAccountData = {
+                                marginSummary: {
+                                    accountValue: balanceInfo.totalEquity.toString()
+                                }
+                            };
+                        }
+
+                        // Update position display
+                        updatePositions(traderPositions, userPositions, traderAccountData, userAccountData);
+
+                        log('info', '⏭️  No new trades from trader - skipping adjustment check');
+                        stats.syncs++;
+                        updateStats();
+                        return;
+                    }
+
+                    // Update last trade timestamp
                     const tradeTime = new Date(currentTradeTimestamp).toLocaleTimeString();
                     log('info', `🔔 New trade detected at ${tradeTime}`);
+                    lastTradeTimestamp = currentTradeTimestamp;
+                } else {
+                    // First sync - just log and set timestamp at the end
+                    log('info', '🔄 First sync - initializing trade tracking');
                 }
 
+                // Fetch current positions for processing
                 const { positions: traderPositions, accountData: traderAccountData } = await fetchTraderPositions(traderAddress);
-
-                // Calculate trader's total margin (same as positionSyncer.js)
-                const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
-
-                // Use total equity (free + positions) for scaling to match trader's total exposure
-                log('info', `📊 Trader margin: $${traderTotalMargin.toFixed(2)} | User total equity: $${balanceInfo.totalEquity.toFixed(2)}`);
 
                 // Fetch Moonlander user positions if key provided
                 let userAccountData = null;
@@ -1308,6 +1328,12 @@
                         }
                     };
                 }
+
+                // Calculate trader's total margin (same as positionSyncer.js)
+                const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
+
+                // Use total equity (free + positions) for scaling to match trader's total exposure
+                log('info', `📊 Trader margin: $${traderTotalMargin.toFixed(2)} | User total equity: $${balanceInfo.totalEquity.toFixed(2)}`);
 
                 const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity, traderAccountData, userAccountData);
 
@@ -1343,6 +1369,15 @@
 
                 lastTraderPositions = [...traderPositions];
                 stats.syncs++;
+
+                // Set timestamp on first sync
+                if (lastTradeTimestamp === null) {
+                    const currentTradeTimestamp = await fetchLastTradeTimestamp(traderAddress);
+                    if (currentTradeTimestamp) {
+                        lastTradeTimestamp = currentTradeTimestamp;
+                        log('info', `📍 Trade tracking initialized at ${new Date(currentTradeTimestamp).toLocaleTimeString()}`);
+                    }
+                }
 
                 updatePositions(traderPositions, userPositions, traderAccountData, userAccountData);
                 updateActions(targetPositions);
