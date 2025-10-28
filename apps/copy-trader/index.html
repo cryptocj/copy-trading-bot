@@ -350,7 +350,7 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '0.1.3';
+        const VERSION = '0.2.0';
         const BUILD_DATE = '2025-10-28';
 
         // ============================================
@@ -407,6 +407,7 @@
         };
         let lastTraderPositions = [];
         let userPositions = [];
+        let lastTradeTimestamp = null;
 
         // UI Elements
         const elements = {
@@ -554,6 +555,33 @@
                     <td class="text-right font-mono text-blue-400">${marginPercent}</td>
                 </tr>
             `;
+        }
+
+        // Fetch trader's last trade timestamp from user fills
+        async function fetchLastTradeTimestamp(traderAddress) {
+            try {
+                const response = await fetch(`${monitorExchange.urls.api.public}/info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'userFills',
+                        user: traderAddress,
+                    }),
+                });
+
+                const fills = await response.json();
+
+                // Get the most recent fill timestamp
+                if (fills && fills.length > 0) {
+                    // Fills are sorted by time, most recent first
+                    return fills[0].time;
+                }
+
+                return null;
+            } catch (error) {
+                console.error('Failed to fetch last trade timestamp:', error);
+                return null;
+            }
         }
 
         // Fetch trader positions and account data (reusing logic from positionSyncer.js:225-254)
@@ -1239,6 +1267,24 @@
                     elements.copyBalance.value = balanceInfo.totalEquity.toFixed(2);
                 }
 
+                // Check trader's last trade timestamp
+                const currentTradeTimestamp = await fetchLastTradeTimestamp(traderAddress);
+                const hasNewTrade = currentTradeTimestamp !== lastTradeTimestamp;
+
+                if (!hasNewTrade && lastTradeTimestamp !== null) {
+                    log('info', '⏭️  No new trades from trader - skipping adjustment check');
+                    stats.syncs++;
+                    updateStats();
+                    return;
+                }
+
+                // Update last trade timestamp
+                if (currentTradeTimestamp) {
+                    lastTradeTimestamp = currentTradeTimestamp;
+                    const tradeTime = new Date(currentTradeTimestamp).toLocaleTimeString();
+                    log('info', `🔔 New trade detected at ${tradeTime}`);
+                }
+
                 const { positions: traderPositions, accountData: traderAccountData } = await fetchTraderPositions(traderAddress);
 
                 // Calculate trader's total margin (same as positionSyncer.js)
@@ -1264,29 +1310,6 @@
                 }
 
                 const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity, traderAccountData, userAccountData);
-
-                // Detect trader changes
-                let hasTraderChanges = false;
-                if (lastTraderPositions.length > 0) {
-                    const added = traderPositions.filter(t => !lastTraderPositions.find(l => l.symbol === t.symbol));
-                    const removed = lastTraderPositions.filter(l => !traderPositions.find(t => t.symbol === l.symbol));
-                    hasTraderChanges = added.length > 0 || removed.length > 0;
-
-                    if (added.length > 0) {
-                        added.forEach(pos => {
-                            const margin = (pos.size * pos.entryPrice) / pos.leverage;
-                            log('success', `➕ NEW TRADER: ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ $${pos.entryPrice.toLocaleString()} (${pos.leverage}x) - Margin: $${margin.toFixed(2)}`);
-                        });
-                    }
-                    if (removed.length > 0) {
-                        removed.forEach(pos => {
-                            log('warning', `➖ CLOSED TRADER: ${pos.symbol} ${pos.side.toUpperCase()}`);
-                        });
-                    }
-                } else {
-                    log('info', `Found ${traderPositions.length} trader position(s)`);
-                    hasTraderChanges = traderPositions.length > 0;
-                }
 
                 // Calculate required actions
                 const actions = calculatePositionDiff(userPositions, targetPositions);
