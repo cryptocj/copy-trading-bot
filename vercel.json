@@ -1,4 +1,3 @@
 {
-  "buildCommand": "cp apps/copy-trader/sync-monitor.html apps/copy-trader/index.html",
   "outputDirectory": "apps/copy-trader"
 }
