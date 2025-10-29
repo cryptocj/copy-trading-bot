@@ -1132,25 +1132,29 @@
 
                 const freeBalance = Number(ethers.formatUnits(balance, decimals));
 
-                // Get current positions value (margin locked in positions)
+                // Get current positions with PnL enrichment
                 const positions = await fetchMoonlanderPositions(walletAddress);
-                const positionsValue = positions.reduce((sum, pos) => sum + pos.margin, 0);
+                const enrichedPositions = await enrichPositionsWithPnL(positions);
 
-                // Total equity = free balance + positions margin
-                const totalEquity = freeBalance + positionsValue;
+                const positionsMargin = enrichedPositions.reduce((sum, pos) => sum + pos.margin, 0);
+                const positionsPnl = enrichedPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl || 0), 0);
+
+                // Total equity = free balance + positions margin + unrealized PnL
+                const totalEquity = freeBalance + positionsMargin + positionsPnl;
 
                 // Enforce minimum equity
                 if (totalEquity < MIN_COPY_BALANCE) {
                     log('warning', `⚠️  Total equity ($${totalEquity.toFixed(2)}) is below minimum $${MIN_COPY_BALANCE}`);
                 }
 
-                log('success', `💰 Free: $${freeBalance.toFixed(2)} + Positions: $${positionsValue.toFixed(2)} = Total equity: $${totalEquity.toFixed(2)} USDC`);
+                const pnlSign = positionsPnl >= 0 ? '+' : '';
+                log('success', `💰 Free: $${freeBalance.toFixed(2)} + Margin: $${positionsMargin.toFixed(2)} ${pnlSign}$${positionsPnl.toFixed(2)} PnL = Total: $${totalEquity.toFixed(2)} USDC`);
 
                 // Return object with both free balance and total equity
                 return {
                     freeBalance,
                     totalEquity,
-                    positionsValue
+                    positionsValue: positionsMargin
                 };
             } catch (error) {
                 log('error', `Failed to fetch balance: ${error.message}`);
