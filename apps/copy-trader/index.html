@@ -189,7 +189,7 @@
                         <div class="font-medium text-blue-300 mb-1.5">Setup Steps:</div>
                         <ol class="list-decimal list-inside space-y-1 ml-2">
                             <li>Select an AI trader from the dropdown (or enter custom address)</li>
-                            <li>Enter your Moonlander wallet private key</li>
+                            <li>Enter your wallet private key</li>
                             <li>Ensure you have <strong>enough USDC</strong> and <strong>CRO</strong> (for gas) in your wallet</li>
                             <li>Click <strong>"Start Monitoring"</strong> to begin copy trading</li>
                         </ol>
@@ -258,7 +258,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">
-                        Moonlander Private Key (Copy Trading)
+                        Wallet Private Key (Copy Trading)
                         <span class="text-xs text-green-400 ml-1" title="Your key never leaves your browser">🔒 locally</span>
                     </label>
                     <input type="password" id="moonlander-private-key" placeholder="0x..."
@@ -1476,7 +1476,7 @@
 
                     log('success', '✅ All actions completed');
                 } else if (!elements.moonlanderPrivateKey.value) {
-                    log('warning', '⚠️  Moonlander private key not provided - skipping execution');
+                    log('warning', '⚠️  Wallet private key not provided - skipping execution');
                     if (actions.toAdd.length > 0 || actions.toRemove.length > 0) {
                         log('info', `Would close ${actions.toRemove.length}, open ${actions.toAdd.length} positions`);
                     }
@@ -1539,7 +1539,7 @@
                     }
                 });
 
-                // Fetch Moonlander wallet balance if private key provided
+                // Fetch wallet balance if private key provided
                 const moonlanderWallet = getMoonlanderWallet();
                 if (moonlanderWallet) {
                     const balanceInfo = await fetchMoonlanderBalance(moonlanderWallet.address);
