@@ -323,6 +323,8 @@
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
                                     <th class="text-right">Entry</th>
+                                    <th class="text-right">Stop Loss</th>
+                                    <th class="text-right">Take Profit</th>
                                     <th class="text-right">Liq Price</th>
                                     <th class="text-right">Leverage</th>
                                     <th class="text-right">Margin</th>
@@ -361,6 +363,8 @@
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
                                     <th class="text-right">Entry</th>
+                                    <th class="text-right">Stop Loss</th>
+                                    <th class="text-right">Take Profit</th>
                                     <th class="text-right">Liq Price</th>
                                     <th class="text-right">Leverage</th>
                                     <th class="text-right">Margin</th>
@@ -669,6 +673,12 @@
             }
 
             // Format displays
+            const stopLossDisplay = pos.stopLoss
+                ? `<span class="text-red-400">$${pos.stopLoss.toLocaleString()}</span>`
+                : '<span class="text-gray-500">-</span>';
+            const takeProfitDisplay = pos.takeProfit
+                ? `<span class="text-green-400">$${pos.takeProfit.toLocaleString()}</span>`
+                : '<span class="text-gray-500">-</span>';
             const liquidationPriceDisplay = liquidationPrice > 0 ? `<span class="text-orange-400">$${liquidationPrice.toLocaleString()}</span>` : '-';
             const positionValueDisplay = `$${positionValue.toLocaleString()}`;
 
@@ -678,6 +688,8 @@
                     <td><span class="${sideClass}">${sideText}</span></td>
                     <td class="text-right font-mono">${pos.size.toFixed(4)}</td>
                     <td class="text-right font-mono">$${pos.entryPrice.toLocaleString()}</td>
+                    <td class="text-right font-mono">${stopLossDisplay}</td>
+                    <td class="text-right font-mono">${takeProfitDisplay}</td>
                     <td class="text-right font-mono">${liquidationPriceDisplay}</td>
                     <td class="text-right">${pos.leverage.toFixed(1)}x</td>
                     <td class="text-right font-mono">$${margin.toFixed(2)}</td>
@@ -715,6 +727,26 @@
         }
 
         // Fetch trader positions and account data (reusing logic from positionSyncer.js:225-254)
+        // Fetch trader's open orders (for stop loss and take profit)
+        async function fetchTraderOrders(traderAddress) {
+            try {
+                const response = await fetch(`${monitorExchange.urls.api.public}/info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'frontendOpenOrders',
+                        user: traderAddress,
+                    }),
+                });
+
+                const orders = await response.json();
+                return orders || [];
+            } catch (error) {
+                log('warning', `Failed to fetch trader orders: ${error.message}`);
+                return [];
+            }
+        }
+
         async function fetchTraderPositions(traderAddress) {
             try {
                 // Fetch positions via Hyperliquid API (same as positionSyncer.js)
@@ -729,18 +761,103 @@
 
                 const data = await response.json();
 
+                // Fetch open orders to get stop loss and take profit levels
+                const orders = await fetchTraderOrders(traderAddress);
+
                 // Convert to standard format
                 const positions = data.assetPositions
                     .filter((pos) => Math.abs(pos.position.szi) > 0)
-                    .map((pos) => ({
-                        symbol: pos.position.coin,
-                        side: parseFloat(pos.position.szi) > 0 ? 'long' : 'short',
-                        size: Math.abs(parseFloat(pos.position.szi)),
-                        entryPrice: parseFloat(pos.position.entryPx),
-                        leverage: parseFloat(pos.position.leverage.value),
-                        unrealizedPnl: parseFloat(pos.position.unrealizedPnl),
-                        margin: parseFloat(pos.position.marginUsed),
-                    }));
+                    .map((pos) => {
+                        const symbol = pos.position.coin;
+                        const side = parseFloat(pos.position.szi) > 0 ? 'long' : 'short';
+                        const size = Math.abs(parseFloat(pos.position.szi));
+
+                        // Find stop loss and take profit from trigger orders
+                        let stopLoss = null;
+                        let takeProfit = null;
+
+                        // Filter trigger orders for this position with robust matching
+                        const positionOrders = orders.filter(order => {
+                            // Must be same symbol
+                            if (order.coin !== symbol) return false;
+
+                            // Must be trigger order
+                            if (!order.isTrigger) return false;
+
+                            // Must have size (origSz or sz)
+                            const orderSize = parseFloat(order.origSz || order.sz || 0);
+                            if (orderSize === 0) return false;
+
+                            // Size should be close to position size (allow 1% tolerance for partial fills)
+                            const sizeDiff = Math.abs(orderSize - size) / size;
+                            if (sizeDiff > 0.01) return false;
+
+                            // Must be closing order (opposite side of position)
+                            // For LONG position, closing orders are sell ('A' = Ask)
+                            // For SHORT position, closing orders are buy ('B' = Bid)
+                            if (side === 'long' && order.side !== 'A') return false;
+                            if (side === 'short' && order.side !== 'B') return false;
+
+                            return true;
+                        }).sort((a, b) => {
+                            // Sort by timestamp descending (most recent first)
+                            // Use oid (order ID) as proxy for timestamp - higher oid = newer order
+                            return (b.oid || 0) - (a.oid || 0);
+                        });
+
+                        // Track which type we've found to ensure we only use the latest of each type
+                        let foundStopLoss = false;
+                        let foundTakeProfit = false;
+
+                        for (const order of positionOrders) {
+                            const triggerPrice = parseFloat(order.triggerPx);
+                            const entryPrice = parseFloat(pos.position.entryPx);
+
+                            // Parse trigger condition - it comes as "Price below X" or "Price above X"
+                            const isBelowTrigger = order.triggerCondition.toLowerCase().includes('below');
+                            const isAboveTrigger = order.triggerCondition.toLowerCase().includes('above');
+
+                            // For LONG positions:
+                            // - Stop loss = trigger below entry price (exit when price drops)
+                            // - Take profit = trigger above entry price (exit when price rises)
+                            if (side === 'long') {
+                                if (isBelowTrigger && triggerPrice < entryPrice && !foundStopLoss) {
+                                    stopLoss = triggerPrice;
+                                    foundStopLoss = true;
+                                } else if (isAboveTrigger && triggerPrice > entryPrice && !foundTakeProfit) {
+                                    takeProfit = triggerPrice;
+                                    foundTakeProfit = true;
+                                }
+                            }
+                            // For SHORT positions:
+                            // - Stop loss = trigger above entry price (exit when price rises)
+                            // - Take profit = trigger below entry price (exit when price drops)
+                            else if (side === 'short') {
+                                if (isAboveTrigger && triggerPrice > entryPrice && !foundStopLoss) {
+                                    stopLoss = triggerPrice;
+                                    foundStopLoss = true;
+                                } else if (isBelowTrigger && triggerPrice < entryPrice && !foundTakeProfit) {
+                                    takeProfit = triggerPrice;
+                                    foundTakeProfit = true;
+                                }
+                            }
+
+                            // Stop iterating once we've found both SL and TP
+                            if (foundStopLoss && foundTakeProfit) break;
+                        }
+
+                        return {
+                            symbol,
+                            side,
+                            size,
+                            entryPrice: parseFloat(pos.position.entryPx),
+                            leverage: parseFloat(pos.position.leverage.value),
+                            unrealizedPnl: parseFloat(pos.position.unrealizedPnl),
+                            margin: parseFloat(pos.position.marginUsed),
+                            stopLoss,
+                            takeProfit,
+                        };
+                    });
 
                 // Return both positions and full account data for balance calculations
                 return { positions, accountData: data };
@@ -995,12 +1112,34 @@
                     const amountIn = ethers.parseUnits(position.margin.toFixed(DECIMALS_USDC), DECIMALS_USDC);
                     const qtyWei = ethers.parseUnits(position.size.toFixed(DECIMALS_QTY), DECIMALS_QTY);
                     const acceptablePrice = calculateAcceptablePrice(pythPrice.price, isLong);
-                    const stopLossPrice = isLong
-                        ? (pythPrice.price * BigInt(STOP_LOSS_PERCENT_LONG)) / 100n
-                        : (pythPrice.price * BigInt(STOP_LOSS_PERCENT_SHORT)) / 100n;
-                    const takeProfitPrice = isLong
-                        ? (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_LONG)) / 100n
-                        : (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_SHORT)) / 100n;
+
+                    // Use stop loss and take profit from Hyperliquid position if available
+                    let stopLossPrice;
+                    let takeProfitPrice;
+
+                    if (position.stopLoss) {
+                        // Convert from decimal price to BigInt wei format (18 decimals)
+                        stopLossPrice = ethers.parseUnits(position.stopLoss.toFixed(DECIMALS_PRICE), DECIMALS_PRICE);
+                        log('info', `  📍 Using trader's stop loss: $${position.stopLoss.toFixed(2)}`);
+                    } else {
+                        // Fallback to default percentages
+                        stopLossPrice = isLong
+                            ? (pythPrice.price * BigInt(STOP_LOSS_PERCENT_LONG)) / 100n
+                            : (pythPrice.price * BigInt(STOP_LOSS_PERCENT_SHORT)) / 100n;
+                        log('info', `  ⚠️  No stop loss from trader, using default`);
+                    }
+
+                    if (position.takeProfit) {
+                        // Convert from decimal price to BigInt wei format (18 decimals)
+                        takeProfitPrice = ethers.parseUnits(position.takeProfit.toFixed(DECIMALS_PRICE), DECIMALS_PRICE);
+                        log('info', `  🎯 Using trader's take profit: $${position.takeProfit.toFixed(2)}`);
+                    } else {
+                        // Fallback to default percentages
+                        takeProfitPrice = isLong
+                            ? (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_LONG)) / 100n
+                            : (pythPrice.price * BigInt(TAKE_PROFIT_PERCENT_SHORT)) / 100n;
+                        log('info', `  ⚠️  No take profit from trader, using default`);
+                    }
 
                     // Debug logging
                     console.log(`  📊 Trade Parameters:`);
@@ -1194,7 +1333,7 @@
                 elements.traderPositionsBody.innerHTML = traderPositions.map(pos => renderPositionRow(pos, traderTotalBalance)).join('');
             } else {
                 elements.traderPositionCount.textContent = '0 positions';
-                elements.traderPositionsBody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 py-4">No positions</td></tr>';
+                elements.traderPositionsBody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-500 py-4">No positions</td></tr>';
             }
 
             // User positions
@@ -1203,7 +1342,7 @@
                 elements.userPositionsBody.innerHTML = userPositions.map(pos => renderPositionRow(pos, userTotalBalance)).join('');
             } else {
                 elements.userPositionCount.textContent = '0 positions';
-                elements.userPositionsBody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 py-4">No positions (execution via backend)</td></tr>';
+                elements.userPositionsBody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-500 py-4">No positions (execution via backend)</td></tr>';
             }
         }
 
@@ -1275,7 +1414,9 @@
                     size: finalSize,
                     entryPrice: pos.entryPrice,
                     leverage: pos.leverage,
-                    margin: finalMargin
+                    margin: finalMargin,
+                    stopLoss: pos.stopLoss,
+                    takeProfit: pos.takeProfit
                 };
             });
 
