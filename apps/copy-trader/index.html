@@ -1568,6 +1568,13 @@
                         // Update position display
                         updatePositions(traderPositions, userPositions, traderAccountData, userAccountData);
 
+                        // Update balance info display
+                        if (traderAccountData) {
+                            const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
+                            const userMargin = userPositions.reduce((sum, pos) => sum + pos.margin, 0);
+                            updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, balanceInfo.totalEquity, 0, 0);
+                        }
+
                         log('info', '⏭️  No new trades from trader - skipping adjustment check');
                         stats.syncs++;
                         updateStats();
