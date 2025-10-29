@@ -315,7 +315,10 @@
                     </div>
                     <div class="text-xs text-gray-500 flex gap-4">
                         <span>Balance: <span class="text-gray-300 font-medium" id="balance-trader-total">$0.00</span></span>
+                        <span>Available: <span class="text-green-400 font-medium" id="balance-trader-available">$0.00</span></span>
                         <span>Margin: <span class="text-yellow-400 font-medium" id="balance-trader-margin">$0.00</span></span>
+                        <span>Position Value: <span class="text-purple-400 font-medium" id="balance-trader-position-value">$0.00</span></span>
+                        <span>PnL: <span class="font-medium" id="balance-trader-pnl">$0.00</span></span>
                         <span>Ratio: <span class="text-blue-400 font-medium" id="balance-trader-ratio">0.0%</span></span>
                     </div>
                 </div>
@@ -328,6 +331,7 @@
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
                                     <th class="text-right">Entry</th>
+                                    <th class="text-right">PnL</th>
                                     <th class="text-right">Stop Loss</th>
                                     <th class="text-right">Take Profit</th>
                                     <th class="text-right">Liq Price</th>
@@ -338,7 +342,7 @@
                                 </tr>
                             </thead>
                             <tbody id="trader-positions-body">
-                                <tr><td colspan="9" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                                <tr><td colspan="12" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -354,9 +358,12 @@
                     </div>
                     <div class="text-xs text-gray-500 flex gap-4">
                         <span>Balance: <span class="text-gray-300 font-medium" id="balance-user-total">$0.00</span></span>
+                        <span>Available: <span class="text-green-400 font-medium" id="balance-user-available">$0.00</span></span>
                         <span>Margin: <span class="text-yellow-400 font-medium" id="balance-user-margin">$0.00</span></span>
+                        <span>Position Value: <span class="text-purple-400 font-medium" id="balance-user-position-value">$0.00</span></span>
+                        <span>PnL: <span class="font-medium" id="balance-user-pnl">$0.00</span></span>
                         <span>Ratio: <span class="text-blue-400 font-medium" id="balance-user-ratio">0.0%</span></span>
-                        <span class="ml-2 text-purple-400">Scaling: <span class="font-medium" id="balance-scaling-factor">0.0%</span></span>
+                        <span class="ml-2 text-cyan-400">Scaling: <span class="font-medium" id="balance-scaling-factor">0.0%</span></span>
                     </div>
                 </div>
                 <div class="p-4">
@@ -368,6 +375,7 @@
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
                                     <th class="text-right">Entry</th>
+                                    <th class="text-right">PnL</th>
                                     <th class="text-right">Stop Loss</th>
                                     <th class="text-right">Take Profit</th>
                                     <th class="text-right">Liq Price</th>
@@ -378,7 +386,7 @@
                                 </tr>
                             </thead>
                             <tbody id="user-positions-body">
-                                <tr><td colspan="9" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                                <tr><td colspan="12" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -579,11 +587,17 @@
 
             // Balance Info Elements
             balanceUserTotal: document.getElementById('balance-user-total'),
+            balanceUserAvailable: document.getElementById('balance-user-available'),
             balanceUserMargin: document.getElementById('balance-user-margin'),
+            balanceUserPositionValue: document.getElementById('balance-user-position-value'),
+            balanceUserPnl: document.getElementById('balance-user-pnl'),
             balanceUserFree: document.getElementById('balance-user-free'),
             balanceUserRatio: document.getElementById('balance-user-ratio'),
             balanceTraderTotal: document.getElementById('balance-trader-total'),
+            balanceTraderAvailable: document.getElementById('balance-trader-available'),
             balanceTraderMargin: document.getElementById('balance-trader-margin'),
+            balanceTraderPositionValue: document.getElementById('balance-trader-position-value'),
+            balanceTraderPnl: document.getElementById('balance-trader-pnl'),
             balanceTraderRatio: document.getElementById('balance-trader-ratio'),
             balanceScalingFactor: document.getElementById('balance-scaling-factor'),
 
@@ -654,7 +668,7 @@
         }
 
         // Render position row with liquidation price, position value, and margin percentage
-        function renderPositionRow(pos, totalBalance = null) {
+        function renderPositionRow(pos, totalBalance = null, showPnl = true) {
             const sideClass = (pos.side === 'long' || pos.side === 'buy') ? 'side-long' : 'side-short';
             const sideText = (pos.side === 'long' || pos.side === 'buy') ? 'LONG' : 'SHORT';
             const isLong = pos.side === 'long' || pos.side === 'buy';
@@ -681,6 +695,12 @@
                 marginPercent = ((margin / totalBalance) * 100).toFixed(2) + '%';
             }
 
+            // Format PnL display
+            const pnl = pos.unrealizedPnl !== undefined ? pos.unrealizedPnl : 0;
+            const pnlClass = pnl >= 0 ? 'text-green-400' : 'text-red-400';
+            const pnlSign = pnl >= 0 ? '+' : '';
+            const pnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}</span>`;
+
             // Format displays
             const stopLossDisplay = pos.stopLoss
                 ? `<span class="text-red-400">$${pos.stopLoss.toLocaleString()}</span>`
@@ -697,6 +717,7 @@
                     <td><span class="${sideClass}">${sideText}</span></td>
                     <td class="text-right font-mono">${pos.size.toFixed(4)}</td>
                     <td class="text-right font-mono">$${pos.entryPrice.toLocaleString()}</td>
+                    ${showPnl ? `<td class="text-right font-mono">${pnlDisplay}</td>` : ''}
                     <td class="text-right font-mono">${stopLossDisplay}</td>
                     <td class="text-right font-mono">${takeProfitDisplay}</td>
                     <td class="text-right font-mono">${liquidationPriceDisplay}</td>
@@ -1001,6 +1022,55 @@
             } catch (error) {
                 log('error', `Failed to fetch Moonlander positions: ${error.message}`);
                 return [];
+            }
+        }
+
+        // Fetch current prices from Hyperliquid and enrich positions with PnL
+        async function enrichPositionsWithPnL(positions) {
+            if (!positions || positions.length === 0) {
+                return positions;
+            }
+
+            try {
+                // Fetch current prices for all symbols via Hyperliquid meta endpoint
+                const response = await fetch(`${HYPERLIQUID_API_URL}/info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'allMids' })
+                });
+
+                const allMids = await response.json();
+
+                // Enrich each position with current price and calculated PnL
+                const enrichedPositions = positions.map(pos => {
+                    // Convert Moonlander symbol format (BTC/USD) to Hyperliquid format (BTC)
+                    const hyperliquidSymbol = pos.symbol.replace('/USD', '');
+                    const currentPrice = parseFloat(allMids[hyperliquidSymbol]);
+
+                    if (!currentPrice || isNaN(currentPrice)) {
+                        console.warn(`⚠️  ${pos.symbol}: Price not found, PnL = $0`);
+                        return { ...pos, unrealizedPnl: 0 };
+                    }
+
+                    // Calculate PnL: (currentPrice - entryPrice) * size for LONG
+                    //                (entryPrice - currentPrice) * size for SHORT
+                    const isLong = pos.side === 'long' || pos.side === 'buy';
+                    const priceDiff = isLong
+                        ? (currentPrice - pos.entryPrice)
+                        : (pos.entryPrice - currentPrice);
+                    const unrealizedPnl = priceDiff * pos.size;
+
+                    return {
+                        ...pos,
+                        currentPrice,
+                        unrealizedPnl
+                    };
+                });
+
+                return enrichedPositions;
+            } catch (error) {
+                console.error('❌ Failed to fetch prices for PnL calculation:', error.message);
+                return positions;
             }
         }
 
@@ -1345,13 +1415,13 @@
                 elements.traderPositionsBody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-500 py-4">No positions</td></tr>';
             }
 
-            // User positions
+            // User positions (with PnL calculated from Hyperliquid prices)
             if (userPositions.length > 0) {
                 elements.userPositionCount.textContent = `${userPositions.length} position${userPositions.length > 1 ? 's' : ''}`;
-                elements.userPositionsBody.innerHTML = userPositions.map(pos => renderPositionRow(pos, userTotalBalance)).join('');
+                elements.userPositionsBody.innerHTML = userPositions.map(pos => renderPositionRow(pos, userTotalBalance, true)).join('');
             } else {
                 elements.userPositionCount.textContent = '0 positions';
-                elements.userPositionsBody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-500 py-4">No positions (execution via backend)</td></tr>';
+                elements.userPositionsBody.innerHTML = '<tr><td colspan="12" class="text-center text-gray-500 py-4">No positions (execution via backend)</td></tr>';
             }
         }
 
@@ -1463,19 +1533,38 @@
         function updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, userBalance, dynamicSafetyBuffer, scalingFactor) {
             // Trader balance info
             const traderTotal = parseFloat(traderAccountData.marginSummary.accountValue);
-            const traderFree = traderTotal - traderTotalMargin;
+            const traderAvailable = traderTotal - traderTotalMargin;
             const traderRatio = traderTotal > 0 ? (traderTotalMargin / traderTotal) * 100 : 0;
 
+            // Calculate trader total position value and PnL
+            const traderPositionValue = lastTraderPositions.reduce((sum, pos) => sum + (pos.size * pos.entryPrice), 0);
+            const traderTotalPnl = lastTraderPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl || 0), 0);
+            const traderPnlClass = traderTotalPnl >= 0 ? 'text-green-400' : 'text-red-400';
+
             elements.balanceTraderTotal.textContent = `$${traderTotal.toFixed(2)}`;
+            elements.balanceTraderAvailable.textContent = `$${traderAvailable.toFixed(2)}`;
             elements.balanceTraderMargin.textContent = `$${traderTotalMargin.toFixed(2)}`;
+            elements.balanceTraderPositionValue.textContent = `$${traderPositionValue.toFixed(2)}`;
+            elements.balanceTraderPnl.textContent = `$${traderTotalPnl.toFixed(2)}`;
+            elements.balanceTraderPnl.className = `font-medium ${traderPnlClass}`;
             elements.balanceTraderRatio.textContent = `${traderRatio.toFixed(1)}%`;
 
             // User balance info
             const userMargin = userPositions.reduce((sum, pos) => sum + pos.margin, 0);
+            const userAvailable = userBalance - userMargin;
             const userRatio = userBalance > 0 ? (userMargin / userBalance) * 100 : 0;
 
+            // Calculate user total position value and PnL (calculated from Hyperliquid prices)
+            const userPositionValue = userPositions.reduce((sum, pos) => sum + (pos.size * pos.entryPrice), 0);
+            const userTotalPnl = userPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl || 0), 0);
+            const userPnlClass = userTotalPnl >= 0 ? 'text-green-400' : 'text-red-400';
+
             elements.balanceUserTotal.textContent = `$${userBalance.toFixed(2)}`;
+            elements.balanceUserAvailable.textContent = `$${userAvailable.toFixed(2)}`;
             elements.balanceUserMargin.textContent = `$${userMargin.toFixed(2)}`;
+            elements.balanceUserPositionValue.textContent = `$${userPositionValue.toFixed(2)}`;
+            elements.balanceUserPnl.textContent = `$${userTotalPnl.toFixed(2)}`;
+            elements.balanceUserPnl.className = `font-medium ${userPnlClass}`;
             elements.balanceUserRatio.textContent = `${userRatio.toFixed(1)}%`;
 
             // Scaling factor
@@ -1541,7 +1630,8 @@
 
             if (moonlanderWallet) {
                 const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
-                userPositions = moonlanderPositions;
+                // Enrich Moonlander positions with current prices and PnL from Hyperliquid
+                userPositions = await enrichPositionsWithPnL(moonlanderPositions);
 
                 // Create user account data structure for balance display
                 userAccountData = {
