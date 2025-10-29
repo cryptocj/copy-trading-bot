@@ -1448,7 +1448,7 @@
         }
 
         // Calculate target positions (from positionCalculator.js)
-        function calculateTargetPositions(traderPositions, copyBalance, traderAccountData = null, userAccountData = null) {
+        function calculateTargetPositions(traderPositions, copyBalance, traderAccountData = null, userAccountData = null, userFreeBalance = null) {
             if (!traderPositions || traderPositions.length === 0) return [];
 
             // Calculate trader's total margin from their actual positions (same as positionCalculator.js)
@@ -1527,14 +1527,14 @@
 
             // Update balance info display if account data is provided
             if (traderAccountData && userAccountData) {
-                updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, copyBalance, dynamicSafetyBuffer, scalingFactor);
+                updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, copyBalance, dynamicSafetyBuffer, scalingFactor, userFreeBalance);
             }
 
             return filteredPositions;
         }
 
         // Update balance info display
-        function updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, userBalance, dynamicSafetyBuffer, scalingFactor) {
+        function updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, userBalance, dynamicSafetyBuffer, scalingFactor, userFreeBalance = null) {
             // Trader balance info
             const traderTotal = parseFloat(traderAccountData.marginSummary.accountValue);
             const traderAvailable = traderTotal - traderTotalMargin;
@@ -1555,7 +1555,9 @@
 
             // User balance info
             const userMargin = userPositions.reduce((sum, pos) => sum + pos.margin, 0);
-            const userAvailable = userBalance - userMargin;
+            // For Moonlander: Available = wallet free balance (not affected by PnL)
+            // For Hyperliquid: Available = total balance - margin
+            const userAvailable = userFreeBalance !== null ? userFreeBalance : userBalance - userMargin;
             const userRatio = userBalance > 0 ? (userMargin / userBalance) * 100 : 0;
 
             // Calculate user total position value and PnL (calculated from Hyperliquid prices)
@@ -1683,7 +1685,7 @@
                         if (traderAccountData) {
                             const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
                             const userMargin = userPositions.reduce((sum, pos) => sum + pos.margin, 0);
-                            updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, balanceInfo.totalEquity, 0, 0);
+                            updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, balanceInfo.totalEquity, 0, 0, balanceInfo.freeBalance);
                         }
 
                         log('info', '⏭️  No new trades from trader - skipping adjustment check');
@@ -1711,7 +1713,7 @@
                 // Use total equity (free + positions) for scaling to match trader's total exposure
                 log('info', `📊 Trader margin: $${traderTotalMargin.toFixed(2)} | User total equity: $${balanceInfo.totalEquity.toFixed(2)}`);
 
-                const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity, traderAccountData, userAccountData);
+                const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity, traderAccountData, userAccountData, balanceInfo.freeBalance);
 
                 // Calculate required actions
                 const actions = calculatePositionDiff(userPositions, targetPositions);
