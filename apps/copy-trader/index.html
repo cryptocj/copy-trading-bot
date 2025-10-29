@@ -427,7 +427,7 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '0.2.3';
+        const VERSION = '0.2.4';
         const BUILD_DATE = '2025-10-29';
 
         // ============================================
@@ -436,7 +436,7 @@
 
         // Trading Parameters
         const MIN_COPY_BALANCE = 50; // Minimum copy balance in USD
-        const MIN_POSITION_VALUE = 30; // Minimum position margin in USD ($30 minimum to avoid dust positions)
+        const MIN_POSITION_VALUE = 20; // Minimum position margin in USD ($30 minimum to avoid dust positions)
         const SIZE_TOLERANCE = 0.15; // 15% position size tolerance before triggering adjustment (increased to prevent churn from price movements)
         const DEFAULT_SLIPPAGE_PERCENT = 10; // 10% slippage tolerance
         const DEFAULT_BROKER_ID = 1; // Moonlander broker ID
@@ -473,7 +473,7 @@
         const DEFAULT_SYNC_INTERVAL = 10; // seconds
         const MAX_LOG_ENTRIES = 100; // Maximum activity log entries
         const MAX_SCALING_FACTOR = 1.0; // Maximum scaling factor (100% - never copy more than trader)
-        const SAFETY_BUFFER_PERCENT = 0.8; // Maximum safety buffer (80% cap) - actual buffer is min(trader_margin_ratio, 0.8)
+        const SAFETY_BUFFER_PERCENT = 1.0; // Maximum safety buffer (100% cap) - users can use full balance for smaller trials
 
         // ============================================
         // STATE VARIABLES
@@ -1378,19 +1378,16 @@
                 return sum + pos.margin; // Use actual margin from API
             }, 0);
 
-            // Calculate dynamic safety buffer based on trader's margin ratio
-            // If trader uses 60% of their balance for margin, we use max 60% of our balance
-            let dynamicSafetyBuffer = SAFETY_BUFFER_PERCENT; // Default 80%
+            // Use full safety buffer (100%) to allow users to maximize smaller balances
+            // Users can now use their entire balance regardless of trader's margin ratio
+            let dynamicSafetyBuffer = SAFETY_BUFFER_PERCENT; // 100% - full balance available
 
             if (traderAccountData) {
                 const traderTotalBalance = parseFloat(traderAccountData.marginSummary.accountValue);
                 const traderMarginRatio = traderTotalBalance > 0 ? traderTotalMargin / traderTotalBalance : 0;
 
-                // Use trader's margin ratio as the max safety buffer (capped at configured SAFETY_BUFFER_PERCENT)
-                dynamicSafetyBuffer = Math.min(traderMarginRatio, SAFETY_BUFFER_PERCENT);
-
                 console.log(`📊 Trader margin ratio: ${(traderMarginRatio * 100).toFixed(2)}% ($${traderTotalMargin.toFixed(2)} / $${traderTotalBalance.toFixed(2)})`);
-                console.log(`📊 Dynamic safety buffer: ${(dynamicSafetyBuffer * 100).toFixed(2)}% (max ${(SAFETY_BUFFER_PERCENT * 100).toFixed(0)}%)`);
+                console.log(`📊 User safety buffer: ${(dynamicSafetyBuffer * 100).toFixed(2)}% (full balance available)`);
             }
 
             // Scale down using dynamic safety buffer for margin
@@ -1426,17 +1423,28 @@
             });
 
             // Filter out positions below minimum margin (not position value, since we use leverage)
+            const skippedPositions = [];
             const filteredPositions = scaledPositions.filter(pos => {
                 const positionValue = pos.size * pos.entryPrice;
                 const isValid = pos.margin >= MIN_POSITION_VALUE;
                 if (!isValid) {
-                    console.log(`  ⏭️  Skipping ${pos.symbol}: Margin $${pos.margin.toFixed(2)} < minimum $${MIN_POSITION_VALUE} (position value: $${positionValue.toFixed(2)}, ${pos.leverage}x leverage)`);
+                    skippedPositions.push({
+                        symbol: pos.symbol,
+                        side: pos.side,
+                        margin: pos.margin,
+                        positionValue: positionValue,
+                        leverage: pos.leverage
+                    });
                 }
                 return isValid;
             });
 
-            if (filteredPositions.length < scaledPositions.length) {
-                console.log(`  ⚠️  Filtered ${scaledPositions.length - filteredPositions.length} positions below minimum value`);
+            // Log skipped positions to activity panel
+            if (skippedPositions.length > 0) {
+                log('warning', `⏭️  Skipped ${skippedPositions.length} small position${skippedPositions.length > 1 ? 's' : ''} (below $${MIN_POSITION_VALUE} margin minimum):`);
+                skippedPositions.forEach(pos => {
+                    log('info', `   • ${pos.symbol} ${pos.side.toUpperCase()}: Margin $${pos.margin.toFixed(2)} (Value: $${pos.positionValue.toFixed(2)}, ${pos.leverage}x leverage)`);
+                });
             }
 
             // Update balance info display if account data is provided
