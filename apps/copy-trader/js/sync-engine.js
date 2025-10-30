@@ -225,7 +225,6 @@ export async function fetchAllPositions(traderAddress, balanceInfo) {
 
   if (moonlanderWallet) {
     state.userPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
-    console.log("get user's position", state.userPositions);
   }
 
   // Always create user account data structure for balance display

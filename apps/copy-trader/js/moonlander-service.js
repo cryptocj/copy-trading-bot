@@ -22,6 +22,9 @@ import {
 import { SymbolUtils, log, calculateAcceptablePrice } from './utils.js';
 import { state } from './state.js';
 
+// Access ethers from global window object (loaded via UMD script in index.html)
+const ethers = window.ethers;
+
 // Get or create Moonlander wallet
 export function getMoonlanderWallet(privateKey) {
   if (!privateKey) return null;
@@ -62,44 +65,59 @@ export async function fetchMoonlanderPositions(userAddress) {
   try {
     log('info', `📍 Moonlander wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
 
-    // Fetch from Moonlander API (more reliable than blockchain direct read)
-    const response = await fetch(
-      `https://public-api.moonlander.trade/v1/user/${userAddress}/positions?chain=CRONOS`
-    );
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const positions = data.items || [];
-
-    // Get trading pairs mapping for symbol names
+    // Fetch trading pairs mapping first
     const tradingPairs = await fetchMoonlanderTradingPairs();
 
-    // Parse positions from API response
-    return positions.map((pos) => {
-      const pairIdLower = pos.trading_pair_id.toLowerCase();
-      const symbol = tradingPairs[pairIdLower] || 'UNKNOWN';
+    // Fetch from Moonlander blockchain contract for accurate SL/TP
+    const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
+    const tradingReader = new ethers.Contract(
+      MOONLANDER_CONFIG.diamondAddress,
+      TRADING_READER_ABI,
+      provider
+    );
+
+    // Get positions from contract
+    const contractPositions = await tradingReader.getPositionsV2(userAddress, ethers.ZeroAddress);
+
+    // Create reverse mapping: address → symbol (from pairAddresses config)
+    const addressToSymbol = {};
+    for (const [symbol, address] of Object.entries(MOONLANDER_CONFIG.pairAddresses)) {
+      addressToSymbol[address.toLowerCase()] = symbol;
+    }
+
+    // Parse positions from contract response
+    return contractPositions.map((pos) => {
+      // Convert pairBase address to symbol using config mapping first
+      const pairAddress = pos.pairBase.toLowerCase();
+      const symbol =
+        addressToSymbol[pairAddress] || tradingPairs[pairAddress] || pos.pair || 'UNKNOWN';
+
+      // Parse BigInt values to numbers with correct decimals
+      // Following bot's moonlander.js implementation (line 207-216)
+      const size = Number(pos.qty) / 1e10; // qty uses 10 decimals
+      const entryPrice = Number(pos.entryPrice) / 1e18; // price uses 18 decimals
+      const margin = Number(pos.margin) / 1e6; // margin uses 6 decimals (USDC)
+      const stopLoss = pos.stopLoss > 0 ? Number(pos.stopLoss) / 1e18 : null; // price uses 18 decimals
+      const takeProfit = pos.takeProfit > 0 ? Number(pos.takeProfit) / 1e18 : null; // price uses 18 decimals
+
+      // Calculate leverage: (size * price) / margin
+      const positionValue = size * entryPrice;
+      const leverage = margin > 0 ? positionValue / margin : 1;
 
       return {
-        positionHash: pos.position_hash || null,
+        positionHash: pos.positionHash,
         symbol: symbol,
-        pairBase: pos.trading_pair_id,
-        side: pos.is_long ? 'long' : 'short',
-        margin: parseFloat(pos.collateral),
-        size: Math.abs(parseFloat(pos.position_size)),
-        entryPrice: parseFloat(pos.entry_price),
-        currentPrice: parseFloat(pos.market_price),
-        unrealizedPnl: parseFloat(pos.pnl_after_fee), // API provides PnL
-        stopLoss: pos.stop_loss ? parseFloat(pos.stop_loss) : null,
-        takeProfit: pos.take_profit ? parseFloat(pos.take_profit) : null,
-        leverage: parseFloat(pos.leverage),
-        timestamp: pos.timestamp
-          ? pos.timestamp < 10000000000
-            ? pos.timestamp * 1000
-            : pos.timestamp
-          : Date.now(),
+        pairBase: pos.pairBase,
+        side: pos.isLong ? 'long' : 'short',
+        margin: margin,
+        size: size,
+        entryPrice: entryPrice,
+        currentPrice: entryPrice, // Will be updated by enrichPositionsWithPnL
+        unrealizedPnl: 0, // Will be updated by enrichPositionsWithPnL
+        stopLoss: stopLoss,
+        takeProfit: takeProfit,
+        leverage: leverage,
+        timestamp: Number(pos.timestamp) * 1000, // Convert to milliseconds
       };
     });
   } catch (error) {
