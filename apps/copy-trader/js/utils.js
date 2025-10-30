@@ -44,6 +44,27 @@ export function log(level, message) {
     // Console output
     const prefix = level === 'error' ? '❌' : level === 'warning' ? '⚠️' : level === 'success' ? '✅' : 'ℹ️';
     console.log(`[${timestamp}] ${prefix} ${message}`);
+
+    // Update UI - import renderActivityLog dynamically to avoid circular dependency
+    if (typeof window !== 'undefined') {
+        // Trigger UI update on next tick to batch multiple log calls
+        if (!state._logUpdateScheduled) {
+            state._logUpdateScheduled = true;
+            setTimeout(() => {
+                state._logUpdateScheduled = false;
+                // Call renderActivityLog if it exists
+                const activityLogElement = document.getElementById('activity-log');
+                if (activityLogElement) {
+                    activityLogElement.innerHTML = state.activityLog.map(entry => {
+                        const levelClass = entry.level === 'error' ? 'text-red-400' :
+                                          entry.level === 'warning' ? 'text-yellow-400' :
+                                          entry.level === 'success' ? 'text-green-400' : 'text-gray-300';
+                        return `<div class="text-sm"><span class="text-gray-500">${entry.timestamp}</span> <span class="${levelClass}">${entry.message}</span></div>`;
+                    }).join('');
+                }
+            }, 0);
+        }
+    }
 }
 
 export function clearLog() {
