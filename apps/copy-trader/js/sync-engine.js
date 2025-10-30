@@ -10,7 +10,7 @@ import {
     DEFAULT_SYNC_INTERVAL,
     HYPERLIQUID_API_URL
 } from './config.js';
-import { state } from './state.js';
+import { state, updateStats } from './state.js';
 import { SymbolUtils, log } from './utils.js';
 import { elements, updatePositions, updateActions, updateBalanceInfo } from './ui.js';
 import {
@@ -241,7 +241,7 @@ export async function performSync() {
 
                 log('info', '⏭️  No new trades from trader - skipping adjustment check');
                 state.stats.syncs++;
-                state.updateStats();
+                updateStats();
                 return;
             }
 
@@ -313,12 +313,12 @@ export async function performSync() {
 
         updatePositions(traderPositions, state.userPositions, traderAccountData, userAccountData);
         updateActions(targetPositions);
-        state.updateStats();
+        updateStats();
 
     } catch (error) {
         log('error', `❌ Sync failed: ${error.message}`);
         state.stats.errors++;
-        state.updateStats();
+        updateStats();
     }
 }
 
@@ -365,7 +365,7 @@ export async function startMonitoring() {
             elements.copyBalance.value = '50.00';
         }
 
-        state.updateStats();
+        updateStats();
 
         log('success', '✅ Monitor initialized');
         const traderPlatform = elements.traderPlatform.value;
@@ -393,7 +393,7 @@ export async function startMonitoring() {
     } catch (error) {
         log('error', `❌ Failed to start: ${error.message}`);
         state.stats.errors++;
-        state.updateStats();
+        updateStats();
     }
 }
 
