@@ -67,13 +67,61 @@ export async function fetchMoonlanderTradingPairs() {
   }
 }
 
+// Fetch Moonlander trade history
+export async function fetchMoonlanderTradeHistory(userAddress) {
+  try {
+    // API requires single status parameter - fetch each status separately and combine
+    const statuses = ['EXECUTED'];
+    const allTrades = [];
+    const tradeIds = new Set(); // To avoid duplicates
+
+    console.log(`[Moonlander] Fetching trade history for all statuses...`);
+
+    // Fetch trades for each status in parallel
+    const fetchPromises = statuses.map(async (status) => {
+      try {
+        const url = `https://public-api.moonlander.trade/v1/user/${userAddress}/trades?chain=CRONOS&limit=100&status=${status}`;
+        const response = await fetch(url);
+
+        if (response.ok) {
+          const data = await response.json();
+          return { status, trades: data.items || [] };
+        } else {
+          console.warn(
+            `[Moonlander] Failed to fetch trades with status ${status}: ${response.status}`
+          );
+          return { status, trades: [] };
+        }
+      } catch (error) {
+        console.warn(`[Moonlander] Error fetching ${status} trades:`, error.message);
+        return { status, trades: [] };
+      }
+    });
+
+    const results = await Promise.all(fetchPromises);
+
+    // Combine all trades and deduplicate
+    results.forEach(({ trades }) => {
+      trades.forEach((trade) => {
+        if (!tradeIds.has(trade.trade_id)) {
+          tradeIds.add(trade.trade_id);
+          allTrades.push(trade);
+        }
+      });
+    });
+
+    console.log(`[Moonlander] Total unique trades fetched: ${allTrades.length}`);
+    return allTrades;
+  } catch (error) {
+    console.warn(`[Moonlander] Failed to fetch trade history: ${error.message}`);
+    return [];
+  }
+}
+
 // Fetch Moonlander positions
 export async function fetchMoonlanderPositions(userAddress) {
   try {
     log('info', `📍 Moonlander wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
-
-    // Fetch trading pairs mapping
-    const tradingPairs = await fetchMoonlanderTradingPairs();
 
     // Create reverse mapping: address → symbol (from pairAddresses config)
     const addressToSymbol = {};
@@ -81,8 +129,9 @@ export async function fetchMoonlanderPositions(userAddress) {
       addressToSymbol[address.toLowerCase()] = symbol;
     }
 
-    // Fetch positions from API (has PnL and current price) and contract (has accurate SL/TP) in parallel
-    const [apiResponse, contractPositions] = await Promise.all([
+    // Fetch trading pairs, positions from API, contract positions, and trade history in parallel
+    const [tradingPairs, apiResponse, contractPositions, tradeHistory] = await Promise.all([
+      fetchMoonlanderTradingPairs(),
       fetch(`https://public-api.moonlander.trade/v1/user/${userAddress}/positions?chain=CRONOS`),
       (async () => {
         try {
@@ -98,6 +147,7 @@ export async function fetchMoonlanderPositions(userAddress) {
           return [];
         }
       })(),
+      fetchMoonlanderTradeHistory(userAddress),
     ]);
 
     if (!apiResponse.ok) {
@@ -113,10 +163,11 @@ export async function fetchMoonlanderPositions(userAddress) {
       contractPositionMap.set(pos.positionHash, pos);
     });
 
-    // Parse positions from API and merge with contract data for SL/TP
+    // Parse positions from API and merge with contract data for SL/TP and trade history for timestamp
     return apiPositions.map((apiPos) => {
       const pairAddress = apiPos.trading_pair_id.toLowerCase();
       const symbol = addressToSymbol[pairAddress] || tradingPairs[pairAddress] || 'UNKNOWN';
+      const pairIdLower = apiPos.trading_pair_id.toLowerCase();
 
       // Get contract position for SL/TP
       const contractPos = contractPositionMap.get(apiPos.position_id);
@@ -126,6 +177,44 @@ export async function fetchMoonlanderPositions(userAddress) {
       if (contractPos) {
         stopLoss = contractPos.stopLoss > 0 ? Number(contractPos.stopLoss) / 1e18 : null;
         takeProfit = contractPos.takeProfit > 0 ? Number(contractPos.takeProfit) / 1e18 : null;
+      }
+
+      // Find position open timestamp from trade history
+      // Match by trading_pair_id, is_long, and EXECUTED status
+      let timestamp = null;
+
+      const positionTrades = tradeHistory.filter(
+        (trade) =>
+          trade.trading_pair_id.toLowerCase() === pairIdLower &&
+          trade.is_long === apiPos.is_long &&
+          trade.status === 'EXECUTED'
+      );
+
+      if (positionTrades.length > 0) {
+        // Sort by timestamp descending and get the most recent open trade
+        positionTrades.sort((a, b) => b.timestamp - a.timestamp);
+        const rawTimestamp = positionTrades[0].timestamp;
+
+        // Convert Unix timestamp (seconds) to milliseconds
+        timestamp = rawTimestamp < 10000000000 ? rawTimestamp * 1000 : rawTimestamp;
+      }
+
+      // Fallback: try position fields if no trade match found
+      if (!timestamp) {
+        const rawTimestamp =
+          apiPos.created_at || apiPos.opened_at || apiPos.timestamp || apiPos.open_time;
+        if (rawTimestamp) {
+          if (typeof rawTimestamp === 'string') {
+            timestamp = new Date(rawTimestamp).getTime();
+          } else if (typeof rawTimestamp === 'number') {
+            timestamp = rawTimestamp < 10000000000 ? rawTimestamp * 1000 : rawTimestamp;
+          }
+        }
+      }
+
+      // Final fallback to current time if parsing failed
+      if (!timestamp || Number.isNaN(timestamp)) {
+        timestamp = Date.now();
       }
 
       return {
@@ -141,7 +230,7 @@ export async function fetchMoonlanderPositions(userAddress) {
         stopLoss: stopLoss,
         takeProfit: takeProfit,
         leverage: parseFloat(apiPos.leverage),
-        timestamp: Date.now(), // API doesn't provide timestamp in clear format
+        timestamp: timestamp, // Position open time from trade history
       };
     });
   } catch (error) {
