@@ -7,7 +7,7 @@ import {
   USDC_ADDRESS,
   ERC20_ABI,
   TRADING_READER_ABI,
-  TRADING_CORE_ABI,
+  TRADING_PORTAL_ABI,
   PYTH_PRICE_IDS,
 } from './moonlander-config.js';
 import {
@@ -268,21 +268,46 @@ export async function executeCopyTrade(position, action, moonlanderKey) {
         DECIMALS_PRICE
       );
 
-      const stopLossPrice =
-        position.stopLoss ||
-        (isLong
+      // Stop loss and take profit (use trader's values if available, otherwise defaults)
+      let stopLossWei;
+      let takeProfitWei;
+
+      if (position.stopLoss) {
+        stopLossWei = ethers.parseUnits(position.stopLoss.toFixed(DECIMALS_PRICE), DECIMALS_PRICE);
+        log('info', `  📍 Using trader's stop loss: $${position.stopLoss.toFixed(2)}`);
+      } else {
+        // pythPrice.price is a JavaScript number, convert to decimal string first
+        const slPrice = isLong
           ? pythPrice.price * (STOP_LOSS_PERCENT_LONG / 100)
-          : pythPrice.price * (STOP_LOSS_PERCENT_SHORT / 100));
-      const takeProfitPrice =
-        position.takeProfit ||
-        (isLong
+          : pythPrice.price * (STOP_LOSS_PERCENT_SHORT / 100);
+        stopLossWei = ethers.parseUnits(slPrice.toFixed(DECIMALS_PRICE), DECIMALS_PRICE);
+        log('info', `  ⚠️  No stop loss from trader, using default: $${slPrice.toFixed(2)}`);
+      }
+
+      if (position.takeProfit) {
+        takeProfitWei = ethers.parseUnits(
+          position.takeProfit.toFixed(DECIMALS_PRICE),
+          DECIMALS_PRICE
+        );
+        log('info', `  🎯 Using trader's take profit: $${position.takeProfit.toFixed(2)}`);
+      } else {
+        const tpPrice = isLong
           ? pythPrice.price * (TAKE_PROFIT_PERCENT_LONG / 100)
-          : pythPrice.price * (TAKE_PROFIT_PERCENT_SHORT / 100));
-      const stopLossWei = ethers.parseUnits(stopLossPrice.toFixed(DECIMALS_PRICE), DECIMALS_PRICE);
-      const takeProfitWei = ethers.parseUnits(
-        takeProfitPrice.toFixed(DECIMALS_PRICE),
-        DECIMALS_PRICE
-      );
+          : pythPrice.price * (TAKE_PROFIT_PERCENT_SHORT / 100);
+        takeProfitWei = ethers.parseUnits(tpPrice.toFixed(DECIMALS_PRICE), DECIMALS_PRICE);
+        log('info', `  ⚠️  No take profit from trader, using default: $${tpPrice.toFixed(2)}`);
+      }
+
+      // Debug logging
+      console.log('📊 Trade Parameters:');
+      console.log(`   Position: ${position.symbol} ${isLong ? 'LONG' : 'SHORT'}`);
+      console.log(`   Size: ${position.size} (${qtyWei.toString()} wei)`);
+      console.log(`   Margin: $${position.margin.toFixed(2)} (${amountIn.toString()} wei)`);
+      console.log(`   Pyth Price: ${pythPrice.price}`);
+      console.log(`   Acceptable Price: ${acceptablePrice} (${acceptablePriceWei.toString()} wei)`);
+      console.log(`   Stop Loss: ${stopLossWei.toString()} wei`);
+      console.log(`   Take Profit: ${takeProfitWei.toString()} wei`);
+      console.log(`   Pair Address: ${pairAddress}`);
 
       const usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
       const allowance = await usdcContract.allowance(
@@ -299,20 +324,23 @@ export async function executeCopyTrade(position, action, moonlanderKey) {
         log('success', 'USDC approved');
       }
 
-      const tradingContract = new ethers.Contract(
+      const tradingPortal = new ethers.Contract(
         MOONLANDER_CONFIG.diamondAddress,
-        TRADING_CORE_ABI,
+        TRADING_PORTAL_ABI,
         signer
       );
-      const tx = await tradingContract.openMarketTradeWithPyth(
-        pairAddress,
-        isLong,
-        amountIn,
-        qtyWei,
-        acceptablePriceWei,
-        stopLossWei,
-        takeProfitWei,
-        DEFAULT_BROKER_ID,
+      const tx = await tradingPortal.openMarketTradeWithPyth(
+        {
+          pairBase: pairAddress,
+          isLong,
+          tokenIn: USDC_ADDRESS,
+          amountIn,
+          qty: qtyWei,
+          price: acceptablePriceWei,
+          stopLoss: stopLossWei,
+          takeProfit: takeProfitWei,
+          broker: DEFAULT_BROKER_ID,
+        },
         pythPrice.updateData,
         { value: ethers.parseEther(PYTH_UPDATE_FEE), gasLimit: GAS_LIMIT_OPEN_TRADE }
       );
@@ -324,12 +352,12 @@ export async function executeCopyTrade(position, action, moonlanderKey) {
       log('info', `Closing ${position.symbol} ${position.side.toUpperCase()}`);
       const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
       const signer = new ethers.Wallet(moonlanderKey, provider);
-      const tradingContract = new ethers.Contract(
+      const tradingPortal = new ethers.Contract(
         MOONLANDER_CONFIG.diamondAddress,
-        TRADING_CORE_ABI,
+        TRADING_PORTAL_ABI,
         signer
       );
-      const tx = await tradingContract.closeTrade(position.positionHash, {
+      const tx = await tradingPortal.closeTrade(position.positionHash, {
         gasLimit: GAS_LIMIT_CLOSE_TRADE,
       });
       log('info', `Transaction: ${tx.hash}`);

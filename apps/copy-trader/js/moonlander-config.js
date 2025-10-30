@@ -241,18 +241,27 @@ export const TRADING_READER_ABI = [
     }
 ];
 
-export const TRADING_CORE_ABI = [
+// Trading Portal ABI (correct ABI with struct parameter)
+export const TRADING_PORTAL_ABI = [
     {
         "inputs": [
-            {"internalType": "address", "name": "pairBase", "type": "address"},
-            {"internalType": "bool", "name": "isLong", "type": "bool"},
-            {"internalType": "uint96", "name": "amountIn", "type": "uint96"},
-            {"internalType": "uint128", "name": "qty", "type": "uint128"},
-            {"internalType": "uint128", "name": "acceptablePrice", "type": "uint128"},
-            {"internalType": "uint128", "name": "stopLoss", "type": "uint128"},
-            {"internalType": "uint128", "name": "takeProfit", "type": "uint128"},
-            {"internalType": "uint64", "name": "brokerId", "type": "uint64"},
-            {"internalType": "bytes[]", "name": "updateData", "type": "bytes[]"}
+            {
+                "components": [
+                    {"internalType": "address", "name": "pairBase", "type": "address"},
+                    {"internalType": "bool", "name": "isLong", "type": "bool"},
+                    {"internalType": "address", "name": "tokenIn", "type": "address"},
+                    {"internalType": "uint96", "name": "amountIn", "type": "uint96"},
+                    {"internalType": "uint128", "name": "qty", "type": "uint128"},
+                    {"internalType": "uint128", "name": "price", "type": "uint128"},
+                    {"internalType": "uint128", "name": "stopLoss", "type": "uint128"},
+                    {"internalType": "uint128", "name": "takeProfit", "type": "uint128"},
+                    {"internalType": "uint24", "name": "broker", "type": "uint24"}
+                ],
+                "internalType": "struct IBook.OpenDataInput",
+                "name": "data",
+                "type": "tuple"
+            },
+            {"internalType": "bytes[]", "name": "priceUpdateData", "type": "bytes[]"}
         ],
         "name": "openMarketTradeWithPyth",
         "outputs": [{"internalType": "bytes32", "name": "tradeHash", "type": "bytes32"}],
@@ -267,6 +276,8 @@ export const TRADING_CORE_ABI = [
         "type": "function"
     }
 ];
+
+export const TRADING_CORE_ABI = TRADING_PORTAL_ABI; // Alias for backwards compatibility
 
 export const ERC20_ABI = [
     'function approve(address spender, uint256 amount) returns (bool)',
