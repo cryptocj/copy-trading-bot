@@ -35,7 +35,7 @@ export const QTY_DIVISOR = 10 ** DECIMALS_QTY; // 1e10
 export const PRICE_DIVISOR = 10 ** DECIMALS_PRICE; // 1e18
 
 // Liquidation calculation
-export const MAINTENANCE_MARGIN_RATIO = 0.90; // 90% of margin before liquidation
+export const MAINTENANCE_MARGIN_RATIO = 0.9; // 90% of margin before liquidation
 
 // Price Calculation
 export const STOP_LOSS_PERCENT_LONG = 50; // 50% of entry for long
@@ -45,7 +45,9 @@ export const TAKE_PROFIT_PERCENT_SHORT = 50; // 50% of entry for short
 
 // API Endpoints
 export const HYPERLIQUID_API_URL = 'https://api.hyperliquid.xyz';
-export const PYTH_API_URL = 'https://hermes.pyth.network/api';
+// export const PYTH_API_URL = 'https://hermes.pyth.network/api';
+export const PYTH_API_URL =
+  'https://cronosl-pythnet-6ee1.mainnet.pythnet.rpcpool.com/6180643a-f910-4bdd-8591-35f7c1b99d5a/hermes';
 
 // Sync Settings
 export const DEFAULT_SYNC_INTERVAL = 10; // seconds
