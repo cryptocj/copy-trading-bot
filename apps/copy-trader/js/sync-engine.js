@@ -183,7 +183,8 @@ export async function fetchAllPositions(traderAddress, balanceInfo) {
         traderAccountData = result.accountData;
     }
 
-    const moonlanderWallet = getMoonlanderWallet();
+    const moonlanderKey = elements.moonlanderPrivateKey.value;
+    const moonlanderWallet = moonlanderKey ? getMoonlanderWallet(moonlanderKey) : null;
 
     if (moonlanderWallet) {
         state.userPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
@@ -208,7 +209,8 @@ export async function performSync() {
 
         // Fetch user's real-time available balance
         let balanceInfo = { freeBalance: state.stats.balance, totalEquity: state.stats.balance, positionsValue: 0 };
-        const moonlanderWallet = getMoonlanderWallet();
+        const moonlanderKey = elements.moonlanderPrivateKey.value;
+        const moonlanderWallet = moonlanderKey ? getMoonlanderWallet(moonlanderKey) : null;
         if (moonlanderWallet) {
             balanceInfo = await fetchMoonlanderBalance(moonlanderWallet.address);
 
@@ -273,18 +275,19 @@ export async function performSync() {
         // Execute actions if Moonlander key provided
         if (elements.moonlanderPrivateKey.value && (actions.toAdd.length > 0 || actions.toRemove.length > 0)) {
             log('info', `📋 Actions needed: Close ${actions.toRemove.length}, Open ${actions.toAdd.length}`);
+            const moonlanderKey = elements.moonlanderPrivateKey.value;
 
             for (const pos of actions.toRemove) {
                 state.stats.removed++;
                 log('warning', `🔄 Closing: ${pos.symbol}`);
-                await executeCopyTrade(pos, 'close');
+                await executeCopyTrade(pos, 'close', moonlanderKey);
             }
 
             for (const pos of actions.toAdd) {
                 state.stats.added++;
                 const margin = (pos.size * pos.entryPrice) / pos.leverage;
                 log('success', `🔄 Opening: ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ market - Margin: $${margin.toFixed(2)}`);
-                await executeCopyTrade(pos, 'open');
+                await executeCopyTrade(pos, 'open', moonlanderKey);
             }
 
             log('success', '✅ All actions completed');
@@ -342,7 +345,8 @@ export async function startMonitoring() {
         log('info', '🚀 Initializing monitor...');
 
         // Fetch wallet balance if private key provided
-        const moonlanderWallet = getMoonlanderWallet();
+        const moonlanderKey = elements.moonlanderPrivateKey.value;
+        const moonlanderWallet = moonlanderKey ? getMoonlanderWallet(moonlanderKey) : null;
         if (moonlanderWallet) {
             const balanceInfo = await fetchMoonlanderBalance(moonlanderWallet.address);
             state.stats.balance = balanceInfo.totalEquity;
