@@ -115,19 +115,61 @@ export async function fetchTraderPositions(traderAddress) {
                 let stopLoss = null;
                 let takeProfit = null;
 
-                // Find stop loss and take profit from open orders
-                const positionOrders = orders.filter(order => order.coin === symbol);
+                // Find stop loss and take profit from trigger orders
+                // Filter trigger orders for this position with robust matching
+                const positionOrders = orders.filter(order => {
+                    // Must be same symbol
+                    if (order.coin !== symbol) return false;
 
-                // Track if we've found SL and TP to avoid duplicates
+                    // Must be trigger order
+                    if (!order.isTrigger) return false;
+
+                    // Must have size (origSz or sz)
+                    const orderSize = parseFloat(order.origSz || order.sz || 0);
+                    if (orderSize === 0) return false;
+
+                    // Size should be close to position size (allow 1% tolerance)
+                    const sizeDiff = Math.abs(orderSize - size) / size;
+                    if (sizeDiff > 0.01) return false;
+
+                    // Must be closing order (opposite side of position)
+                    // For LONG position, closing orders are sell ('A' = Ask)
+                    // For SHORT position, closing orders are buy ('B' = Bid)
+                    if (side === 'long' && order.side !== 'A') return false;
+                    if (side === 'short' && order.side !== 'B') return false;
+
+                    // If we have position timestamp, prefer orders created after position opened
+                    if (timestamp && order.timestamp) {
+                        const timeDiff = Math.abs(order.timestamp - timestamp);
+                        const fiveMinutes = 5 * 60 * 1000;
+                        if (timeDiff > fiveMinutes) {
+                            order._timeDiffPenalty = timeDiff;
+                        }
+                    }
+
+                    return true;
+                }).sort((a, b) => {
+                    // Sort by time proximity to position open first, then by order ID
+                    const aPenalty = a._timeDiffPenalty || 0;
+                    const bPenalty = b._timeDiffPenalty || 0;
+
+                    if (aPenalty !== bPenalty) {
+                        return aPenalty - bPenalty;
+                    }
+
+                    return (b.oid || 0) - (a.oid || 0);
+                });
+
+                // Track which type we've found
                 let foundStopLoss = false;
                 let foundTakeProfit = false;
 
                 for (const order of positionOrders) {
-                    if (!order.trigger || (!order.trigger.tpsl && !order.trigger.triggerPx)) continue;
+                    const triggerPrice = parseFloat(order.triggerPx);
 
-                    const triggerPrice = parseFloat(order.trigger.tpsl || order.trigger.triggerPx);
-                    const isBelowTrigger = order.isBuy === false;
-                    const isAboveTrigger = order.isBuy === true;
+                    // Parse trigger condition - "Price below X" or "Price above X"
+                    const isBelowTrigger = order.triggerCondition?.toLowerCase().includes('below');
+                    const isAboveTrigger = order.triggerCondition?.toLowerCase().includes('above');
 
                     // For LONG positions:
                     // - Stop loss = trigger below entry price (exit when price drops)
