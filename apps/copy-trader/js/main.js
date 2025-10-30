@@ -2,17 +2,19 @@
 // MAIN.JS - Application Entry Point
 // ============================================
 
-// Import all modules
-import { VERSION, BUILD_DATE } from './config.js';
-import { MOONLANDER_CONFIG } from './moonlander-config.js';
-import { state, updateStats } from './state.js';
-import { log } from './utils.js';
+import { initializeVersionDisplay, setupEventListeners, renderActivityLog } from './ui.js';
+import { startMonitoring, stopMonitoring } from './sync-engine.js';
 
-// Application initialization
-export function initializeApp() {
-    console.log(`Copy Trader v${VERSION} (${BUILD_DATE})`);
-    log('info', `🚀 Application initialized`);
-    updateStats();
-}
+// Initialize application on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize version display
+    initializeVersionDisplay();
 
-// TODO: Wire up all event handlers and start app
+    // Setup event listeners
+    setupEventListeners(startMonitoring, stopMonitoring);
+
+    // Render initial activity log
+    renderActivityLog();
+
+    console.log('Copy Trader Application initialized');
+});
