@@ -4,17 +4,21 @@
 
 import { initializeVersionDisplay, setupEventListeners, renderActivityLog } from './ui.js';
 import { startMonitoring, stopMonitoring } from './sync-engine.js';
+import { loadPersistedState } from './state.js';
 
 // Initialize application on page load
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize version display
-    initializeVersionDisplay();
+  // Load persisted state from localStorage
+  loadPersistedState();
 
-    // Setup event listeners
-    setupEventListeners(startMonitoring, stopMonitoring);
+  // Initialize version display
+  initializeVersionDisplay();
 
-    // Render initial activity log
-    renderActivityLog();
+  // Setup event listeners
+  setupEventListeners(startMonitoring, stopMonitoring);
 
-    console.log('Copy Trader Application initialized');
+  // Render initial activity log
+  renderActivityLog();
+
+  console.log('Copy Trader Application initialized');
 });

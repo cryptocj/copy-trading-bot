@@ -2,7 +2,7 @@
 // STATE.JS - Application State Management
 // ============================================
 
-import { MIN_COPY_BALANCE } from './config.js';
+import { MIN_COPY_BALANCE, STORAGE_KEY_LAST_TRADER_POSITIONS } from './config.js';
 
 // Application state
 export const state = {
@@ -33,6 +33,29 @@ export const state = {
     // Activity log
     activityLog: []
 };
+
+// Load persisted state on initialization
+export function loadPersistedState() {
+    try {
+        const savedPositions = localStorage.getItem(STORAGE_KEY_LAST_TRADER_POSITIONS);
+        if (savedPositions) {
+            state.lastTraderPositions = JSON.parse(savedPositions);
+        }
+    } catch (error) {
+        console.error('Failed to load persisted state:', error);
+        state.lastTraderPositions = [];
+    }
+}
+
+// Save trader positions to localStorage
+export function saveTraderPositions(positions) {
+    try {
+        state.lastTraderPositions = positions;
+        localStorage.setItem(STORAGE_KEY_LAST_TRADER_POSITIONS, JSON.stringify(positions));
+    } catch (error) {
+        console.error('Failed to save trader positions:', error);
+    }
+}
 
 // State update functions
 export function updateStats() {

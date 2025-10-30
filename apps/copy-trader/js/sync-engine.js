@@ -4,12 +4,12 @@
 
 import {
   MIN_POSITION_VALUE,
-  SIZE_TOLERANCE,
   SAFETY_BUFFER_PERCENT,
   MAX_SCALING_FACTOR,
   DEFAULT_SYNC_INTERVAL,
+  TRADER_POSITION_CHANGE_THRESHOLD,
 } from './config.js';
-import { state, updateStats } from './state.js';
+import { state, updateStats, saveTraderPositions } from './state.js';
 import { SymbolUtils, log } from './utils.js';
 import { elements, updatePositions, updateActions, updateBalanceInfo } from './ui.js';
 import { fetchLastTradeTimestamp, fetchTraderPositions } from './hyperliquid-service.js';
@@ -145,35 +145,49 @@ export function calculatePositionDiff(userPositions, targetPositions) {
   const targetMap = new Map(targetPositions.map((p) => [SymbolUtils.normalize(p.symbol), p]));
   const userMap = new Map(userPositions.map((p) => [SymbolUtils.normalize(p.symbol), p]));
 
+  console.log('🔍 Position Diff Calculation:');
+  console.log(
+    '  Target positions:',
+    targetPositions.map((p) => `${p.symbol}(${p.size.toFixed(4)})`).join(', ')
+  );
+  console.log(
+    '  User positions:',
+    userPositions.map((p) => `${p.symbol}(${p.size.toFixed(4)})`).join(', ')
+  );
+  console.log('  Target symbols (normalized):', Array.from(targetMap.keys()).join(', '));
+  console.log('  User symbols (normalized):', Array.from(userMap.keys()).join(', '));
+
   const toAdd = [];
   const toRemove = [];
+
+  // Get last known trader positions to detect actual trader actions
+  const lastTraderMap = new Map(
+    (state.lastTraderPositions || []).map((p) => [SymbolUtils.normalize(p.symbol), p])
+  );
 
   for (const target of targetPositions) {
     const normalizedSymbol = SymbolUtils.normalize(target.symbol);
     const user = userMap.get(normalizedSymbol);
+    const lastTrader = lastTraderMap.get(normalizedSymbol);
 
     if (!user) {
       // Position doesn't exist - add it
       toAdd.push(target);
-    } else {
-      // Position exists - check if size adjustment is needed
-      const sizeDiff = Math.abs(user.size - target.size);
-      const sizeRatio = target.size > 0 ? sizeDiff / target.size : 0;
+    } else if (lastTrader) {
+      // Position exists AND we have trader history - check if trader actually changed position
+      const traderSizeChange = Math.abs(target.size - lastTrader.size);
+      const traderChangePercent =
+        lastTrader.size > 0 ? (traderSizeChange / lastTrader.size) * 100 : 0;
 
-      if (sizeRatio > SIZE_TOLERANCE) {
-        // Size difference > tolerance threshold - close and reopen
-        console.log(`⚖️  Position size adjustment needed for ${target.symbol}:`);
+      // If trader significantly changed their position size, adjust user position
+      if (traderChangePercent > TRADER_POSITION_CHANGE_THRESHOLD) {
+        const direction = target.size > lastTrader.size ? 'increased' : 'decreased';
         console.log(
-          `   Current: ${user.size.toFixed(4)} | Target: ${target.size.toFixed(4)} | Diff: ${(sizeRatio * 100).toFixed(2)}% (>${(SIZE_TOLERANCE * 100).toFixed(0)}% threshold)`
+          `📈 Trader ${direction} ${target.symbol} by ${traderChangePercent.toFixed(2)}% (${lastTrader.size.toFixed(4)} → ${target.size.toFixed(4)})`
         );
-
+        console.log(`   Adjusting user position: close and reopen with new size`);
         toRemove.push(user);
         toAdd.push(target);
-      } else if (sizeRatio > 0.01) {
-        // Size difference exists but within tolerance
-        console.log(
-          `✓ ${target.symbol} size within tolerance: ${(sizeRatio * 100).toFixed(2)}% diff (≤${(SIZE_TOLERANCE * 100).toFixed(0)}% threshold)`
-        );
       }
     }
   }
@@ -185,10 +199,21 @@ export function calculatePositionDiff(userPositions, targetPositions) {
     if (!target) {
       // Position should not exist - remove it
       if (!toRemove.find((p) => SymbolUtils.normalize(p.symbol) === normalizedSymbol)) {
+        console.log(`  ❌ User position ${user.symbol} should be closed (no matching target)`);
         toRemove.push(user);
       }
     }
   }
+
+  console.log('📋 Actions Summary:');
+  console.log(
+    '  To Close:',
+    toRemove.map((p) => `${p.symbol}(${p.size.toFixed(4)})`).join(', ') || 'None'
+  );
+  console.log(
+    '  To Open:',
+    toAdd.map((p) => `${p.symbol}(${p.size.toFixed(4)})`).join(', ') || 'None'
+  );
 
   return { toAdd, toRemove };
 }
@@ -376,7 +401,8 @@ export async function performSync() {
       log('info', '✅ No actions needed - positions in sync');
     }
 
-    state.lastTraderPositions = [...traderPositions];
+    // Save target positions (scaled versions) for comparison on next sync
+    saveTraderPositions(targetPositions);
     state.stats.syncs++;
 
     // Set timestamp on first sync
