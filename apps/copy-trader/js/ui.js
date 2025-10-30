@@ -145,16 +145,25 @@ export function updatePositions(traderPositions, userPositions, traderAccountDat
     const traderTotal = traderAccountData?.marginSummary?.accountValue || null;
     const userTotal = userAccountData?.marginSummary?.accountValue || null;
 
-    elements.traderPositionsBody.innerHTML = traderPositions.map(pos =>
-        renderPositionRow(pos, traderTotal, true)
-    ).join('') || '<tr><td colspan="13" class="text-center text-gray-500">No positions</td></tr>';
+    // Update trader positions
+    if (elements.traderPositionsBody) {
+        const traderHtml = (traderPositions && traderPositions.length > 0)
+            ? traderPositions.map(pos => renderPositionRow(pos, traderTotal, true)).join('')
+            : '<tr><td colspan="13" class="text-center text-gray-500">No positions</td></tr>';
+        elements.traderPositionsBody.innerHTML = traderHtml;
+    }
 
-    elements.userPositionsBody.innerHTML = userPositions.map(pos =>
-        renderPositionRow(pos, userTotal, true)
-    ).join('') || '<tr><td colspan="13" class="text-center text-gray-500">No positions</td></tr>';
+    // Update user positions
+    if (elements.userPositionsBody) {
+        const userHtml = (userPositions && userPositions.length > 0)
+            ? userPositions.map(pos => renderPositionRow(pos, userTotal, true)).join('')
+            : '<tr><td colspan="13" class="text-center text-gray-500">No positions</td></tr>';
+        elements.userPositionsBody.innerHTML = userHtml;
+    }
 
-    elements.traderPositionCount.textContent = traderPositions.length;
-    elements.userPositionCount.textContent = userPositions.length;
+    // Update position counts
+    if (elements.traderPositionCount) elements.traderPositionCount.textContent = traderPositions?.length || 0;
+    if (elements.userPositionCount) elements.userPositionCount.textContent = userPositions?.length || 0;
 }
 
 // Update actions display
