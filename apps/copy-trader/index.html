@@ -265,6 +265,14 @@
                         class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Trader Platform</label>
+                    <select id="trader-platform"
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                        <option value="hyperliquid">Hyperliquid (Default)</option>
+                        <option value="moonlander">Moonlander (Cronos)</option>
+                    </select>
+                </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">
@@ -567,6 +575,7 @@
         const elements = {
             traderSelect: document.getElementById('trader-select'),
             traderAddress: document.getElementById('trader-address'),
+            traderPlatform: document.getElementById('trader-platform'),
             customAddressContainer: document.getElementById('custom-address-container'),
             moonlanderPrivateKey: document.getElementById('moonlander-private-key'),
             copyBalance: document.getElementById('copy-balance'),
@@ -1628,8 +1637,33 @@
 
         // Fetch all positions (trader + user) - DRY principle to eliminate duplication
         async function fetchAllPositions(traderAddress, balanceInfo) {
-            const { positions: traderPositions, accountData: traderAccountData } =
-                await fetchTraderPositions(traderAddress);
+            const traderPlatform = elements.traderPlatform.value;
+
+            let traderPositions, traderAccountData;
+
+            // Fetch trader positions based on platform
+            if (traderPlatform === 'moonlander') {
+                // Fetch from Moonlander trader
+                const moonlanderPositions = await fetchMoonlanderPositions(traderAddress);
+                traderPositions = await enrichPositionsWithPnL(moonlanderPositions);
+
+                // Calculate total equity from positions
+                const totalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
+                const totalPnl = traderPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl || 0), 0);
+                const totalEquity = totalMargin + totalPnl;
+
+                // Create account data structure
+                traderAccountData = {
+                    marginSummary: {
+                        accountValue: totalEquity.toString()
+                    }
+                };
+            } else {
+                // Fetch from Hyperliquid trader (default)
+                const result = await fetchTraderPositions(traderAddress);
+                traderPositions = result.positions;
+                traderAccountData = result.accountData;
+            }
 
             let userAccountData = null;
             const moonlanderWallet = getMoonlanderWallet();
@@ -1814,7 +1848,14 @@
                 updateStats();
 
                 log('success', '✅ Monitor initialized');
+                const traderPlatform = elements.traderPlatform.value;
+                const platformEmoji = traderPlatform === 'moonlander' ? '🌙' : '🌊';
+                const platformName = traderPlatform === 'moonlander' ? 'Moonlander' : 'Hyperliquid';
+                log('info', `${platformEmoji} Trader Platform: ${platformName}`);
                 log('info', `👤 Trader: ${traderAddress.slice(0, 6)}...${traderAddress.slice(-4)}`);
+                if (moonlanderWallet) {
+                    log('info', `🌙 Your Wallet: ${moonlanderWallet.address.slice(0, 6)}...${moonlanderWallet.address.slice(-4)}`);
+                }
                 log('info', `💰 Copy Balance: $${stats.balance.toFixed(2)}`);
 
                 // Start sync loop
