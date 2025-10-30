@@ -1002,32 +1002,102 @@
             rpcUrl: 'https://evm.cronos.org',
             diamondAddress: '0xE6F6351fb66f3a35313fEEFF9116698665FBEeC9',
             pairAddresses: {
+                // Major Cryptocurrencies
                 'BTC/USD': '0x062E66477Faf219F25D27dCED647BF57C3107d52',
                 'ETH/USD': '0xe44Fd7fCb2b1581822D0c862B68222998a0c299a',
                 'SOL/USD': '0xc9DE0F3e08162312528FF72559db82590b481800',
                 'CRO/USD': '0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23',
+                'XRP/USD': '0xb9Ce0dd29C91E02d4620F57a66700Fc5e41d6D15',
+                'DOGE/USD': '0x1a8E39ae59e5556B56b76fCBA98d22c9ae557396',
+                'ADA/USD': '0x0e517979C2c1c1522ddB0c73905e0D39b3F990c0',
+                'LTC/USD': '0x9d97Be214b68C7051215BB61059B4e299Cd792c3',
+                'BCH/USD': '0x7589B70aBb83427bb7049e08ee9fC6479ccB7a23',
+                'ETC/USD': '0xd9ce64C200721a98103102f9ea8e894E347EA287',
 
-                // Layer 1 chains
+                // Layer 1 Blockchains
                 'AVAX/USD': '0x8d58088D4E8Ffe75A8b6357ba5ff17B93B912640',
                 'DOT/USD': '0x994047FE66406CbD646cd85B990E11D7F5dB8fC7',
-                'ATOM/USD': '0xB888d8Dd1733d72681b30c00ee76BDE93ae7aa93', // Cosmos
+                'ATOM/USD': '0xB888d8Dd1733d72681b30c00ee76BDE93ae7aa93',
                 'NEAR/USD': '0xAFE470AE215e48c144c7158EAe3CcF0C451cb0CB',
-                'ADA/USD': '0x0e517979C2c1c1522ddB0c73905e0D39b3F990c0',
                 'ALGO/USD': '0x2fEfe47989214c2e74A6319076c138d395681407',
                 'TON/USD': '0x8d96EA3c7F7B7A824e2C8277495007c7Fbd769ea',
                 'SUI/USD': '0x81710203A7FC16797aC9899228a87fd622df9706',
                 'HBAR/USD': '0xe0C7226a58f54db71eDc6289Ba2dc80349B41974',
+                'APT/USD': '0x39e552a93a58Af98987BB5Cb08b04D25d41D1A2a',
+                'MNT/USD': '0xa76521EB6C2470A6f477674Bd74179bD660089B0',
+                'VET/USD': '0xA158b0de99AFcE0d4BA1Eda3DE20DD3617F8fC16',
+                'AXL/USD': '0x0ddFe253A378Ae28635ef21855dadB297cD99DAd',
 
-                // Major altcoins
+                // DeFi Tokens
                 'LINK/USD': '0xBc6f24649CCd67eC42342AccdCECCB2eFA27c9d9',
                 'UNI/USD': '0x16aD43896f7C47a5d9Ee546c44A22205738B329c',
                 'AAVE/USD': '0xE657b115bc45c0786274c824f83e3e02CE809185',
-                'XRP/USD': '0xb9Ce0dd29C91E02d4620F57a66700Fc5e41d6D15',
-                'DOGE/USD': '0x1a8E39ae59e5556B56b76fCBA98d22c9ae557396',
-                'LTC/USD': '0x9d97Be214b68C7051215BB61059B4e299Cd792c3',
+                'ARB/USD': '0x71420dE57efBdffdccE4aDc3112B38639bBE33cF',
+                'POL/USD': '0x40a7B093C9fAcAE2f668608338789e8fc209DA2A',
+                'OM/USD': '0xeB1d71eA9351a613735127844C53dc6DdF25f293',
+                'ONDO/USD': '0xD8D9629cf47abe2fCa22b2F2c95Dc6ef46392326',
+                'ENA/USD': '0xC907345cfeB81bf4830AED8060563eA8e793e177',
 
-                // Leveraged pairs (500x) - VERIFIED from successful mainnet transaction
+                // AI & Tech Tokens
+                'FET/USD': '0xBe2bd41D6b3fBe01eda6e1AddeD7a4b242e04528',
+                'TAO/USD': '0x3e06A0Bf43Bc145c7D83b5bedc2f28F4D6406Fa0',
+                'RENDER/USD': '0x989547A33595d5a6DDd68F1EF3C4aA8c4D700917',
+                'A/USD': '0x4c8e043e3748239FA78cE0c74838800f17A22160',
+
+                // Meme Coins
+                'SHIB/USD': '0xbED48612BC69fA1CaB67052b42a95FB30C1bcFee',
+                'PEPE/USD': '0xf868c454784048AF4f857991583E34243c92Ff48',
+                'BONK/USD': '0xB3b6d1896E6D8E6542E7A91176844772895A6F7f',
+                'PUMP/USD': '0x3300c702b0b2F3823666Be8b8bF70C4a6C82eF0c',
+
+                // Solana Ecosystem
+                'RAY/USD': '0x78e7ae906d5421488454B48Fc4edef4e7Cb1FE0D',
+                'JLP/USD': '0xB4D15E490f7bc94a175D437310445f12366baBaB',
+
+                // Other Tokens
+                'SAND/USD': '0x9097eA65B55dfC7383A7EFB465e8fFC18D46e784',
+                'VIRTUAL/USD': '0x101632377A2378F6A9bda0eAB990cf6382ab8c85',
+                'AI16Z/USD': '0xED65aA648c7E63E527F9881d2c8001d6b3DE4feD',
+                'PAXG/USD': '0x81749e7258f9e577f61f49ABeeB426b70F561b89',
+                'XMR/USD': '0x7F5F497e8AEB7CC82aF3921a22b2F0520f633Fa8',
+                'HYPE/USD': '0xC5bE0303968b51d175b77b275eF5784B4B4b7d7c',
+                'KAITO/USD': '0x6284d80177C54E0b736C68Eb6Ef5fCBf846bD648',
+                'S/USD': '0x6D03365eDF19e6C233241cA2175729eCF55330B9',
+                'SPX6900/USD': '0x1De258764B7d1C4978087505f6CE5B94042a1883',
+                'FARTCOIN/USD': '0x3803B1DEAfEBbc452dbf2E36B6a5f7f76f0bCfD9',
+                'LION/USD': '0x9D8c68F185A04314DDC8B8216732455e8dbb7E45',
+                'FIG/USD': '0x97Aa3b796C8bc9EAc0221174401A00C55769F41E',
+                'CRCL/USD': '0x7F55d95BEfC4b558d2Bf5632bC466A5b0125C6A5',
+
+                // Political/Meme Tokens
+                'TRUMP/USD': '0xd1D7A0Ff6Cd3d494038b7FB93dbAeF624Da6f417',
+                'MELANIA/USD': '0x0a045883E84c4B026562A1925bc15E4f8775AC61',
+
+                // US Stocks
+                'AAPL/USD': '0x34A8319c0AD0A68BBe2eD4a154960CE38c0c0970',
+                'GOOG/USD': '0x5d842b8F4176662817F04B1585aE7E81F6e718FF',
+                'AMZN/USD': '0x48197e0888e80e71Ec7c424FfAbBcc7CAe0f0851',
+                'MSFT/USD': '0xbfAebB36ad3e4Dc08Db03F3f42747c09aDe4cccF',
+                'META/USD': '0xE563B1f4D4Ce4FCf658E4f61fBb8204412f0Ced3',
+                'NVDA/USD': '0x1f50B2cDCe9E06234405B359021e7404E0676C17',
+                'TSLA/USD': '0xEB6EBE0D7b888E9F07adaDEf202d046F1f2EaC1A',
+                'MSTR/USD': '0xC52Fa0A0D2aE284Ade66A3b7c7Ec3c07A8Dd456f',
+                'NFLX/USD': '0x674fA9fb7B59b038a6e6d195B44A4e2B1a9C58dE',
+                'HOOD/USD': '0xF11F855f82089e2F0A2962329590D882A26Ba7CE',
+
+                // ETFs
+                'VOO/USD': '0x5120A287a0823927fb800867E5895d89a07c0a71',
+                'QQQ/USD': '0xc59171D543cc81D8ebee17B3a56f8809104672a5',
+
+                // Leveraged Pairs (500x)
                 '500BTC/USD': '0xBAd4ccc91EF0dfFfbCAb1402C519601fbAf244EF',
+                '500ETH/USD': '0xFd23131811dDB031a3e568b787E57D36C41fC117',
+                '500SOL/USD': '0x10c247B417C4cd2e3542FF8Cb758d895279F0eC6',
+                '500XRP/USD': '0xB2BaDEA485457F11EDD5a19FC70fc1C64C7165E9',
+                '500DOGE/USD': '0x2600e56e2aE2D15582180862fd71E96DCb86C2D8',
+                '500ADA/USD': '0x47521B8A40C38F4B538e9b49cEc895d9896BDc19',
+                '500SUI/USD': '0x1FC9ccff020680aD461CFFaCF6aAFBDf28e601B0',
+                '500LTC/USD': '0x4C3DbEaf91a7917ab4B5c4B4Bb9C20c773F843A5',
             }
         };
 
