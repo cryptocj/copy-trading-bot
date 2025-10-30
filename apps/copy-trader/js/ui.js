@@ -100,8 +100,9 @@ export function renderPositionRow(pos, totalBalance = null, showPnl = true) {
   // Format PnL display
   const pnl = pos.unrealizedPnl !== undefined ? pos.unrealizedPnl : 0;
   const pnlClass = pnl >= 0 ? 'text-green-400' : 'text-red-400';
-  const pnlSign = pnl >= 0 ? '+' : '';
-  const pnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}</span>`;
+  const pnlSign = pnl >= 0 ? '+' : '-';
+  const pnlValue = Math.abs(pnl);
+  const pnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnlValue.toFixed(2)}</span>`;
 
   // Format displays
   const stopLossDisplay = pos.stopLoss
@@ -243,8 +244,9 @@ export function updateBalanceInfo(
 
     if (elements.balanceTraderPnl) {
       const traderPnlClass = traderTotalPnl >= 0 ? 'text-green-400' : 'text-red-400';
-      const traderPnlSign = traderTotalPnl >= 0 ? '+' : '';
-      elements.balanceTraderPnl.innerHTML = `<span class="${traderPnlClass}">${traderPnlSign}$${traderTotalPnl.toFixed(2)}</span>`;
+      const traderPnlSign = traderTotalPnl >= 0 ? '+' : '-';
+      const traderPnlValue = Math.abs(traderTotalPnl);
+      elements.balanceTraderPnl.innerHTML = `<span class="${traderPnlClass}">${traderPnlSign}$${traderPnlValue.toFixed(2)}</span>`;
     }
   }
 
@@ -271,8 +273,9 @@ export function updateBalanceInfo(
 
   if (elements.balanceUserPnl) {
     const userPnlClass = userTotalPnl >= 0 ? 'text-green-400' : 'text-red-400';
-    const userPnlSign = userTotalPnl >= 0 ? '+' : '';
-    elements.balanceUserPnl.innerHTML = `<span class="${userPnlClass}">${userPnlSign}$${userTotalPnl.toFixed(2)}</span>`;
+    const userPnlSign = userTotalPnl >= 0 ? '+' : '-';
+    const userPnlValue = Math.abs(userTotalPnl);
+    elements.balanceUserPnl.innerHTML = `<span class="${userPnlClass}">${userPnlSign}$${userPnlValue.toFixed(2)}</span>`;
   }
 
   // Scaling factor
