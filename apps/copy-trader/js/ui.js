@@ -180,14 +180,16 @@ export function updateBalanceInfo(traderAccountData, userAccountData, traderTota
         const traderRatio = traderTotal > 0 ? ((traderMargin / traderTotal) * 100).toFixed(2) : '0.00';
         const traderPnl = parseFloat(traderAccountData.marginSummary.totalUPnl || 0);
 
-        elements.balanceTraderTotal.textContent = `$${traderTotal.toFixed(2)}`;
-        elements.balanceTraderAvailable.textContent = `$${traderAvailable.toFixed(2)}`;
-        elements.balanceTraderMargin.textContent = `$${traderMargin.toFixed(2)}`;
-        elements.balanceTraderRatio.textContent = `${traderRatio}%`;
+        if (elements.balanceTraderTotal) elements.balanceTraderTotal.textContent = `$${traderTotal.toFixed(2)}`;
+        if (elements.balanceTraderAvailable) elements.balanceTraderAvailable.textContent = `$${traderAvailable.toFixed(2)}`;
+        if (elements.balanceTraderMargin) elements.balanceTraderMargin.textContent = `$${traderMargin.toFixed(2)}`;
+        if (elements.balanceTraderRatio) elements.balanceTraderRatio.textContent = `${traderRatio}%`;
 
-        const traderPnlClass = traderPnl >= 0 ? 'text-green-400' : 'text-red-400';
-        const traderPnlSign = traderPnl >= 0 ? '+' : '';
-        elements.balanceTraderPnl.innerHTML = `<span class="${traderPnlClass}">${traderPnlSign}$${traderPnl.toFixed(2)}</span>`;
+        if (elements.balanceTraderPnl) {
+            const traderPnlClass = traderPnl >= 0 ? 'text-green-400' : 'text-red-400';
+            const traderPnlSign = traderPnl >= 0 ? '+' : '';
+            elements.balanceTraderPnl.innerHTML = `<span class="${traderPnlClass}">${traderPnlSign}$${traderPnl.toFixed(2)}</span>`;
+        }
     }
 
     // User balance info
@@ -197,18 +199,20 @@ export function updateBalanceInfo(traderAccountData, userAccountData, traderTota
     const userRatio = userTotal > 0 ? ((userMargin / userTotal) * 100).toFixed(2) : '0.00';
     const userPnl = userAccountData ? parseFloat(userAccountData.marginSummary.totalUPnl || 0) : 0;
 
-    elements.balanceUserTotal.textContent = `$${userTotal.toFixed(2)}`;
-    elements.balanceUserAvailable.textContent = `$${userAvailable.toFixed(2)}`;
-    elements.balanceUserMargin.textContent = `$${userMargin.toFixed(2)}`;
-    elements.balanceUserRatio.textContent = `${userRatio}%`;
-    elements.balanceUserFree.textContent = `$${userAvailable.toFixed(2)}`;
+    if (elements.balanceUserTotal) elements.balanceUserTotal.textContent = `$${userTotal.toFixed(2)}`;
+    if (elements.balanceUserAvailable) elements.balanceUserAvailable.textContent = `$${userAvailable.toFixed(2)}`;
+    if (elements.balanceUserMargin) elements.balanceUserMargin.textContent = `$${userMargin.toFixed(2)}`;
+    if (elements.balanceUserRatio) elements.balanceUserRatio.textContent = `${userRatio}%`;
+    if (elements.balanceUserFree) elements.balanceUserFree.textContent = `$${userAvailable.toFixed(2)}`;
 
-    const userPnlClass = userPnl >= 0 ? 'text-green-400' : 'text-red-400';
-    const userPnlSign = userPnl >= 0 ? '+' : '';
-    elements.balanceUserPnl.innerHTML = `<span class="${userPnlClass}">${userPnlSign}$${userPnl.toFixed(2)}</span>`;
+    if (elements.balanceUserPnl) {
+        const userPnlClass = userPnl >= 0 ? 'text-green-400' : 'text-red-400';
+        const userPnlSign = userPnl >= 0 ? '+' : '';
+        elements.balanceUserPnl.innerHTML = `<span class="${userPnlClass}">${userPnlSign}$${userPnl.toFixed(2)}</span>`;
+    }
 
     // Scaling factor
-    elements.balanceScalingFactor.textContent = `${(scalingFactor * 100).toFixed(2)}%`;
+    if (elements.balanceScalingFactor) elements.balanceScalingFactor.textContent = `${(scalingFactor * 100).toFixed(2)}%`;
 }
 
 // Setup event listeners
