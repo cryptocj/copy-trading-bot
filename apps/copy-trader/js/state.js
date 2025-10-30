@@ -36,31 +36,18 @@ export const state = {
 
 // State update functions
 export function updateStats() {
-    const statsElement = document.getElementById('stats');
-    if (statsElement) {
-        statsElement.innerHTML = `
-            <div class="stat-card">
-                <div class="stat-label">Balance</div>
-                <div class="stat-value">$${state.stats.balance.toFixed(2)}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Syncs</div>
-                <div class="stat-value">${state.stats.syncs}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Added</div>
-                <div class="stat-value">${state.stats.added}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Removed</div>
-                <div class="stat-value">${state.stats.removed}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Errors</div>
-                <div class="stat-value">${state.stats.errors}</div>
-            </div>
-        `;
-    }
+    // Update individual stat elements
+    const statBalance = document.getElementById('stat-balance');
+    const statSyncs = document.getElementById('stat-syncs');
+    const statAdded = document.getElementById('stat-added');
+    const statRemoved = document.getElementById('stat-removed');
+    const statErrors = document.getElementById('stat-errors');
+
+    if (statBalance) statBalance.textContent = `$${state.stats.balance.toFixed(2)}`;
+    if (statSyncs) statSyncs.textContent = state.stats.syncs;
+    if (statAdded) statAdded.textContent = state.stats.added;
+    if (statRemoved) statRemoved.textContent = state.stats.removed;
+    if (statErrors) statErrors.textContent = state.stats.errors;
 }
 
 export function resetMonitoringState() {
