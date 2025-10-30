@@ -7,8 +7,7 @@ import {
     SIZE_TOLERANCE,
     SAFETY_BUFFER_PERCENT,
     MAX_SCALING_FACTOR,
-    DEFAULT_SYNC_INTERVAL,
-    HYPERLIQUID_API_URL
+    DEFAULT_SYNC_INTERVAL
 } from './config.js';
 import { state, updateStats } from './state.js';
 import { SymbolUtils, log } from './utils.js';
@@ -25,7 +24,6 @@ import {
 } from './moonlander-service.js';
 
 // Module-level variables
-let monitorExchange = null;
 let lastTradeTimestamp = null;
 
 // Calculate target positions based on trader positions and available balance
@@ -342,17 +340,6 @@ export async function startMonitoring() {
 
     try {
         log('info', '🚀 Initializing monitor...');
-
-        // Create exchange for fetching public data
-        const ccxt = window.ccxt;
-        monitorExchange = new ccxt.hyperliquid({
-            urls: {
-                api: {
-                    public: HYPERLIQUID_API_URL,
-                    private: HYPERLIQUID_API_URL
-                }
-            }
-        });
 
         // Fetch wallet balance if private key provided
         const moonlanderWallet = getMoonlanderWallet();

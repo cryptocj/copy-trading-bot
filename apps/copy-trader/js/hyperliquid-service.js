@@ -7,9 +7,9 @@ import { log } from './utils.js';
 import { state } from './state.js';
 
 // Fetch last trade timestamp for trader
-export async function fetchLastTradeTimestamp(traderAddress, exchange) {
+export async function fetchLastTradeTimestamp(traderAddress) {
     try {
-        const response = await fetch(`${exchange.urls.api.public}/info`, {
+        const response = await fetch(`${HYPERLIQUID_API_URL}/info`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -33,9 +33,9 @@ export async function fetchLastTradeTimestamp(traderAddress, exchange) {
 }
 
 // Fetch trader's open orders (for stop loss and take profit)
-export async function fetchTraderOrders(traderAddress, exchange) {
+export async function fetchTraderOrders(traderAddress) {
     try {
-        const response = await fetch(`${exchange.urls.api.public}/info`, {
+        const response = await fetch(`${HYPERLIQUID_API_URL}/info`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -53,9 +53,9 @@ export async function fetchTraderOrders(traderAddress, exchange) {
 }
 
 // Fetch user fills (trade history) to get position open timestamps
-export async function fetchUserFills(userAddress, exchange) {
+export async function fetchUserFills(userAddress) {
     try {
-        const response = await fetch(`${exchange.urls.api.public}/info`, {
+        const response = await fetch(`${HYPERLIQUID_API_URL}/info`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -73,11 +73,11 @@ export async function fetchUserFills(userAddress, exchange) {
 }
 
 // Fetch trader positions with enriched data (stop loss, take profit, timestamps)
-export async function fetchTraderPositions(traderAddress, exchange) {
+export async function fetchTraderPositions(traderAddress) {
     try {
         // Fetch positions, orders, and fills in parallel for better performance
         const [positionsResponse, orders, fills] = await Promise.all([
-            fetch(`${exchange.urls.api.public}/info`, {
+            fetch(`${HYPERLIQUID_API_URL}/info`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -85,8 +85,8 @@ export async function fetchTraderPositions(traderAddress, exchange) {
                     user: traderAddress,
                 }),
             }),
-            fetchTraderOrders(traderAddress, exchange),
-            fetchUserFills(traderAddress, exchange)
+            fetchTraderOrders(traderAddress),
+            fetchUserFills(traderAddress)
         ]);
 
         const data = await positionsResponse.json();
