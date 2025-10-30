@@ -11,6 +11,7 @@ import {
   PYTH_PRICE_IDS,
 } from './moonlander-config.js';
 import {
+  MIN_COPY_BALANCE,
   DEFAULT_SLIPPAGE_PERCENT,
   DEFAULT_BROKER_ID,
   GAS_LIMIT_OPEN_TRADE,
