@@ -107,8 +107,9 @@ export async function fetchTraderPositions(traderAddress) {
                 );
 
                 if (positionFills.length > 0) {
-                    // Get earliest fill for this position (position open time)
-                    timestamp = positionFills[positionFills.length - 1].time;
+                    // Sort by time descending and get the most recent fill
+                    positionFills.sort((a, b) => b.time - a.time);
+                    timestamp = positionFills[0].time; // Unix timestamp in milliseconds
                 }
 
                 const entryPrice = parseFloat(pos.position.entryPx);
