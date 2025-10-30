@@ -1577,12 +1577,6 @@
 
         // Update balance info display
         function updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, userBalance, dynamicSafetyBuffer, scalingFactor, userFreeBalance = null, traderFreeBalance = null) {
-            console.log('🔍 updateBalanceInfo called with:');
-            console.log('  traderAccountData:', traderAccountData);
-            console.log('  traderTotalMargin:', traderTotalMargin);
-            console.log('  traderFreeBalance:', traderFreeBalance);
-            console.log('  lastTraderPositions:', lastTraderPositions);
-
             // Trader balance info
             const traderTotal = parseFloat(traderAccountData.marginSummary.accountValue);
             // For Moonlander traders: Available = wallet free balance (not affected by PnL)
@@ -1590,19 +1584,10 @@
             const traderAvailable = traderFreeBalance !== null ? traderFreeBalance : traderTotal - traderTotalMargin;
             const traderRatio = traderTotal > 0 ? (traderTotalMargin / traderTotal) * 100 : 0;
 
-            console.log('🔍 Calculated trader values:');
-            console.log('  traderTotal:', traderTotal);
-            console.log('  traderAvailable:', traderAvailable);
-            console.log('  traderRatio:', traderRatio);
-
             // Calculate trader total position value and PnL
             const traderPositionValue = lastTraderPositions.reduce((sum, pos) => sum + (pos.size * pos.entryPrice), 0);
             const traderTotalPnl = lastTraderPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl || 0), 0);
             const traderPnlClass = traderTotalPnl >= 0 ? 'text-green-400' : 'text-red-400';
-
-            console.log('🔍 Trader position metrics:');
-            console.log('  traderPositionValue:', traderPositionValue);
-            console.log('  traderTotalPnl:', traderTotalPnl);
 
             elements.balanceTraderTotal.textContent = `$${traderTotal.toFixed(2)}`;
             elements.balanceTraderAvailable.textContent = `$${traderAvailable.toFixed(2)}`;
@@ -1694,18 +1679,13 @@
             // Fetch trader positions based on platform
             if (traderPlatform === 'moonlander') {
                 // Fetch from Moonlander trader - API already provides PnL
-                console.log('🔍 Fetching Moonlander trader balance for:', traderAddress);
                 const traderBalanceInfo = await fetchMoonlanderBalance(traderAddress);
-                console.log('🔍 Trader balance info:', traderBalanceInfo);
 
                 // Moonlander API provides positions with PnL already calculated
                 traderPositions = await fetchMoonlanderPositions(traderAddress);
-                console.log('🔍 Trader positions count:', traderPositions.length);
-                console.log('🔍 Trader positions:', traderPositions);
 
                 // Store trader's free balance for display
                 traderFreeBalance = traderBalanceInfo.freeBalance;
-                console.log('🔍 Trader free balance:', traderFreeBalance);
 
                 // Create account data structure with full balance
                 traderAccountData = {
@@ -1713,7 +1693,6 @@
                         accountValue: traderBalanceInfo.totalEquity.toString()
                     }
                 };
-                console.log('🔍 Trader account data:', traderAccountData);
             } else {
                 // Fetch from Hyperliquid trader (default)
                 const result = await fetchTraderPositions(traderAddress);
@@ -1721,20 +1700,20 @@
                 traderAccountData = result.accountData;
             }
 
-            let userAccountData = null;
             const moonlanderWallet = getMoonlanderWallet();
 
             if (moonlanderWallet) {
                 // Moonlander API provides positions with PnL already calculated
                 userPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
-
-                // Create user account data structure for balance display
-                userAccountData = {
-                    marginSummary: {
-                        accountValue: balanceInfo.totalEquity.toString()
-                    }
-                };
             }
+
+            // Always create user account data structure for balance display
+            // Use balanceInfo (user's balance) regardless of whether wallet is configured
+            const userAccountData = {
+                marginSummary: {
+                    accountValue: balanceInfo.totalEquity.toString()
+                }
+            };
 
             return { traderPositions, traderAccountData, userAccountData, traderFreeBalance };
         }
@@ -1795,6 +1774,9 @@
                 // Fetch current positions for processing
                 const { traderPositions, traderAccountData, userAccountData, traderFreeBalance } =
                     await fetchAllPositions(traderAddress, balanceInfo);
+
+                // Update lastTraderPositions BEFORE calculateTargetPositions so updateBalanceInfo has access to it
+                lastTraderPositions = [...traderPositions];
 
                 // Calculate trader's total margin (same as positionSyncer.js)
                 const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
