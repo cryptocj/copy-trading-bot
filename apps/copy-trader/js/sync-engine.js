@@ -30,7 +30,8 @@ export function calculateTargetPositions(
   traderAccountData = null,
   userAccountData = null,
   userFreeBalance = null,
-  traderFreeBalance = null
+  traderFreeBalance = null,
+  userPositions = []
 ) {
   if (!traderPositions || traderPositions.length === 0) return [];
 
@@ -130,7 +131,9 @@ export function calculateTargetPositions(
       dynamicSafetyBuffer,
       scalingFactor,
       userFreeBalance,
-      traderFreeBalance
+      traderFreeBalance,
+      traderPositions,
+      userPositions
     );
   }
 
@@ -283,7 +286,9 @@ export async function performSync() {
             0,
             0,
             balanceInfo.freeBalance,
-            traderFreeBalance
+            traderFreeBalance,
+            traderPositions,
+            state.userPositions
           );
         }
 
@@ -324,7 +329,8 @@ export async function performSync() {
       traderAccountData,
       userAccountData,
       balanceInfo.freeBalance,
-      traderFreeBalance
+      traderFreeBalance,
+      state.userPositions
     );
 
     // Calculate required actions
