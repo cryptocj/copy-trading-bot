@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Moonlander Timestamp Matching</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #4a9eff;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background: #3a8eef;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .info { color: #60a5fa; }
+        .warning { color: #fbbf24; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+        th {
+            background: #333;
+            font-weight: bold;
+        }
+        .long { color: #4ade80; }
+        .short { color: #f87171; }
+        pre {
+            background: #0f0f0f;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Moonlander Timestamp Matching</h1>
+        <p class="info">Tests trade history fetching with multiple status parameters and position timestamp matching.</p>
+
+        <div class="section">
+            <h3>Enter Moonlander Wallet Address:</h3>
+            <input
+                type="text"
+                id="walletAddress"
+                placeholder="Enter wallet address (0x...)"
+                style="width: 500px; padding: 8px; background: #333; border: 1px solid #555; color: #fff; font-family: monospace;"
+            />
+            <button onclick="testWallet()">Test Wallet</button>
+        </div>
+
+        <div id="loading" class="section" style="display: none;">
+            <div class="info">⏳ Loading data...</div>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const MOONLANDER_API_BASE = 'https://public-api.moonlander.trade/v1';
+
+        async function fetchTradingPairs() {
+            const response = await fetch(`${MOONLANDER_API_BASE}/trading-pairs?chain=CRONOS`);
+            const data = await response.json();
+            const pairs = data.items || [];
+
+            const mapping = {};
+            pairs.forEach(pair => {
+                mapping[pair.trading_pair_id.toLowerCase()] = pair.pair_name;
+            });
+
+            return mapping;
+        }
+
+        async function fetchTradeHistory(walletAddress) {
+            // Try fetching trades for each status separately and combine results
+            const statuses = ['CREATED', 'UPDATED', 'EXECUTED', 'CLOSED', 'CANCELLED', 'LIQUIDATED'];
+            const allTrades = [];
+            const tradeIds = new Set(); // To avoid duplicates
+
+            console.log('Fetching trade history for all statuses...');
+
+            for (const status of statuses) {
+                try {
+                    const url = `${MOONLANDER_API_BASE}/user/${walletAddress}/trades?chain=CRONOS&limit=100&status=${status}`;
+                    console.log(`Fetching trades with status=${status}`);
+
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const trades = data.items || [];
+                        console.log(`  Found ${trades.length} trades with status ${status}`);
+
+                        // Add unique trades only
+                        trades.forEach(trade => {
+                            if (!tradeIds.has(trade.trade_id)) {
+                                tradeIds.add(trade.trade_id);
+                                allTrades.push(trade);
+                            }
+                        });
+                    } else {
+                        console.warn(`  Failed to fetch trades with status ${status}: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.warn(`  Error fetching trades with status ${status}:`, error.message);
+                }
+            }
+
+            console.log(`Total unique trades fetched: ${allTrades.length}`);
+            return allTrades;
+        }
+
+        async function fetchPositions(walletAddress) {
+            const response = await fetch(`${MOONLANDER_API_BASE}/user/${walletAddress}/positions?chain=CRONOS`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.items || [];
+        }
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '-';
+
+            // Convert seconds to milliseconds if needed
+            const ts = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
+            const date = new Date(ts);
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+
+        async function testWallet() {
+            const walletAddress = document.getElementById('walletAddress').value.trim();
+
+            if (!walletAddress) {
+                alert('Please enter a wallet address');
+                return;
+            }
+
+            if (!walletAddress.startsWith('0x') || walletAddress.length !== 42) {
+                alert('Invalid address format. Should be 0x followed by 40 hex characters.');
+                return;
+            }
+
+            const loadingDiv = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                console.log('Testing wallet:', walletAddress);
+
+                // Fetch all data in parallel
+                const [tradingPairs, positions, tradeHistory] = await Promise.all([
+                    fetchTradingPairs(),
+                    fetchPositions(walletAddress),
+                    fetchTradeHistory(walletAddress)
+                ]);
+
+                console.log('Trading pairs loaded:', Object.keys(tradingPairs).length);
+                console.log('Positions loaded:', positions.length);
+                console.log('Trade history loaded:', tradeHistory.length);
+
+                loadingDiv.style.display = 'none';
+
+                let html = `
+                    <div class="section">
+                        <h3 class="success">✅ Data Loaded Successfully</h3>
+                        <p><strong>Wallet:</strong> ${walletAddress}</p>
+                        <p><strong>Positions:</strong> ${positions.length}</p>
+                        <p><strong>Trade History:</strong> ${tradeHistory.length} trades</p>
+                    </div>
+                `;
+
+                // Show trade history status breakdown
+                const statusCounts = {};
+                const operationTypeCounts = {};
+
+                tradeHistory.forEach(trade => {
+                    const status = trade.status || 'UNKNOWN';
+                    statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+                    const opType = trade.operation_type || 'UNKNOWN';
+                    operationTypeCounts[opType] = (operationTypeCounts[opType] || 0) + 1;
+                });
+
+                html += `
+                    <div class="section">
+                        <h3>Trade History Breakdown:</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4>Status Breakdown:</h4>
+                                <table style="width: auto;">
+                                    <thead>
+                                        <tr>
+                                            <th>Status</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                `;
+
+                for (const [status, count] of Object.entries(statusCounts)) {
+                    html += `
+                        <tr>
+                            <td><strong>${status}</strong></td>
+                            <td>${count}</td>
+                        </tr>
+                    `;
+                }
+
+                html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div>
+                                <h4>Operation Type Breakdown:</h4>
+                                <table style="width: auto;">
+                                    <thead>
+                                        <tr>
+                                            <th>Operation Type</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                `;
+
+                for (const [opType, count] of Object.entries(operationTypeCounts)) {
+                    html += `
+                        <tr>
+                            <td><strong>${opType}</strong></td>
+                            <td>${count}</td>
+                        </tr>
+                    `;
+                }
+
+                html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                if (positions.length === 0) {
+                    html += `
+                        <div class="section warning">
+                            ℹ️ No open positions found for this wallet.
+                        </div>
+                    `;
+                } else {
+                    // Process positions and match with trades
+                    html += `
+                        <div class="section">
+                            <h3>Position-Trade Timestamp Matching:</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Size</th>
+                                        <th>Entry Price</th>
+                                        <th>Timestamp</th>
+                                        <th>Matched Trades</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    for (const pos of positions) {
+                        const pairIdLower = pos.trading_pair_id.toLowerCase();
+                        const symbol = tradingPairs[pairIdLower] || 'UNKNOWN';
+                        const side = pos.is_long ? 'LONG' : 'SHORT';
+                        const sideClass = pos.is_long ? 'long' : 'short';
+
+                        // Match trades to position
+                        // Look for EXECUTED status trades that opened this position
+                        const positionTrades = tradeHistory.filter(trade =>
+                            trade.trading_pair_id.toLowerCase() === pairIdLower &&
+                            trade.is_long === pos.is_long &&
+                            trade.status === 'EXECUTED'
+                        );
+
+                        let timestamp = null;
+                        let matchStatus = '<span class="error">❌ No match</span>';
+
+                        if (positionTrades.length > 0) {
+                            positionTrades.sort((a, b) => b.timestamp - a.timestamp);
+                            timestamp = positionTrades[0].timestamp;
+                            matchStatus = '<span class="success">✅ Matched</span>';
+                        }
+
+                        const timestampDisplay = formatTimestamp(timestamp);
+
+                        html += `
+                            <tr>
+                                <td><strong>${symbol}</strong></td>
+                                <td class="${sideClass}">${side}</td>
+                                <td>${parseFloat(pos.position_size).toFixed(4)}</td>
+                                <td>$${parseFloat(pos.entry_price).toFixed(4)}</td>
+                                <td>${timestampDisplay}</td>
+                                <td>${positionTrades.length}</td>
+                                <td>${matchStatus}</td>
+                            </tr>
+                        `;
+                    }
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                // Show recent trades sorted by timestamp
+                html += `
+                    <div class="section">
+                        <h3>Recent Trades (Sorted by Timestamp, Newest First):</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Operation</th>
+                                    <th>Status</th>
+                                    <th>Entry Price</th>
+                                    <th>Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                // Sort trades by timestamp descending (newest first) and take first 100
+                const recentTrades = [...tradeHistory]
+                    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+                    .slice(0, 100);
+                for (const trade of recentTrades) {
+                    const pairIdLower = trade.trading_pair_id.toLowerCase();
+                    const symbol = tradingPairs[pairIdLower] || 'UNKNOWN';
+                    const side = trade.is_long ? 'LONG' : 'SHORT';
+                    const sideClass = trade.is_long ? 'long' : 'short';
+                    const timestampDisplay = formatTimestamp(trade.timestamp);
+
+                    html += `
+                        <tr>
+                            <td>${timestampDisplay}</td>
+                            <td>${symbol}</td>
+                            <td class="${sideClass}">${side}</td>
+                            <td>${trade.operation_type || '-'}</td>
+                            <td>${trade.status}</td>
+                            <td>$${parseFloat(trade.entry_price || 0).toFixed(4)}</td>
+                            <td>${parseFloat(trade.position_size || 0).toFixed(4)}</td>
+                        </tr>
+                    `;
+                }
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultsDiv.innerHTML = `
+                    <div class="section error">
+                        <h3>❌ Error</h3>
+                        <p><strong>Wallet:</strong> ${walletAddress}</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <pre>${error.stack || 'No stack trace'}</pre>
+                    </div>
+                `;
+                console.error('Full error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

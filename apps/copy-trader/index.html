@@ -74,6 +74,14 @@
             font-size: 0.75rem;
         }
 
+        /* Time column width */
+        .table-container thead tr th:first-child,
+        .table-container tbody tr td:first-child {
+            min-width: 160px;
+            width: 160px;
+            white-space: nowrap;
+        }
+
         /* Side badges */
         .side-long {
             color: #10b981;
@@ -337,6 +345,7 @@
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Time</th>
                                     <th>Symbol</th>
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
@@ -352,7 +361,7 @@
                                 </tr>
                             </thead>
                             <tbody id="trader-positions-body">
-                                <tr><td colspan="12" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                                <tr><td colspan="13" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -381,6 +390,7 @@
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Time</th>
                                     <th>Symbol</th>
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
@@ -396,13 +406,14 @@
                                 </tr>
                             </thead>
                             <tbody id="user-positions-body">
-                                <tr><td colspan="12" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
+                                <tr><td colspan="13" class="text-center text-gray-500 py-4">Not monitoring</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </section>
         </div>
+
 
         <!-- Actions Panel -->
         <section class="bg-dark-700 rounded-lg shadow-lg mb-4">
@@ -415,7 +426,6 @@
                 </div>
             </div>
         </section>
-
         <!-- Activity Log -->
         <section class="bg-dark-700 rounded-lg shadow-lg">
             <div class="p-4 border-b border-dark-500">
@@ -722,8 +732,24 @@
             const liquidationPriceDisplay = liquidationPrice > 0 ? `<span class="text-orange-400">$${liquidationPrice.toLocaleString()}</span>` : '-';
             const positionValueDisplay = `$${positionValue.toLocaleString()}`;
 
+            // Format position timestamp in consistent format: YYYY-MM-DD HH:MM:SS
+            let timestampDisplay = '-';
+            if (pos.timestamp) {
+                const posDate = new Date(pos.timestamp);
+                if (!isNaN(posDate.getTime())) {
+                    const year = posDate.getFullYear();
+                    const month = String(posDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(posDate.getDate()).padStart(2, '0');
+                    const hours = String(posDate.getHours()).padStart(2, '0');
+                    const minutes = String(posDate.getMinutes()).padStart(2, '0');
+                    const seconds = String(posDate.getSeconds()).padStart(2, '0');
+                    timestampDisplay = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                }
+            }
+
             return `
                 <tr>
+                    <td class="text-xs text-gray-500">${timestampDisplay}</td>
                     <td class="font-semibold">${pos.symbol}</td>
                     <td><span class="${sideClass}">${sideText}</span></td>
                     <td class="text-right font-mono">${pos.size.toFixed(4)}</td>
@@ -788,22 +814,43 @@
             }
         }
 
-        async function fetchTraderPositions(traderAddress) {
+        // Fetch user fills (trade history) to get position open timestamps
+        async function fetchUserFills(userAddress) {
             try {
-                // Fetch positions via Hyperliquid API (same as positionSyncer.js)
                 const response = await fetch(`${monitorExchange.urls.api.public}/info`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        type: 'clearinghouseState',
-                        user: traderAddress,
+                        type: 'userFills',
+                        user: userAddress,
                     }),
                 });
 
-                const data = await response.json();
+                const fills = await response.json();
+                return fills || [];
+            } catch (error) {
+                console.warn(`Failed to fetch user fills: ${error.message}`);
+                return [];
+            }
+        }
 
-                // Fetch open orders to get stop loss and take profit levels
-                const orders = await fetchTraderOrders(traderAddress);
+        async function fetchTraderPositions(traderAddress) {
+            try {
+                // Fetch positions, orders, and fills in parallel for better performance
+                const [positionsResponse, orders, fills] = await Promise.all([
+                    fetch(`${monitorExchange.urls.api.public}/info`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'clearinghouseState',
+                            user: traderAddress,
+                        }),
+                    }),
+                    fetchTraderOrders(traderAddress),
+                    fetchUserFills(traderAddress)
+                ]);
+
+                const data = await positionsResponse.json();
 
                 // Convert to standard format
                 const positions = data.assetPositions
@@ -812,6 +859,27 @@
                         const symbol = pos.position.coin;
                         const side = parseFloat(pos.position.szi) > 0 ? 'long' : 'short';
                         const size = Math.abs(parseFloat(pos.position.szi));
+
+                        // Find position open timestamp from fills first (needed for order matching)
+                        let timestamp = null;
+                        const positionFills = fills.filter(fill =>
+                            fill.coin === symbol &&
+                            ((side === 'long' && fill.side === 'B') || (side === 'short' && fill.side === 'A'))
+                        );
+
+                        console.log(`[Hyperliquid] ${symbol} ${side.toUpperCase()}: Found ${positionFills.length} matching fills`);
+
+                        if (positionFills.length > 0) {
+                            // Sort by time descending and get the most recent fill
+                            positionFills.sort((a, b) => b.time - a.time);
+                            timestamp = positionFills[0].time; // Unix timestamp in milliseconds
+
+                            const timestampDate = new Date(timestamp);
+                            console.log(`[Hyperliquid] ${symbol} ${side.toUpperCase()}: Using timestamp ${timestamp} (${timestampDate.toISOString()})`);
+                            console.log(`[Hyperliquid] ${symbol} ${side.toUpperCase()}: Most recent fill:`, positionFills[0]);
+                        } else {
+                            console.warn(`[Hyperliquid] ${symbol} ${side.toUpperCase()}: No matching fills found!`);
+                        }
 
                         // Find stop loss and take profit from trigger orders
                         let stopLoss = null;
@@ -839,10 +907,29 @@
                             if (side === 'long' && order.side !== 'A') return false;
                             if (side === 'short' && order.side !== 'B') return false;
 
+                            // If we have position timestamp, prefer orders created after position opened
+                            // (orders placed within 5 minutes of position opening are likely related)
+                            if (timestamp && order.timestamp) {
+                                const timeDiff = Math.abs(order.timestamp - timestamp);
+                                const fiveMinutes = 5 * 60 * 1000;
+                                if (timeDiff > fiveMinutes) {
+                                    // Order is too old/new, but don't exclude it entirely
+                                    // Just give it lower priority in sorting
+                                    order._timeDiffPenalty = timeDiff;
+                                }
+                            }
+
                             return true;
                         }).sort((a, b) => {
-                            // Sort by timestamp descending (most recent first)
-                            // Use oid (order ID) as proxy for timestamp - higher oid = newer order
+                            // Sort by time proximity to position open first, then by order ID
+                            const aPenalty = a._timeDiffPenalty || 0;
+                            const bPenalty = b._timeDiffPenalty || 0;
+
+                            if (aPenalty !== bPenalty) {
+                                return aPenalty - bPenalty; // Lower penalty (closer time) first
+                            }
+
+                            // If time proximity is similar, use order ID (higher = newer)
                             return (b.oid || 0) - (a.oid || 0);
                         });
 
@@ -897,6 +984,7 @@
                             margin: parseFloat(pos.position.marginUsed),
                             stopLoss,
                             takeProfit,
+                            timestamp // Position open time from fills
                         };
                     });
 
@@ -1007,15 +1095,67 @@
             }
         }
 
+        // Fetch Moonlander trade history
+        async function fetchMoonlanderTradeHistory(userAddress) {
+            try {
+                // API requires single status parameter - fetch each status separately and combine
+                const statuses = ['CREATED', 'UPDATED', 'EXECUTED', 'CLOSED', 'CANCELLED', 'LIQUIDATED'];
+                const allTrades = [];
+                const tradeIds = new Set(); // To avoid duplicates
+
+                console.log(`[Moonlander] Fetching trade history for all statuses...`);
+
+                // Fetch trades for each status in parallel
+                const fetchPromises = statuses.map(async (status) => {
+                    try {
+                        const url = `https://public-api.moonlander.trade/v1/user/${userAddress}/trades?chain=CRONOS&limit=100&status=${status}`;
+                        const response = await fetch(url);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            return { status, trades: data.items || [] };
+                        } else {
+                            console.warn(`[Moonlander] Failed to fetch trades with status ${status}: ${response.status}`);
+                            return { status, trades: [] };
+                        }
+                    } catch (error) {
+                        console.warn(`[Moonlander] Error fetching trades with status ${status}: ${error.message}`);
+                        return { status, trades: [] };
+                    }
+                });
+
+                // Wait for all requests to complete
+                const results = await Promise.all(fetchPromises);
+
+                // Combine results and remove duplicates
+                results.forEach(({ status, trades }) => {
+                    console.log(`[Moonlander] Found ${trades.length} trades with status ${status}`);
+                    trades.forEach(trade => {
+                        if (!tradeIds.has(trade.trade_id)) {
+                            tradeIds.add(trade.trade_id);
+                            allTrades.push(trade);
+                        }
+                    });
+                });
+
+                console.log(`[Moonlander] Total unique trades fetched: ${allTrades.length}`);
+                return allTrades;
+            } catch (error) {
+                console.warn(`[Moonlander] Failed to fetch trade history: ${error.message}`);
+                return [];
+            }
+        }
+
         // Fetch Moonlander positions (using public API)
         async function fetchMoonlanderPositions(userAddress) {
             try {
                 log('info', `📍 Moonlander wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
 
-                // Fetch trading pairs mapping and positions in parallel
-                const [tradingPairs, positionsResponse] = await Promise.all([
+                // Fetch trading pairs mapping, positions, and trade history in parallel
+                const [tradingPairs, positionsResponse, tradeHistory] = await Promise.all([
                     fetchMoonlanderTradingPairs(),
-                    fetch(`https://public-api.moonlander.trade/v1/user/${userAddress}/positions?chain=CRONOS`)
+                    fetch(`https://public-api.moonlander.trade/v1/user/${userAddress}/positions?chain=CRONOS`),
+                    fetchMoonlanderTradeHistory(userAddress)
                 ]);
 
                 if (!positionsResponse.ok) {
@@ -1038,6 +1178,55 @@
                     const leverage = parseFloat(pos.leverage);
                     const pnl = parseFloat(pos.pnl_after_fee); // Use PnL after fees
 
+                    // Find position open timestamp from trade history
+                    // Match by trading_pair_id, is_long, and EXECUTED status
+                    let timestamp = null;
+                    const positionTrades = tradeHistory.filter(trade =>
+                        trade.trading_pair_id.toLowerCase() === pairIdLower &&
+                        trade.is_long === pos.is_long &&
+                        trade.status === 'EXECUTED'
+                    );
+
+                    const side = pos.is_long ? 'LONG' : 'SHORT';
+                    console.log(`[Moonlander] ${symbol} ${side}: Found ${positionTrades.length} matching EXECUTED trades`);
+
+                    if (positionTrades.length > 0) {
+                        // Sort by timestamp descending and get the most recent open trade
+                        positionTrades.sort((a, b) => b.timestamp - a.timestamp);
+                        const rawTimestamp = positionTrades[0].timestamp;
+
+                        // Convert Unix timestamp (seconds) to milliseconds
+                        timestamp = rawTimestamp < 10000000000 ? rawTimestamp * 1000 : rawTimestamp;
+
+                        const timestampDate = new Date(timestamp);
+                        console.log(`[Moonlander] ${symbol} ${side}: Using timestamp ${timestamp} (${timestampDate.toISOString()})`);
+                        console.log(`[Moonlander] ${symbol} ${side}: Most recent trade:`, positionTrades[0]);
+                    } else {
+                        console.warn(`[Moonlander] ${symbol} ${side}: No matching trades found in history!`);
+                    }
+
+                    // Fallback: try position fields if no trade match found
+                    if (!timestamp) {
+                        console.log(`[Moonlander] ${symbol} ${side}: Trying fallback to position fields...`);
+                        const rawTimestamp = pos.created_at || pos.opened_at || pos.timestamp || pos.open_time;
+                        if (rawTimestamp) {
+                            console.log(`[Moonlander] ${symbol} ${side}: Found fallback timestamp:`, rawTimestamp);
+                            if (typeof rawTimestamp === 'string') {
+                                timestamp = new Date(rawTimestamp).getTime();
+                            } else if (typeof rawTimestamp === 'number') {
+                                timestamp = rawTimestamp < 10000000000 ? rawTimestamp * 1000 : rawTimestamp;
+                            }
+                        } else {
+                            console.warn(`[Moonlander] ${symbol} ${side}: No timestamp found in position fields either!`);
+                        }
+                    }
+
+                    // Final fallback to current time if parsing failed
+                    if (!timestamp || isNaN(timestamp)) {
+                        console.warn(`[Moonlander] ${symbol} ${side}: Using current time as final fallback`);
+                        timestamp = Date.now();
+                    }
+
                     return {
                         tradeHash: pos.position_id,
                         symbol,
@@ -1052,7 +1241,8 @@
                         stopLoss: 0, // API doesn't provide this in clear format
                         takeProfit: pos.take_profit ? parseFloat(pos.take_profit) : 0,
                         fundingFee: parseFloat(pos.funding_fee),
-                        liquidationPrice: parseFloat(pos.liq_price)
+                        liquidationPrice: parseFloat(pos.liq_price),
+                        timestamp // Position open time in milliseconds
                     };
                 });
 
