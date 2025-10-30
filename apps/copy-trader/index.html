@@ -259,12 +259,6 @@
                     </select>
                 </div>
 
-                <div id="custom-address-container" style="display: none;">
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Custom Trader Address</label>
-                    <input type="text" id="trader-address" placeholder="0x..." required
-                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
-                </div>
-
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Trader Platform</label>
                     <select id="trader-platform"
@@ -273,6 +267,14 @@
                         <option value="moonlander">Moonlander (Cronos)</option>
                     </select>
                 </div>
+                
+                <div id="custom-address-container" style="display: none;">
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Custom Trader Address</label>
+                    <input type="text" id="trader-address" placeholder="0x..." required
+                        class="w-full px-2.5 py-1.5 text-sm bg-dark-800 border border-dark-500 rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-200">
+                </div>
+
+
 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">
@@ -973,53 +975,84 @@
             }
         ];
 
-        // Fetch Moonlander positions (with contract interaction)
+        // Cache for Moonlander trading pairs (symbol mapping)
+        let moonlanderTradingPairsCache = null;
+
+        // Fetch Moonlander trading pairs for symbol mapping
+        async function fetchMoonlanderTradingPairs() {
+            if (moonlanderTradingPairsCache) {
+                return moonlanderTradingPairsCache;
+            }
+
+            try {
+                const response = await fetch('https://public-api.moonlander.trade/v1/trading-pairs?chain=CRONOS');
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}`);
+                }
+
+                const data = await response.json();
+                const pairs = data.items || [];
+
+                // Create mapping: trading_pair_id -> pair_name
+                const mapping = {};
+                pairs.forEach(pair => {
+                    mapping[pair.trading_pair_id.toLowerCase()] = pair.pair_name;
+                });
+
+                moonlanderTradingPairsCache = mapping;
+                return mapping;
+            } catch (error) {
+                console.error('Failed to fetch trading pairs:', error);
+                return {};
+            }
+        }
+
+        // Fetch Moonlander positions (using public API)
         async function fetchMoonlanderPositions(userAddress) {
             try {
                 log('info', `📍 Moonlander wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
 
-                // Create provider and contract
-                const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
-                const tradingReader = new ethers.Contract(
-                    MOONLANDER_CONFIG.diamondAddress,
-                    TRADING_READER_ABI,
-                    provider
-                );
+                // Fetch trading pairs mapping and positions in parallel
+                const [tradingPairs, positionsResponse] = await Promise.all([
+                    fetchMoonlanderTradingPairs(),
+                    fetch(`https://public-api.moonlander.trade/v1/user/${userAddress}/positions?chain=CRONOS`)
+                ]);
 
-                // Fetch positions (ZeroAddress = all margin tokens)
-                const positions = await tradingReader.getPositionsV2(userAddress, ethers.ZeroAddress);
-
-                // Create address to symbol mapping
-                const addressToSymbol = {};
-                for (const [symbol, address] of Object.entries(MOONLANDER_CONFIG.pairAddresses)) {
-                    addressToSymbol[address.toLowerCase()] = symbol;
+                if (!positionsResponse.ok) {
+                    throw new Error(`API returned ${positionsResponse.status}: ${positionsResponse.statusText}`);
                 }
 
-                // Parse positions
+                const data = await positionsResponse.json();
+                const positions = data.items || [];
+
+                // Parse positions from API response
                 const parsedPositions = positions.map(pos => {
-                    const pairAddress = pos.pairBase.toLowerCase();
-                    const symbol = addressToSymbol[pairAddress] || pos.pairBase;
+                    // Get symbol from trading pairs mapping
+                    const pairIdLower = pos.trading_pair_id.toLowerCase();
+                    const symbol = tradingPairs[pairIdLower] || 'UNKNOWN';
 
-                    const size = Number(pos.qty) / QTY_DIVISOR;
-                    const entryPrice = Number(pos.entryPrice) / PRICE_DIVISOR;
-                    const margin = Number(pos.margin) / USDC_DIVISOR;
-
-                    const positionValue = size * entryPrice;
-                    const leverage = margin > 0 ? positionValue / margin : 0;
+                    const size = parseFloat(pos.position_size);
+                    const entryPrice = parseFloat(pos.entry_price);
+                    const marketPrice = parseFloat(pos.market_price);
+                    const margin = parseFloat(pos.collateral);
+                    const leverage = parseFloat(pos.leverage);
+                    const pnl = parseFloat(pos.pnl_after_fee); // Use PnL after fees
 
                     return {
-                        tradeHash: pos.positionHash,
+                        tradeHash: pos.position_id,
                         symbol,
-                        pairAddress: pos.pairBase,
-                        side: pos.isLong ? 'long' : 'short',
+                        pairAddress: pos.trading_pair_id,
+                        side: pos.is_long ? 'long' : 'short',
                         size,
                         entryPrice,
+                        currentPrice: marketPrice,
                         margin,
                         leverage,
-                        stopLoss: Number(pos.stopLoss) / PRICE_DIVISOR,
-                        takeProfit: Number(pos.takeProfit) / PRICE_DIVISOR,
-                        fundingFee: Number(pos.fundingFee) / USDC_DIVISOR,
-                        openTimestamp: Number(pos.timestamp)
+                        unrealizedPnl: pnl, // API already provides PnL!
+                        stopLoss: 0, // API doesn't provide this in clear format
+                        takeProfit: pos.take_profit ? parseFloat(pos.take_profit) : 0,
+                        fundingFee: parseFloat(pos.funding_fee),
+                        liquidationPrice: parseFloat(pos.liq_price)
                     };
                 });
 
@@ -1457,7 +1490,7 @@
         }
 
         // Calculate target positions (from positionCalculator.js)
-        function calculateTargetPositions(traderPositions, copyBalance, traderAccountData = null, userAccountData = null, userFreeBalance = null) {
+        function calculateTargetPositions(traderPositions, copyBalance, traderAccountData = null, userAccountData = null, userFreeBalance = null, traderFreeBalance = null) {
             if (!traderPositions || traderPositions.length === 0) return [];
 
             // Calculate trader's total margin from their actual positions (same as positionCalculator.js)
@@ -1536,23 +1569,40 @@
 
             // Update balance info display if account data is provided
             if (traderAccountData && userAccountData) {
-                updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, copyBalance, dynamicSafetyBuffer, scalingFactor, userFreeBalance);
+                updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, copyBalance, dynamicSafetyBuffer, scalingFactor, userFreeBalance, traderFreeBalance);
             }
 
             return filteredPositions;
         }
 
         // Update balance info display
-        function updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, userBalance, dynamicSafetyBuffer, scalingFactor, userFreeBalance = null) {
+        function updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, userBalance, dynamicSafetyBuffer, scalingFactor, userFreeBalance = null, traderFreeBalance = null) {
+            console.log('🔍 updateBalanceInfo called with:');
+            console.log('  traderAccountData:', traderAccountData);
+            console.log('  traderTotalMargin:', traderTotalMargin);
+            console.log('  traderFreeBalance:', traderFreeBalance);
+            console.log('  lastTraderPositions:', lastTraderPositions);
+
             // Trader balance info
             const traderTotal = parseFloat(traderAccountData.marginSummary.accountValue);
-            const traderAvailable = traderTotal - traderTotalMargin;
+            // For Moonlander traders: Available = wallet free balance (not affected by PnL)
+            // For Hyperliquid traders: Available = total balance - margin
+            const traderAvailable = traderFreeBalance !== null ? traderFreeBalance : traderTotal - traderTotalMargin;
             const traderRatio = traderTotal > 0 ? (traderTotalMargin / traderTotal) * 100 : 0;
+
+            console.log('🔍 Calculated trader values:');
+            console.log('  traderTotal:', traderTotal);
+            console.log('  traderAvailable:', traderAvailable);
+            console.log('  traderRatio:', traderRatio);
 
             // Calculate trader total position value and PnL
             const traderPositionValue = lastTraderPositions.reduce((sum, pos) => sum + (pos.size * pos.entryPrice), 0);
             const traderTotalPnl = lastTraderPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl || 0), 0);
             const traderPnlClass = traderTotalPnl >= 0 ? 'text-green-400' : 'text-red-400';
+
+            console.log('🔍 Trader position metrics:');
+            console.log('  traderPositionValue:', traderPositionValue);
+            console.log('  traderTotalPnl:', traderTotalPnl);
 
             elements.balanceTraderTotal.textContent = `$${traderTotal.toFixed(2)}`;
             elements.balanceTraderAvailable.textContent = `$${traderAvailable.toFixed(2)}`;
@@ -1639,25 +1689,31 @@
         async function fetchAllPositions(traderAddress, balanceInfo) {
             const traderPlatform = elements.traderPlatform.value;
 
-            let traderPositions, traderAccountData;
+            let traderPositions, traderAccountData, traderFreeBalance = null;
 
             // Fetch trader positions based on platform
             if (traderPlatform === 'moonlander') {
-                // Fetch from Moonlander trader
-                const moonlanderPositions = await fetchMoonlanderPositions(traderAddress);
-                traderPositions = await enrichPositionsWithPnL(moonlanderPositions);
+                // Fetch from Moonlander trader - API already provides PnL
+                console.log('🔍 Fetching Moonlander trader balance for:', traderAddress);
+                const traderBalanceInfo = await fetchMoonlanderBalance(traderAddress);
+                console.log('🔍 Trader balance info:', traderBalanceInfo);
 
-                // Calculate total equity from positions
-                const totalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
-                const totalPnl = traderPositions.reduce((sum, pos) => sum + (pos.unrealizedPnl || 0), 0);
-                const totalEquity = totalMargin + totalPnl;
+                // Moonlander API provides positions with PnL already calculated
+                traderPositions = await fetchMoonlanderPositions(traderAddress);
+                console.log('🔍 Trader positions count:', traderPositions.length);
+                console.log('🔍 Trader positions:', traderPositions);
 
-                // Create account data structure
+                // Store trader's free balance for display
+                traderFreeBalance = traderBalanceInfo.freeBalance;
+                console.log('🔍 Trader free balance:', traderFreeBalance);
+
+                // Create account data structure with full balance
                 traderAccountData = {
                     marginSummary: {
-                        accountValue: totalEquity.toString()
+                        accountValue: traderBalanceInfo.totalEquity.toString()
                     }
                 };
+                console.log('🔍 Trader account data:', traderAccountData);
             } else {
                 // Fetch from Hyperliquid trader (default)
                 const result = await fetchTraderPositions(traderAddress);
@@ -1669,9 +1725,8 @@
             const moonlanderWallet = getMoonlanderWallet();
 
             if (moonlanderWallet) {
-                const moonlanderPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
-                // Enrich Moonlander positions with current prices and PnL from Hyperliquid
-                userPositions = await enrichPositionsWithPnL(moonlanderPositions);
+                // Moonlander API provides positions with PnL already calculated
+                userPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
 
                 // Create user account data structure for balance display
                 userAccountData = {
@@ -1681,7 +1736,7 @@
                 };
             }
 
-            return { traderPositions, traderAccountData, userAccountData };
+            return { traderPositions, traderAccountData, userAccountData, traderFreeBalance };
         }
 
         // Perform sync (following test-position-sync.js pattern)
@@ -1709,7 +1764,7 @@
 
                     if (!hasNewTrade) {
                         // No new trades - just refresh position display without adjustments
-                        const { traderPositions, traderAccountData, userAccountData } =
+                        const { traderPositions, traderAccountData, userAccountData, traderFreeBalance } =
                             await fetchAllPositions(traderAddress, balanceInfo);
 
                         // Update position display
@@ -1719,7 +1774,7 @@
                         if (traderAccountData) {
                             const traderTotalMargin = traderPositions.reduce((sum, pos) => sum + pos.margin, 0);
                             const userMargin = userPositions.reduce((sum, pos) => sum + pos.margin, 0);
-                            updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, balanceInfo.totalEquity, 0, 0, balanceInfo.freeBalance);
+                            updateBalanceInfo(traderAccountData, userAccountData, traderTotalMargin, balanceInfo.totalEquity, 0, 0, balanceInfo.freeBalance, traderFreeBalance);
                         }
 
                         log('info', '⏭️  No new trades from trader - skipping adjustment check');
@@ -1738,7 +1793,7 @@
                 }
 
                 // Fetch current positions for processing
-                const { traderPositions, traderAccountData, userAccountData } =
+                const { traderPositions, traderAccountData, userAccountData, traderFreeBalance } =
                     await fetchAllPositions(traderAddress, balanceInfo);
 
                 // Calculate trader's total margin (same as positionSyncer.js)
@@ -1747,7 +1802,7 @@
                 // Use total equity (free + positions) for scaling to match trader's total exposure
                 log('info', `📊 Trader margin: $${traderTotalMargin.toFixed(2)} | User total equity: $${balanceInfo.totalEquity.toFixed(2)}`);
 
-                const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity, traderAccountData, userAccountData, balanceInfo.freeBalance);
+                const targetPositions = calculateTargetPositions(traderPositions, balanceInfo.totalEquity, traderAccountData, userAccountData, balanceInfo.freeBalance, traderFreeBalance);
 
                 // Calculate required actions
                 const actions = calculatePositionDiff(userPositions, targetPositions);
