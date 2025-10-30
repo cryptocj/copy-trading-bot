@@ -75,8 +75,8 @@
         }
 
         /* Time column width */
-        .table-container thead tr th:first-child,
-        .table-container tbody tr td:first-child {
+        .table-container thead tr th:last-child,
+        .table-container tbody tr td:last-child {
             min-width: 160px;
             width: 160px;
             white-space: nowrap;
@@ -345,7 +345,6 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Time</th>
                                     <th>Symbol</th>
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
@@ -358,6 +357,7 @@
                                     <th class="text-right">Margin</th>
                                     <th class="text-right">Position Value</th>
                                     <th class="text-right">Margin %</th>
+                                    <th class="text-right">Time</th>
                                 </tr>
                             </thead>
                             <tbody id="trader-positions-body">
@@ -390,7 +390,6 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Time</th>
                                     <th>Symbol</th>
                                     <th>Side</th>
                                     <th class="text-right">Size</th>
@@ -403,6 +402,7 @@
                                     <th class="text-right">Margin</th>
                                     <th class="text-right">Position Value</th>
                                     <th class="text-right">Margin %</th>
+                                    <th class="text-right">Time</th>
                                 </tr>
                             </thead>
                             <tbody id="user-positions-body">
@@ -749,7 +749,6 @@
 
             return `
                 <tr>
-                    <td class="text-xs text-gray-500">${timestampDisplay}</td>
                     <td class="font-semibold">${pos.symbol}</td>
                     <td><span class="${sideClass}">${sideText}</span></td>
                     <td class="text-right font-mono">${pos.size.toFixed(4)}</td>
@@ -762,6 +761,7 @@
                     <td class="text-right font-mono">$${margin.toFixed(2)}</td>
                     <td class="text-right font-mono text-purple-400">${positionValueDisplay}</td>
                     <td class="text-right font-mono text-blue-400">${marginPercent}</td>
+                    <td class="text-right text-xs text-gray-500">${timestampDisplay}</td>
                 </tr>
             `;
         }
