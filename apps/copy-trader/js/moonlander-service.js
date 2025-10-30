@@ -18,6 +18,13 @@ import {
   GAS_LIMIT_CLOSE_TRADE,
   PYTH_UPDATE_FEE,
   PYTH_API_URL,
+  DECIMALS_USDC,
+  DECIMALS_QTY,
+  DECIMALS_PRICE,
+  STOP_LOSS_PERCENT_LONG,
+  STOP_LOSS_PERCENT_SHORT,
+  TAKE_PROFIT_PERCENT_LONG,
+  TAKE_PROFIT_PERCENT_SHORT,
 } from './config.js';
 import { SymbolUtils, log, calculateAcceptablePrice } from './utils.js';
 import { state } from './state.js';
@@ -65,19 +72,8 @@ export async function fetchMoonlanderPositions(userAddress) {
   try {
     log('info', `📍 Moonlander wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
 
-    // Fetch trading pairs mapping first
+    // Fetch trading pairs mapping
     const tradingPairs = await fetchMoonlanderTradingPairs();
-
-    // Fetch from Moonlander blockchain contract for accurate SL/TP
-    const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
-    const tradingReader = new ethers.Contract(
-      MOONLANDER_CONFIG.diamondAddress,
-      TRADING_READER_ABI,
-      provider
-    );
-
-    // Get positions from contract
-    const contractPositions = await tradingReader.getPositionsV2(userAddress, ethers.ZeroAddress);
 
     // Create reverse mapping: address → symbol (from pairAddresses config)
     const addressToSymbol = {};
@@ -85,39 +81,67 @@ export async function fetchMoonlanderPositions(userAddress) {
       addressToSymbol[address.toLowerCase()] = symbol;
     }
 
-    // Parse positions from contract response
-    return contractPositions.map((pos) => {
-      // Convert pairBase address to symbol using config mapping first
-      const pairAddress = pos.pairBase.toLowerCase();
-      const symbol =
-        addressToSymbol[pairAddress] || tradingPairs[pairAddress] || pos.pair || 'UNKNOWN';
+    // Fetch positions from API (has PnL and current price) and contract (has accurate SL/TP) in parallel
+    const [apiResponse, contractPositions] = await Promise.all([
+      fetch(`https://public-api.moonlander.trade/v1/user/${userAddress}/positions?chain=CRONOS`),
+      (async () => {
+        try {
+          const provider = new ethers.JsonRpcProvider(MOONLANDER_CONFIG.rpcUrl);
+          const tradingReader = new ethers.Contract(
+            MOONLANDER_CONFIG.diamondAddress,
+            TRADING_READER_ABI,
+            provider
+          );
+          return await tradingReader.getPositionsV2(userAddress, ethers.ZeroAddress);
+        } catch (error) {
+          console.warn('Failed to fetch from contract:', error.message);
+          return [];
+        }
+      })(),
+    ]);
 
-      // Parse BigInt values to numbers with correct decimals
-      // Following bot's moonlander.js implementation (line 207-216)
-      const size = Number(pos.qty) / 1e10; // qty uses 10 decimals
-      const entryPrice = Number(pos.entryPrice) / 1e18; // price uses 18 decimals
-      const margin = Number(pos.margin) / 1e6; // margin uses 6 decimals (USDC)
-      const stopLoss = pos.stopLoss > 0 ? Number(pos.stopLoss) / 1e18 : null; // price uses 18 decimals
-      const takeProfit = pos.takeProfit > 0 ? Number(pos.takeProfit) / 1e18 : null; // price uses 18 decimals
+    if (!apiResponse.ok) {
+      throw new Error(`API returned ${apiResponse.status}: ${apiResponse.statusText}`);
+    }
 
-      // Calculate leverage: (size * price) / margin
-      const positionValue = size * entryPrice;
-      const leverage = margin > 0 ? positionValue / margin : 1;
+    const apiData = await apiResponse.json();
+    const apiPositions = apiData.items || [];
+
+    // Create map of contract positions by position hash for SL/TP lookup
+    const contractPositionMap = new Map();
+    contractPositions.forEach((pos) => {
+      contractPositionMap.set(pos.positionHash, pos);
+    });
+
+    // Parse positions from API and merge with contract data for SL/TP
+    return apiPositions.map((apiPos) => {
+      const pairAddress = apiPos.trading_pair_id.toLowerCase();
+      const symbol = addressToSymbol[pairAddress] || tradingPairs[pairAddress] || 'UNKNOWN';
+
+      // Get contract position for SL/TP
+      const contractPos = contractPositionMap.get(apiPos.position_id);
+      let stopLoss = null;
+      let takeProfit = null;
+
+      if (contractPos) {
+        stopLoss = contractPos.stopLoss > 0 ? Number(contractPos.stopLoss) / 1e18 : null;
+        takeProfit = contractPos.takeProfit > 0 ? Number(contractPos.takeProfit) / 1e18 : null;
+      }
 
       return {
-        positionHash: pos.positionHash,
+        positionHash: apiPos.position_id,
         symbol: symbol,
-        pairBase: pos.pairBase,
-        side: pos.isLong ? 'long' : 'short',
-        margin: margin,
-        size: size,
-        entryPrice: entryPrice,
-        currentPrice: entryPrice, // Will be updated by enrichPositionsWithPnL
-        unrealizedPnl: 0, // Will be updated by enrichPositionsWithPnL
+        pairBase: apiPos.trading_pair_id,
+        side: apiPos.is_long ? 'long' : 'short',
+        margin: parseFloat(apiPos.collateral),
+        size: Math.abs(parseFloat(apiPos.position_size)),
+        entryPrice: parseFloat(apiPos.entry_price),
+        currentPrice: parseFloat(apiPos.market_price),
+        unrealizedPnl: parseFloat(apiPos.pnl_after_fee),
         stopLoss: stopLoss,
         takeProfit: takeProfit,
-        leverage: leverage,
-        timestamp: Number(pos.timestamp) * 1000, // Convert to milliseconds
+        leverage: parseFloat(apiPos.leverage),
+        timestamp: Date.now(), // API doesn't provide timestamp in clear format
       };
     });
   } catch (error) {
@@ -135,7 +159,7 @@ export async function enrichPositionsWithPnL(positions) {
           const pythData = await fetchPythPrice(pos.symbol);
           const priceDiff = pythData.price - pos.entryPrice;
           const multiplier = pos.side === 'long' ? 1 : -1;
-          const unrealizedPnl = (priceDiff / pos.entryPrice) * pos.margin * multiplier;
+          const unrealizedPnl = priceDiff * multiplier * pos.size;
           return {
             ...pos,
             currentPrice: pythData.price,

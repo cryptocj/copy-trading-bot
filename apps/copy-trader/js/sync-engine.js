@@ -224,6 +224,7 @@ export async function fetchAllPositions(traderAddress, balanceInfo) {
   const moonlanderWallet = moonlanderKey ? getMoonlanderWallet(moonlanderKey) : null;
 
   if (moonlanderWallet) {
+    // Fetch positions from API (includes PnL) and contract (includes SL/TP)
     state.userPositions = await fetchMoonlanderPositions(moonlanderWallet.address);
   }
 
