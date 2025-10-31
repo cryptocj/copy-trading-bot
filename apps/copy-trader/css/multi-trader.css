@@ -154,6 +154,13 @@
   color: #e5e7eb;
 }
 
+.trader-badges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 /* Card Body */
 .card-body {
   padding: 0.75rem;

@@ -241,20 +241,22 @@ export function renderTraderGrid() {
         <div class="card-header-left">
           <div class="trader-name-row">
             <span class="trader-name" title="${trader.name}">${trader.name}</span>
+            <span class="trader-address" title="${trader.address}">
+              ${shortenAddress(trader.address)}
+              <button
+                class="btn-icon-small"
+                onclick="window.copyToClipboard('${trader.address}')"
+                title="Copy address"
+              >
+                📋
+              </button>
+            </span>
+          </div>
+          <div class="trader-badges">
             <span class="badge badge-${trader.platform}">${trader.platform}</span>
             <span class="badge badge-${trader.isActive ? 'active' : 'paused'}">
               ${trader.isActive ? 'Active' : 'Paused'}
             </span>
-          </div>
-          <div class="trader-address" title="${trader.address}">
-            ${shortenAddress(trader.address)}
-            <button
-              class="btn-icon-small"
-              onclick="window.copyToClipboard('${trader.address}')"
-              title="Copy address"
-            >
-              📋
-            </button>
           </div>
         </div>
         <div class="card-header-actions">
