@@ -106,55 +106,58 @@ sequenceDiagram
 
 ## Implementation Design
 
-### 1. Add Trader Form Component
+### Design Principles
+
+**Compact & Efficient**:
+- Minimal form (inline, collapsible)
+- Grid-based trader display (3 columns desktop, 2 tablet, 1 mobile)
+- Auto-generated trader names (no manual naming required)
+- ~75% space savings vs traditional form
+
+### 1. Compact Add Trader Component
 
 **Location**: `js/ui-multi-trader.js` (new file)
 
-**HTML Structure**:
+**HTML Structure** (Inline Collapsible Form):
 ```html
-<div id="add-trader-section" class="config-section">
-  <h3>Add Trader</h3>
-  <form id="add-trader-form" class="trader-form">
-    <div class="form-group">
-      <label for="trader-address">Trader Address *</label>
-      <input
-        type="text"
-        id="trader-address"
-        placeholder="0x..."
-        pattern="^0x[a-fA-F0-9]{40}$"
-        required
-      />
-      <small>Ethereum address format</small>
-    </div>
+<div id="trader-list-section" class="config-section">
+  <!-- Compact Header with Add Button -->
+  <div class="section-header">
+    <h3>👥 Watched Traders (<span id="trader-count">0</span>/10)</h3>
+    <button id="btn-add-trader" class="btn-add-compact">+ Add</button>
+  </div>
 
-    <div class="form-group">
-      <label for="trader-name">Trader Name (Optional)</label>
-      <input
-        type="text"
-        id="trader-name"
-        placeholder="Gemini 2.5 Pro"
-        maxlength="50"
-      />
-    </div>
+  <!-- Inline Add Form (hidden by default, expands when "+ Add" clicked) -->
+  <div id="add-trader-inline" class="add-trader-inline" style="display: none;">
+    <input
+      type="text"
+      id="trader-address-quick"
+      placeholder="Enter trader address (0x...)"
+      class="input-quick"
+      pattern="^0x[a-fA-F0-9]{40}$"
+      required
+    />
+    <select id="trader-platform-quick" class="select-quick">
+      <option value="moonlander">Moonlander</option>
+      <option value="hyperliquid">Hyperliquid</option>
+    </select>
+    <button class="btn-primary-small">Add Trader</button>
+    <button class="btn-cancel-small">Cancel</button>
+  </div>
 
-    <div class="form-group">
-      <label for="trader-platform">Platform</label>
-      <select id="trader-platform">
-        <option value="moonlander">Moonlander</option>
-        <option value="hyperliquid">Hyperliquid</option>
-      </select>
-    </div>
+  <!-- Trader Grid (see section 2) -->
+  <div id="trader-grid" class="trader-grid">
+    <!-- Dynamically populated trader cards -->
+  </div>
 
-    <button type="submit" class="btn-primary">Add Trader</button>
-  </form>
-
-  <div id="trader-count-info" class="info-badge">
-    <span id="active-traders-count">0</span> / 10 traders added
+  <!-- Empty State -->
+  <div id="empty-state" class="empty-state" style="display: none;">
+    <p>📭 No traders yet. Click "+ Add" to start.</p>
   </div>
 </div>
 ```
 
-**JavaScript Handler**:
+**JavaScript Handler** (Compact Form):
 ```javascript
 // js/ui-multi-trader.js
 import { ethers } from 'ethers';
@@ -166,38 +169,55 @@ import {
 } from './multi-trader-state.js';
 
 /**
- * Initialize Add Trader form
+ * Initialize compact add trader form
  */
-export function initAddTraderForm() {
-  const form = document.getElementById('add-trader-form');
-  if (!form) return;
+export function initAddTraderCompact() {
+  const btnAdd = document.getElementById('btn-add-trader');
+  const formInline = document.getElementById('add-trader-inline');
+  const btnCancel = formInline?.querySelector('.btn-cancel-small');
+  const btnSubmit = formInline?.querySelector('.btn-primary-small');
 
-  form.addEventListener('submit', handleAddTrader);
+  // Show form on "+ Add" click
+  btnAdd?.addEventListener('click', () => {
+    formInline.style.display = 'flex';
+    document.getElementById('trader-address-quick')?.focus();
+  });
+
+  // Hide form on Cancel
+  btnCancel?.addEventListener('click', () => {
+    formInline.style.display = 'none';
+    clearQuickForm();
+  });
+
+  // Submit form on Add Trader click
+  btnSubmit?.addEventListener('click', () => {
+    handleQuickAddTrader();
+  });
+
+  // Submit on Enter key
+  document.getElementById('trader-address-quick')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleQuickAddTrader();
+    }
+  });
 }
 
 /**
- * Handle Add Trader form submission
+ * Handle quick add trader
  */
-async function handleAddTrader(event) {
-  event.preventDefault();
-
-  const addressInput = document.getElementById('trader-address');
-  const nameInput = document.getElementById('trader-name');
-  const platformSelect = document.getElementById('trader-platform');
-
-  const address = addressInput.value.trim();
-  const name = nameInput.value.trim() || null;
-  const platform = platformSelect.value;
+function handleQuickAddTrader() {
+  const address = document.getElementById('trader-address-quick')?.value.trim();
+  const platform = document.getElementById('trader-platform-quick')?.value;
 
   // Validate address format
   if (!ethers.utils.isAddress(address)) {
     showNotification('error', 'Invalid Ethereum address format');
-    addressInput.focus();
     return;
   }
 
-  // Add trader using existing function
-  const success = addTrader(address, platform, name);
+  // Add trader using existing function (auto-generates name)
+  const success = addTrader(address, platform, null); // null = auto-generate name
 
   if (!success) {
     // Error handling (duplicate, max limit)
@@ -212,23 +232,28 @@ async function handleAddTrader(event) {
   }
 
   // Success - update UI
-  showNotification('success', `Trader added: ${name || address.substring(0, 10)}...`);
-  addActivityLog('success', `Trader added: ${name || address}`);
+  showNotification('success', `Trader added`);
+  addActivityLog('success', `Trader added: ${address}`);
 
-  // Refresh trader list
-  renderTraderList();
+  // Hide form and refresh
+  document.getElementById('add-trader-inline').style.display = 'none';
+  clearQuickForm();
+  renderTraderGrid();
   updateTraderCount();
-
-  // Clear form
-  form.reset();
-  addressInput.focus();
 }
 
 /**
- * Display notification to user
+ * Clear quick form inputs
+ */
+function clearQuickForm() {
+  document.getElementById('trader-address-quick').value = '';
+  document.getElementById('trader-platform-quick').value = 'moonlander';
+}
+
+/**
+ * Display toast notification
  */
 function showNotification(type, message) {
-  // Implementation: Toast notification or banner
   const notification = document.createElement('div');
   notification.className = `notification notification-${type}`;
   notification.textContent = message;
@@ -241,38 +266,37 @@ function showNotification(type, message) {
 }
 ```
 
-### 2. Trader List Component
+### 2. Grid-Based Trader List Component
 
-**HTML Structure**:
+**HTML Structure** (Grid Layout):
 ```html
-<div id="trader-list-section" class="config-section">
-  <h3>Watched Traders</h3>
-
-  <div id="trader-list" class="trader-list">
-    <!-- Dynamically populated -->
-  </div>
-
-  <div id="empty-state" class="empty-state">
-    <p>No traders added yet. Add your first trader above.</p>
-  </div>
+<!-- Trader grid is populated inside the trader-list-section from section 1 -->
+<div id="trader-grid" class="trader-grid">
+  <!-- Dynamically populated trader cards (3 columns desktop, 2 tablet, 1 mobile) -->
 </div>
 ```
 
-**JavaScript Renderer**:
+**JavaScript Renderer** (Grid-Based Cards):
 ```javascript
 // js/ui-multi-trader.js
 
 /**
- * Render trader list
+ * Render trader grid (replaces renderTraderList)
  */
-export function renderTraderList() {
-  const container = document.getElementById('trader-list');
+export function renderTraderGrid() {
+  const container = document.getElementById('trader-grid');
   const emptyState = document.getElementById('empty-state');
 
   if (!container) return;
 
   // Get traders from state
   const traders = multiState.watchedTraders;
+
+  // Update trader count
+  const countElement = document.getElementById('trader-count');
+  if (countElement) {
+    countElement.textContent = traders.length;
+  }
 
   if (traders.length === 0) {
     container.innerHTML = '';
@@ -282,62 +306,75 @@ export function renderTraderList() {
 
   emptyState.style.display = 'none';
 
-  // Render traders
-  container.innerHTML = traders.map((trader, index) => `
-    <div class="trader-item ${trader.isActive ? 'active' : 'paused'}" data-address="${trader.address}">
-      <div class="trader-info">
-        <div class="trader-header">
-          <span class="trader-name">${trader.name}</span>
-          <span class="badge badge-${trader.platform}">${trader.platform}</span>
-          <span class="badge badge-${trader.isActive ? 'active' : 'paused'}">
-            ${trader.isActive ? 'Active' : 'Paused'}
-          </span>
-        </div>
+  // Render trader cards in grid
+  container.innerHTML = traders.map(trader => `
+    <div class="trader-card ${trader.isActive ? '' : 'paused'}" data-address="${trader.address}">
+      <!-- Card Header -->
+      <div class="card-header">
+        <span class="trader-name" title="${trader.name}">${trader.name}</span>
+        <span class="badge badge-${trader.platform}">${trader.platform}</span>
+      </div>
 
-        <div class="trader-details">
+      <!-- Card Body -->
+      <div class="card-body">
+        <div class="card-row">
+          <span class="label">Address:</span>
           <span class="trader-address" title="${trader.address}">
             ${shortenAddress(trader.address)}
             <button
-              class="btn-icon"
+              class="btn-icon-small"
               onclick="copyToClipboard('${trader.address}')"
               title="Copy address"
             >
               📋
             </button>
           </span>
+        </div>
 
-          <span class="trader-allocation">
-            ${trader.allocation.toFixed(1)}% allocation
+        <div class="card-row">
+          <span class="label">Allocation:</span>
+          <span class="allocation-value">${(trader.allocation || 0).toFixed(1)}%</span>
+        </div>
+
+        ${trader.lastSync ? `
+          <div class="card-row">
+            <span class="label">Last sync:</span>
+            <span class="sync-time">${formatTimestamp(trader.lastSync)}</span>
+          </div>
+        ` : ''}
+
+        <div class="card-row">
+          <span class="label">Status:</span>
+          <span class="badge badge-${trader.isActive ? 'active' : 'paused'}">
+            ${trader.isActive ? 'Active' : 'Paused'}
           </span>
-
-          ${trader.lastSync ? `
-            <span class="trader-sync">
-              Last sync: ${formatTimestamp(trader.lastSync)}
-            </span>
-          ` : ''}
         </div>
       </div>
 
-      <div class="trader-actions">
+      <!-- Card Actions -->
+      <div class="card-actions">
         ${trader.isActive ? `
           <button
-            class="btn-secondary"
+            class="btn-card btn-pause"
             onclick="handlePauseTrader('${trader.address}')"
+            title="Pause trader"
           >
             Pause
           </button>
         ` : `
           <button
-            class="btn-primary"
+            class="btn-card btn-resume"
             onclick="handleResumeTrader('${trader.address}')"
+            title="Resume trader"
           >
             Resume
           </button>
         `}
 
         <button
-          class="btn-danger"
+          class="btn-card btn-remove"
           onclick="handleRemoveTrader('${trader.address}')"
+          title="Remove trader"
         >
           Remove
         </button>
@@ -414,8 +451,7 @@ window.handlePauseTrader = function(address) {
   toggleTraderActive(address, false);
   calculateAllocations(); // Recalculate for active traders only
   addActivityLog('info', `Trader paused: ${address}`);
-  renderTraderList();
-  updateTraderCount();
+  renderTraderGrid();
   showNotification('success', 'Trader paused');
 };
 
@@ -426,8 +462,7 @@ window.handleResumeTrader = function(address) {
   toggleTraderActive(address, true);
   calculateAllocations(); // Recalculate with resumed trader
   addActivityLog('success', `Trader resumed: ${address}`);
-  renderTraderList();
-  updateTraderCount();
+  renderTraderGrid();
   showNotification('success', 'Trader resumed');
 };
 
@@ -458,29 +493,9 @@ window.handleRemoveTrader = function(address) {
 
   calculateAllocations(); // Recalculate without removed trader
   addActivityLog('warning', `Trader removed: ${trader.name}`);
-  renderTraderList();
-  updateTraderCount();
+  renderTraderGrid();
   showNotification('success', 'Trader removed');
 };
-
-/**
- * Update trader count display
- */
-function updateTraderCount() {
-  const countElement = document.getElementById('active-traders-count');
-  if (!countElement) return;
-
-  const activeCount = multiState.watchedTraders.filter(t => t.isActive).length;
-  const totalCount = multiState.watchedTraders.length;
-
-  countElement.textContent = totalCount;
-
-  // Update info message
-  const infoElement = document.getElementById('trader-count-info');
-  if (infoElement) {
-    infoElement.textContent = `${totalCount} / 10 traders added (${activeCount} active)`;
-  }
-}
 ```
 
 ## Integration Points
@@ -514,7 +529,7 @@ export const MAX_TRADER_NAME_LENGTH = 50;
 
 **Initialize UI** on page load:
 ```javascript
-import { initAddTraderForm, renderTraderList } from './ui-multi-trader.js';
+import { initAddTraderCompact, renderTraderGrid } from './ui-multi-trader.js';
 import { loadMultiTraderState } from './multi-trader-state.js';
 
 // On DOM ready
@@ -523,9 +538,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadMultiTraderState();
 
   // Initialize UI components
-  initAddTraderForm();
-  renderTraderList();
-  updateTraderCount();
+  initAddTraderCompact();
+  renderTraderGrid();
 });
 ```
 
@@ -645,81 +659,269 @@ export function toggleTraderActive(address, isActive) {
 **File**: `css/multi-trader.css` (new file)
 
 ```css
-/* Add Trader Form */
-.trader-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+/* ========================================
+   Section Layout
+   ======================================== */
+.config-section {
+  margin-bottom: 2rem;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.form-group input,
-.form-group select {
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.form-group small {
-  color: #666;
-  font-size: 0.85rem;
-}
-
-/* Trader List */
-.trader-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.trader-item {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
+.section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fff;
+  margin-bottom: 1rem;
 }
 
-.trader-item.paused {
-  opacity: 0.6;
-  background: #f5f5f5;
+.section-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
 }
 
-.trader-info {
-  flex: 1;
+/* ========================================
+   Compact Add Trader Form
+   ======================================== */
+.btn-add-compact {
+  padding: 0.5rem 1rem;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
 }
 
-.trader-header {
+.btn-add-compact:hover {
+  background: #45a049;
+}
+
+.add-trader-inline {
   display: flex;
-  align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  align-items: center;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.add-trader-inline .input-quick {
+  flex: 1;
+  min-width: 250px;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.add-trader-inline .select-quick {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.btn-primary-small,
+.btn-cancel-small {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-primary-small {
+  background: #4caf50;
+  color: white;
+}
+
+.btn-primary-small:hover {
+  background: #45a049;
+}
+
+.btn-cancel-small {
+  background: #999;
+  color: white;
+}
+
+.btn-cancel-small:hover {
+  background: #777;
+}
+
+/* ========================================
+   Trader Grid Layout (Responsive)
+   ======================================== */
+.trader-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Desktop: Force 3 columns */
+@media (min-width: 1024px) {
+  .trader-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Tablet: Force 2 columns */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .trader-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile: Single column */
+@media (max-width: 639px) {
+  .trader-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   Trader Card
+   ======================================== */
+.trader-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.trader-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.trader-card.paused {
+  opacity: 0.6;
+  background: #f9f9f9;
+}
+
+/* Card Header */
+.card-header {
+  padding: 1rem;
+  background: #f8f8f8;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .trader-name {
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1rem;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* Card Body */
+.card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.card-row .label {
+  color: #666;
+  font-weight: 500;
+}
+
+.trader-address {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.allocation-value {
+  font-weight: 600;
+  color: #4caf50;
+  font-size: 1rem;
+}
+
+.sync-time {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+/* Card Actions */
+.card-actions {
+  padding: 0.75rem 1rem;
+  background: #fafafa;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-card {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-pause {
+  background: #ff9800;
+  color: white;
+}
+
+.btn-pause:hover {
+  background: #fb8c00;
+}
+
+.btn-resume {
+  background: #4caf50;
+  color: white;
+}
+
+.btn-resume:hover {
+  background: #45a049;
+}
+
+.btn-remove {
+  background: #f44336;
+  color: white;
+}
+
+.btn-remove:hover {
+  background: #e53935;
+}
+
+/* ========================================
+   Badges
+   ======================================== */
 .badge {
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .badge-active {
@@ -742,67 +944,37 @@ export function toggleTraderActive(address, isActive) {
   color: white;
 }
 
-.trader-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.trader-address {
-  font-family: monospace;
-}
-
-.trader-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* Buttons */
-.btn-primary,
-.btn-secondary,
-.btn-danger {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.btn-primary {
-  background: #4caf50;
-  color: white;
-}
-
-.btn-secondary {
-  background: #ff9800;
-  color: white;
-}
-
-.btn-danger {
-  background: #f44336;
-  color: white;
-}
-
-.btn-icon {
+/* ========================================
+   Icon Buttons
+   ======================================== */
+.btn-icon-small {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  padding: 0.25rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
 }
 
-/* Notifications */
+.btn-icon-small:hover {
+  opacity: 1;
+}
+
+/* ========================================
+   Notifications (Toast)
+   ======================================== */
 .notification {
   position: fixed;
   top: 20px;
   right: 20px;
-  padding: 1rem;
+  padding: 1rem 1.5rem;
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   animation: slideIn 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .notification-success {
@@ -826,21 +998,18 @@ export function toggleTraderActive(address, isActive) {
   }
 }
 
-/* Info Badge */
-.info-badge {
-  margin-top: 1rem;
-  padding: 0.5rem;
-  background: #e3f2fd;
-  border-radius: 4px;
-  text-align: center;
-  font-size: 0.9rem;
-}
-
-/* Empty State */
+/* ========================================
+   Empty State
+   ======================================== */
 .empty-state {
   text-align: center;
-  padding: 2rem;
+  padding: 3rem 1rem;
   color: #999;
+  font-size: 0.95rem;
+}
+
+.empty-state p {
+  margin: 0;
 }
 ```
 

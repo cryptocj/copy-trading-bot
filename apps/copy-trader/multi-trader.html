@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Trader Strategy - Copy Trading</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-NN3P9KC9');</script>
+    <!-- End Google Tag Manager -->
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4a9eff',
+                        dark: { 900: '#0a0e1a', 800: '#0f1420', 700: '#151b2e', 600: '#1a2137', 500: '#2a3550' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/ccxt@4.5.11/dist/ccxt.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+
+    <!-- Custom Multi-Trader Styles -->
+    <link rel="stylesheet" href="./css/multi-trader.css">
+
+    <style>
+        /* Table styles */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #2a3550;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            background-color: #0f1420;
+        }
+        .table-container thead {
+            background: linear-gradient(to right, #1a2137, #151b2e);
+        }
+        .table-container thead tr th {
+            padding: 10px 12px;
+            text-align: left;
+            color: #d1d5db;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid #2a3550;
+        }
+        .table-container tbody tr {
+            border-bottom: 1px solid #2a3550;
+        }
+        .table-container tbody tr:nth-child(even) { background-color: #0f1420; }
+        .table-container tbody tr:nth-child(odd) { background-color: #151b2e; }
+        .table-container tbody tr:hover {
+            background-color: #1a2137 !important;
+        }
+        .table-container tbody td {
+            padding: 10px 12px;
+            color: #e5e7eb;
+            font-size: 0.75rem;
+        }
+
+        /* Side badges */
+        .side-long {
+            color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+        .side-short {
+            color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+
+        /* Activity log */
+        #activity-log {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+        }
+        #activity-log::-webkit-scrollbar {
+            width: 8px;
+        }
+        #activity-log::-webkit-scrollbar-track {
+            background: #0f1420;
+        }
+        #activity-log::-webkit-scrollbar-thumb {
+            background: #2a3550;
+            border-radius: 4px;
+        }
+        #activity-log::-webkit-scrollbar-thumb:hover {
+            background: #4a9eff;
+        }
+
+        .log-entry {
+            padding: 4px 8px;
+            border-left: 2px solid transparent;
+            margin-bottom: 2px;
+        }
+        .log-entry.success { border-left-color: #10b981; }
+        .log-entry.error { border-left-color: #ef4444; }
+        .log-entry.warning { border-left-color: #ffa726; }
+        .log-entry.info { border-left-color: #4a9eff; }
+
+        /* Trader card */
+        .trader-card {
+            background: linear-gradient(135deg, #1a2137 0%, #151b2e 100%);
+            border: 1px solid #2a3550;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+        .trader-card:hover {
+            border-color: #4a9eff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.2);
+        }
+        .trader-card.active {
+            border-color: #10b981;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Status indicator */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .status-indicator.active {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Metric badge */
+        .metric-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .metric-positive { color: #10b981; background-color: rgba(16, 185, 129, 0.1); }
+        .metric-negative { color: #ef4444; background-color: rgba(239, 68, 68, 0.1); }
+        .metric-neutral { color: #9ca3af; background-color: rgba(156, 163, 175, 0.1); }
+    </style>
+
+</head>
+<body class="bg-dark-900 text-gray-200">
+    <div class="container mx-auto px-4 py-4 max-w-[1800px]">
+
+        <!-- Header -->
+        <header class="mb-4 bg-gradient-to-br from-dark-600 to-dark-800 rounded-lg p-4 shadow-lg">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <a href="index.html" class="text-gray-400 hover:text-primary transition-colors text-sm">
+                        ← Back to Single Trader
+                    </a>
+                </div>
+                <div class="flex-1 text-center">
+                    <h1 class="text-3xl font-bold text-primary mb-1">📊 Multi-Trader Strategy</h1>
+                    <p class="text-gray-400 text-sm">Follow multiple top performers automatically</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-gray-500 font-mono" id="version-display">v0.0.0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Watched Traders -->
+        <section class="bg-dark-700 rounded-lg shadow-lg p-4 mb-4">
+            <!-- Compact Header with Add Button and Monitoring Controls -->
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-semibold text-primary">👥 Watched Traders (<span id="trader-count">0</span>/10)</h2>
+                <div class="flex items-center gap-2">
+                    <span id="monitoring-status" class="text-xs text-gray-500">
+                        <span class="inline-block w-2 h-2 rounded-full bg-gray-500 mr-1"></span>
+                        Stopped
+                    </span>
+                    <button id="btn-start-monitoring" class="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition">
+                        ▶ Start Monitoring
+                    </button>
+                    <button id="btn-stop-monitoring" class="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded transition" style="display: none;">
+                        ⏸ Stop Monitoring
+                    </button>
+                    <button id="btn-add-trader" class="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition">
+                        + Add Trader
+                    </button>
+                </div>
+            </div>
+
+            <!-- Inline Add Form (hidden by default, expands when "+ Add" clicked) -->
+            <div id="add-trader-inline" class="add-trader-inline" style="display: none;">
+                <input
+                    type="text"
+                    id="trader-name-quick"
+                    placeholder="Trader name (e.g., Top Performer)"
+                    class="input-quick"
+                    style="flex: 0.8; min-width: 180px;"
+                />
+                <input
+                    type="text"
+                    id="trader-address-quick"
+                    placeholder="Address (0x...)"
+                    class="input-quick"
+                    style="flex: 1.5; min-width: 280px;"
+                    pattern="^0x[a-fA-F0-9]{40}$"
+                    required
+                />
+                <select id="trader-platform-quick" class="select-quick">
+                    <option value="moonlander">Moonlander (Cronos)</option>
+                    <option value="hyperliquid">Hyperliquid</option>
+                </select>
+                <button class="btn-primary-small">Add Trader</button>
+                <button class="btn-cancel-small">Cancel</button>
+            </div>
+
+            <!-- Trader Grid -->
+            <div id="trader-grid">
+                <!-- Dynamically populated trader cards -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="text-center text-gray-500 py-8">
+                📭 No traders yet. Click "+ Add Trader" to start.
+            </div>
+        </section>
+
+    </div>
+
+    <script type="module" src="./js/multi-trader-main.js"></script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PEGGJKETQ0"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-PEGGJKETQ0');
+    </script>
+</body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NN3P9KC9"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+</html>

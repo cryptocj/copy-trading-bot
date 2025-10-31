@@ -51,9 +51,13 @@ export const PYTH_API_URL =
 
 // Sync Settings
 export const DEFAULT_SYNC_INTERVAL = 10; // seconds
+export const MULTI_TRADER_SYNC_INTERVAL = 30; // seconds (multi-trader uses longer interval for efficiency)
 export const MAX_LOG_ENTRIES = 100; // Maximum activity log entries
 export const MAX_SCALING_FACTOR = 1.0; // Maximum scaling factor (100% - never copy more than trader)
 export const SAFETY_BUFFER_PERCENT = 1.0; // Maximum safety buffer (100% cap) - users can use full balance for smaller trials
+
+// Multi-Trader Settings
+export const MAX_TRADERS = 10; // Maximum number of traders in multi-trader strategy
 
 // Position Change Detection
 export const TRADER_POSITION_CHANGE_THRESHOLD = 20; // Percentage threshold for detecting significant trader position changes

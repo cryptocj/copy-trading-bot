@@ -1,0 +1,547 @@
+/* ============================================
+   MULTI-TRADER.CSS - Multi-Trader UI Styles
+   ============================================
+   Complements Tailwind CSS with grid-specific styles */
+
+/* ========================================
+   Compact Add Trader Form
+   ======================================== */
+.add-trader-inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 1rem;
+  background: #0f1420;
+  border: 1px solid #2a3550;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.add-trader-inline .input-quick {
+  flex: 1;
+  min-width: 250px;
+  padding: 0.5rem;
+  background: #0a0e1a;
+  border: 1px solid #2a3550;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+
+.add-trader-inline .input-quick:focus {
+  outline: none;
+  border-color: #4a9eff;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+}
+
+.add-trader-inline .select-quick {
+  padding: 0.5rem;
+  background: #0a0e1a;
+  border: 1px solid #2a3550;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+
+.add-trader-inline .select-quick:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.btn-primary-small,
+.btn-cancel-small {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-primary-small {
+  background: #10b981;
+  color: white;
+}
+
+.btn-primary-small:hover {
+  background: #059669;
+}
+
+.btn-cancel-small {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-cancel-small:hover {
+  background: #4b5563;
+}
+
+/* ========================================
+   Trader Grid Layout (Responsive)
+   ======================================== */
+#trader-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Desktop: Force 3 columns */
+@media (min-width: 1024px) {
+  #trader-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Tablet: Force 2 columns */
+@media (min-width: 640px) and (max-width: 1023px) {
+  #trader-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile: Single column */
+@media (max-width: 639px) {
+  #trader-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   Trader Card (Already styled in HTML, these are enhancements)
+   ======================================== */
+.trader-card.paused {
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
+/* Card Header */
+.card-header {
+  padding: 0.75rem;
+  background: rgba(26, 33, 55, 0.5);
+  border-bottom: 1px solid #2a3550;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.trader-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* Card Body */
+.card-body {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.card-row .label {
+  color: #9ca3af;
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+.trader-address {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: #d1d5db;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.allocation-value {
+  font-weight: 600;
+  color: #10b981;
+  font-size: 0.85rem;
+}
+
+.position-count {
+  font-weight: 600;
+  color: #60a5fa;
+  font-size: 0.85rem;
+}
+
+.sync-time {
+  color: #6b7280;
+  font-size: 0.7rem;
+}
+
+/* Card Actions */
+.card-actions {
+  padding: 0.5rem 0.75rem;
+  background: rgba(10, 14, 26, 0.5);
+  border-top: 1px solid #2a3550;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.btn-card {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-refresh {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-refresh:hover {
+  background: #2563eb;
+}
+
+.btn-pause {
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-pause:hover {
+  background: #d97706;
+}
+
+.btn-resume {
+  background: #10b981;
+  color: white;
+}
+
+.btn-resume:hover {
+  background: #059669;
+}
+
+.btn-remove {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-remove:hover {
+  background: #dc2626;
+}
+
+/* ========================================
+   Badges
+   ======================================== */
+.badge {
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-active {
+  background: #10b981;
+  color: white;
+}
+
+.badge-paused {
+  background: #f59e0b;
+  color: white;
+}
+
+.badge-moonlander {
+  background: #3b82f6;
+  color: white;
+}
+
+.badge-hyperliquid {
+  background: #8b5cf6;
+  color: white;
+}
+
+/* ========================================
+   Positions List in Trader Card
+   ======================================== */
+.positions-list {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #2a3550;
+}
+
+.positions-header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Balance Info Display */
+.positions-balance {
+  margin: 0.4rem 0;
+  padding: 0.4rem 0.5rem;
+  background: rgba(26, 33, 55, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(42, 53, 80, 0.5);
+}
+
+.balance-info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+.balance-info-row > span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.balance-info-row .balance-total,
+.balance-info-row .balance-available,
+.balance-info-row .balance-margin,
+.balance-info-row .balance-position-value,
+.balance-info-row .balance-ratio {
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.balance-info-row .balance-total {
+  color: #d1d5db;
+}
+
+.balance-info-row .balance-available {
+  color: #10b981;
+}
+
+.balance-info-row .balance-margin {
+  color: #f59e0b;
+}
+
+.balance-info-row .balance-position-value {
+  color: #a78bfa;
+}
+
+.balance-info-row .balance-ratio {
+  color: #60a5fa;
+}
+
+/* Position Table Layout - HTML Table Structure */
+.positions-table {
+  overflow-x: auto;
+  border-radius: 4px;
+  margin-top: 0.4rem;
+}
+
+.positions-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  background-color: rgba(10, 14, 26, 0.3);
+}
+
+.positions-table thead tr th {
+  padding: 0.3rem 0.4rem;
+  text-align: left;
+  color: #9ca3af;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(26, 33, 55, 0.5);
+  border-bottom: 1px solid #2a3550;
+}
+
+.positions-table tbody tr {
+  border-bottom: 1px solid rgba(42, 53, 80, 0.3);
+  transition: background 0.2s;
+}
+
+.positions-table tbody tr:hover {
+  background: rgba(10, 14, 26, 0.5);
+}
+
+.positions-table tbody td {
+  padding: 0.3rem 0.4rem;
+  color: #e5e7eb;
+  font-size: 0.7rem;
+}
+
+/* Side Badges for Position Display */
+.side-long {
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.65rem;
+  display: inline-block;
+}
+
+.side-short {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.65rem;
+  display: inline-block;
+}
+
+/* PnL Color Coding */
+.text-green-400 {
+  color: #10b981 !important;
+}
+
+.text-red-400 {
+  color: #ef4444 !important;
+}
+
+/* PnL in balance info row */
+.balance-info-row .text-green-400 {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.balance-info-row .text-red-400 {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* PnL in position table */
+.positions-table .text-green-400 {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.positions-table .text-red-400 {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Legacy styles (kept for backward compatibility) */
+.position-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  background: rgba(10, 14, 26, 0.3);
+  border-radius: 4px;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.position-symbol {
+  font-weight: 600;
+  color: #e5e7eb;
+  flex: 1;
+}
+
+.position-side {
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.position-side.long {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.position-side.short {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.position-size {
+  font-family: 'Courier New', monospace;
+  color: #d1d5db;
+  font-size: 0.75rem;
+}
+
+.position-more {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #6b7280;
+  padding: 0.25rem;
+  font-style: italic;
+}
+
+/* ========================================
+   Icon Buttons
+   ======================================== */
+.btn-icon-small {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.15rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.btn-icon-small:hover {
+  opacity: 1;
+}
+
+/* ========================================
+   Notifications (Toast)
+   ======================================== */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.notification-success {
+  background: #10b981;
+  color: white;
+}
+
+.notification-error {
+  background: #ef4444;
+  color: white;
+}
+
+.notification-info {
+  background: #3b82f6;
+  color: white;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
