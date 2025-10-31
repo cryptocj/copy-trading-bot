@@ -10,6 +10,7 @@ import {
   calculateAllocations,
   addActivityLog,
   updateTraderPositions,
+  saveWatchedTraders,
 } from './multi-trader-state.js';
 import { createPositionDisplay } from './components/position-display.js';
 import {
@@ -292,15 +293,75 @@ window.handleEditTrader = function (address) {
 
   if (!trader) return;
 
-  // Simple edit: prompt for new name
-  const newName = prompt('Edit trader name:', trader.name);
+  // Edit name
+  const newName = prompt('Trader name:', trader.name);
+  if (newName === null) return; // User cancelled
 
-  if (newName && newName.trim() !== '') {
-    trader.name = newName.trim();
-    addActivityLog('info', `Trader renamed: ${trader.name}`);
-    renderTraderGrid();
-    showNotification('success', 'Trader updated');
+  // Edit address
+  const newAddress = prompt('Trader address (0x...):', trader.address);
+  if (newAddress === null) return; // User cancelled
+
+  // Validate address if changed
+  if (newAddress.toLowerCase() !== trader.address.toLowerCase()) {
+    if (!ethers.isAddress(newAddress)) {
+      showNotification('error', 'Invalid address format');
+      return;
+    }
+
+    // Check for duplicate address
+    const isDuplicate = multiState.watchedTraders.some(
+      (t) => t.address.toLowerCase() === newAddress.toLowerCase() && t !== trader
+    );
+    if (isDuplicate) {
+      showNotification('error', 'Address already exists');
+      return;
+    }
   }
+
+  // Edit platform
+  const newPlatform = prompt(
+    'Platform (moonlander or hyperliquid):',
+    trader.platform
+  )?.toLowerCase();
+  if (newPlatform === null) return; // User cancelled
+
+  // Validate platform
+  if (newPlatform !== 'moonlander' && newPlatform !== 'hyperliquid') {
+    showNotification('error', 'Invalid platform. Use "moonlander" or "hyperliquid"');
+    return;
+  }
+
+  // Apply updates
+  const addressChanged = newAddress.toLowerCase() !== trader.address.toLowerCase();
+  const oldAddress = trader.address;
+
+  trader.name = newName.trim() || trader.name;
+  trader.address = newAddress.toLowerCase();
+  trader.platform = newPlatform;
+
+  // If address changed, need to update monitoring
+  if (addressChanged) {
+    // Remove old monitoring
+    removeTraderFromMonitoring(oldAddress);
+
+    // Clear old positions
+    trader.positions = [];
+    trader.accountData = null;
+
+    // Add new monitoring if monitoring is active
+    if (multiState.isMonitoring && trader.isActive) {
+      addTraderToMonitoring(trader);
+    }
+
+    // Fetch new positions
+    fetchTraderPositionsAsync(trader.address, trader.platform, trader.name);
+  }
+
+  calculateAllocations();
+  saveWatchedTraders();
+  addActivityLog('info', `Trader updated: ${trader.name}`);
+  renderTraderGrid();
+  showNotification('success', 'Trader updated successfully');
 };
 
 /**
