@@ -44,7 +44,7 @@ export const elements = {
   balanceTraderRatio: document.getElementById('balance-trader-ratio'),
   balanceScalingFactor: document.getElementById('balance-scaling-factor'),
 
-  actionsContent: document.getElementById('actions-content'),
+  actionHistoryContent: document.getElementById('action-history-content'),
   activityLog: document.getElementById('activity-log'),
   clearLogBtn: document.getElementById('clear-log-btn'),
 };
@@ -187,21 +187,97 @@ export function updatePositions(
 }
 
 // Update actions display
-export function updateActions(traderPositions) {
-  const actionsHtml =
-    traderPositions.length > 0
-      ? traderPositions
-          .map(
-            (pos) => `
-            <div class="text-sm text-gray-300">
-                ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ $${pos.entryPrice.toLocaleString()}
-            </div>
-        `
-          )
-          .join('')
-      : '<div class="text-gray-500 text-center">No positions to copy</div>';
+export function updateActions(actions = null) {
+  const requiredActions = actions || state.requiredActions;
 
+  if (!requiredActions || (requiredActions.toAdd.length === 0 && requiredActions.toRemove.length === 0)) {
+    elements.actionsContent.innerHTML = '<div class="text-gray-500 text-center py-4">No actions needed - positions in sync</div>';
+    return;
+  }
+
+  let actionsHtml = '<div class="space-y-3">';
+
+  // Close actions
+  if (requiredActions.toRemove.length > 0) {
+    actionsHtml += '<div class="bg-red-900/20 border border-red-700/30 rounded p-3">';
+    actionsHtml += `<div class="text-red-400 font-semibold mb-2">🔻 Close Positions (${requiredActions.toRemove.length})</div>`;
+    actionsHtml += '<div class="space-y-2">';
+    requiredActions.toRemove.forEach(pos => {
+      const margin = (pos.size * pos.entryPrice) / (pos.leverage || 10);
+      actionsHtml += `
+        <div class="bg-dark-800/50 rounded p-2">
+          <div class="text-sm text-gray-300 flex justify-between items-center mb-1">
+            <span>${pos.symbol} <span class="text-red-400">${pos.side.toUpperCase()}</span> ${pos.size.toFixed(4)}</span>
+            <span class="text-gray-500">Margin: $${margin.toFixed(2)}</span>
+          </div>
+          ${pos.reason ? `<div class="text-xs text-gray-500">💡 ${pos.reason}</div>` : ''}
+        </div>
+      `;
+    });
+    actionsHtml += '</div></div>';
+  }
+
+  // Open actions
+  if (requiredActions.toAdd.length > 0) {
+    actionsHtml += '<div class="bg-green-900/20 border border-green-700/30 rounded p-3">';
+    actionsHtml += `<div class="text-green-400 font-semibold mb-2">🔺 Open Positions (${requiredActions.toAdd.length})</div>`;
+    actionsHtml += '<div class="space-y-2">';
+    requiredActions.toAdd.forEach(pos => {
+      const margin = (pos.size * pos.entryPrice) / pos.leverage;
+      actionsHtml += `
+        <div class="bg-dark-800/50 rounded p-2">
+          <div class="text-sm text-gray-300 flex justify-between items-center mb-1">
+            <span>${pos.symbol} <span class="text-green-400">${pos.side.toUpperCase()}</span> ${pos.size.toFixed(4)}</span>
+            <span class="text-gray-500">Margin: $${margin.toFixed(2)} (${pos.leverage}x)</span>
+          </div>
+          ${pos.reason ? `<div class="text-xs text-gray-500">💡 ${pos.reason}</div>` : ''}
+        </div>
+      `;
+    });
+    actionsHtml += '</div></div>';
+  }
+
+  actionsHtml += '</div>';
   elements.actionsContent.innerHTML = actionsHtml;
+}
+
+// Update action history display
+export function updateActionHistory() {
+  if (!state.actionHistory || state.actionHistory.length === 0) {
+    elements.actionHistoryContent.innerHTML = '<div class="text-center text-gray-500 py-4">No actions executed yet</div>';
+    return;
+  }
+
+  let historyHtml = '<div class="space-y-2 max-h-96 overflow-y-auto">';
+
+  state.actionHistory.forEach(action => {
+    const typeColor = action.type === 'open' ? 'green' : 'red';
+    const statusIcon = action.status === 'success' ? '✅' : '❌';
+    const margin = action.margin || ((action.size * action.entryPrice) / (action.leverage || 10));
+    const time = new Date(action.timestamp).toLocaleTimeString();
+
+    historyHtml += `
+      <div class="bg-dark-800 border border-dark-600 rounded p-3">
+        <div class="flex justify-between items-start mb-1">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-${typeColor}-400">
+              ${statusIcon} ${action.type.toUpperCase()} ${action.symbol}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">
+              ${action.side.toUpperCase()} ${action.size.toFixed(4)} @ $${action.entryPrice.toLocaleString()} · Margin: $${margin.toFixed(2)}
+            </div>
+            ${action.reason ? `<div class="text-xs text-gray-500 mt-1">💡 ${action.reason}</div>` : ''}
+          </div>
+          <div class="text-xs text-gray-500 ml-2 whitespace-nowrap">
+            ${time}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  historyHtml += '</div>';
+  elements.actionHistoryContent.innerHTML = historyHtml;
 }
 
 // Update balance info display

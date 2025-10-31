@@ -31,7 +31,10 @@ export const state = {
     },
 
     // Activity log
-    activityLog: []
+    activityLog: [],
+
+    // Action history
+    actionHistory: []
 };
 
 // Load persisted state on initialization

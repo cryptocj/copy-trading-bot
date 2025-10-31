@@ -11,7 +11,7 @@ import {
 } from './config.js';
 import { state, updateStats, saveTraderPositions } from './state.js';
 import { SymbolUtils, log } from './utils.js';
-import { elements, updatePositions, updateActions, updateBalanceInfo } from './ui.js';
+import { elements, updatePositions, updateBalanceInfo, updateActionHistory } from './ui.js';
 import { fetchLastTradeTimestamp, fetchTraderPositions } from './hyperliquid-service.js';
 import {
   getMoonlanderWallet,
@@ -141,9 +141,12 @@ export function calculateTargetPositions(
 }
 
 // Calculate position diff (what to add/remove)
-export function calculatePositionDiff(userPositions, targetPositions) {
+export function calculatePositionDiff(userPositions, targetPositions, currentTraderPositions) {
   const targetMap = new Map(targetPositions.map((p) => [SymbolUtils.normalize(p.symbol), p]));
   const userMap = new Map(userPositions.map((p) => [SymbolUtils.normalize(p.symbol), p]));
+  const currentTraderMap = new Map(
+    currentTraderPositions.map((p) => [SymbolUtils.normalize(p.symbol), p])
+  );
 
   console.log('🔍 Position Diff Calculation:');
   console.log(
@@ -168,26 +171,28 @@ export function calculatePositionDiff(userPositions, targetPositions) {
   for (const target of targetPositions) {
     const normalizedSymbol = SymbolUtils.normalize(target.symbol);
     const user = userMap.get(normalizedSymbol);
+    const currentTrader = currentTraderMap.get(normalizedSymbol);
     const lastTrader = lastTraderMap.get(normalizedSymbol);
 
     if (!user) {
       // Position doesn't exist - add it
-      toAdd.push(target);
-    } else if (lastTrader) {
+      toAdd.push({ ...target, reason: 'Trader opened new position' });
+    } else if (lastTrader && currentTrader) {
       // Position exists AND we have trader history - check if trader actually changed position
-      const traderSizeChange = Math.abs(target.size - lastTrader.size);
+      const traderSizeChange = Math.abs(currentTrader.size - lastTrader.size);
       const traderChangePercent =
         lastTrader.size > 0 ? (traderSizeChange / lastTrader.size) * 100 : 0;
 
       // If trader significantly changed their position size, adjust user position
       if (traderChangePercent > TRADER_POSITION_CHANGE_THRESHOLD) {
-        const direction = target.size > lastTrader.size ? 'increased' : 'decreased';
+        const direction = currentTrader.size > lastTrader.size ? 'increased' : 'decreased';
+        const reason = `Trader ${direction} position by ${traderChangePercent.toFixed(1)}%`;
         console.log(
-          `📈 Trader ${direction} ${target.symbol} by ${traderChangePercent.toFixed(2)}% (${lastTrader.size.toFixed(4)} → ${target.size.toFixed(4)})`
+          `📈 Trader ${direction} ${target.symbol} by ${traderChangePercent.toFixed(2)}% (${lastTrader.size.toFixed(4)} → ${currentTrader.size.toFixed(4)})`
         );
         console.log(`   Adjusting user position: close and reopen with new size`);
-        toRemove.push(user);
-        toAdd.push(target);
+        toRemove.push({ ...user, reason });
+        toAdd.push({ ...target, reason });
       }
     }
   }
@@ -200,7 +205,7 @@ export function calculatePositionDiff(userPositions, targetPositions) {
       // Position should not exist - remove it
       if (!toRemove.find((p) => SymbolUtils.normalize(p.symbol) === normalizedSymbol)) {
         console.log(`  ❌ User position ${user.symbol} should be closed (no matching target)`);
-        toRemove.push(user);
+        toRemove.push({ ...user, reason: 'Trader closed position' });
       }
     }
   }
@@ -359,7 +364,7 @@ export async function performSync() {
     );
 
     // Calculate required actions
-    const actions = calculatePositionDiff(state.userPositions, targetPositions);
+    const actions = calculatePositionDiff(state.userPositions, targetPositions, traderPositions);
 
     // Execute actions if Moonlander key provided
     if (
@@ -372,10 +377,24 @@ export async function performSync() {
       );
       const moonlanderKey = elements.moonlanderPrivateKey.value;
 
+      // Record actions being executed
+      const timestamp = Date.now();
+      const executedActions = [];
+
       for (const pos of actions.toRemove) {
         state.stats.removed++;
         log('warning', `🔄 Closing: ${pos.symbol}`);
-        await executeCopyTrade(pos, 'close', moonlanderKey);
+        const result = await executeCopyTrade(pos, 'close', moonlanderKey);
+        executedActions.push({
+          type: 'close',
+          symbol: pos.symbol,
+          side: pos.side,
+          size: pos.size,
+          entryPrice: pos.entryPrice,
+          reason: pos.reason || 'Position closed',
+          timestamp,
+          status: result ? 'success' : 'failed'
+        });
       }
 
       for (const pos of actions.toAdd) {
@@ -385,10 +404,30 @@ export async function performSync() {
           'success',
           `🔄 Opening: ${pos.symbol} ${pos.side.toUpperCase()} ${pos.size.toFixed(4)} @ market - Margin: $${margin.toFixed(2)}`
         );
-        await executeCopyTrade(pos, 'open', moonlanderKey);
+        const result = await executeCopyTrade(pos, 'open', moonlanderKey);
+        executedActions.push({
+          type: 'open',
+          symbol: pos.symbol,
+          side: pos.side,
+          size: pos.size,
+          entryPrice: pos.entryPrice,
+          leverage: pos.leverage,
+          margin,
+          reason: pos.reason || 'Position opened',
+          timestamp,
+          status: result ? 'success' : 'failed'
+        });
+      }
+
+      // Add to action history
+      state.actionHistory.unshift(...executedActions);
+      // Keep only last 50 actions
+      if (state.actionHistory.length > 50) {
+        state.actionHistory = state.actionHistory.slice(0, 50);
       }
 
       log('success', '✅ All actions completed');
+      updateActionHistory();
     } else if (!elements.moonlanderPrivateKey.value) {
       log('warning', '⚠️  Wallet private key not provided - skipping execution');
       if (actions.toAdd.length > 0 || actions.toRemove.length > 0) {
@@ -401,8 +440,8 @@ export async function performSync() {
       log('info', '✅ No actions needed - positions in sync');
     }
 
-    // Save target positions (scaled versions) for comparison on next sync
-    saveTraderPositions(targetPositions);
+    // Save ORIGINAL trader positions (not scaled) for detecting real trader changes next sync
+    saveTraderPositions(traderPositions);
     state.stats.syncs++;
 
     // Set timestamp on first sync
@@ -418,7 +457,6 @@ export async function performSync() {
     }
 
     updatePositions(traderPositions, state.userPositions, traderAccountData, userAccountData);
-    updateActions(targetPositions);
     updateStats();
   } catch (error) {
     log('error', `❌ Sync failed: ${error.message}`);
