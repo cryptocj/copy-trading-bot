@@ -5,8 +5,8 @@
 // ============================================
 // VERSION
 // ============================================
-export const VERSION = '0.2.6';
-export const BUILD_DATE = '2025-10-30';
+export const VERSION = '0.3.0';
+export const BUILD_DATE = '2025-10-31';
 
 // ============================================
 // CONFIGURATION CONSTANTS
