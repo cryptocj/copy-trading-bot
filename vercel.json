@@ -1,3 +1,6 @@
 {
-  "outputDirectory": "apps/copy-trader"
+  "buildCommand": null,
+  "outputDirectory": "apps/copy-trader",
+  "installCommand": "echo 'No install needed for static site'",
+  "framework": null
 }
