@@ -200,12 +200,19 @@ export function calculatePositionDiff(userPositions, targetPositions, currentTra
   for (const user of userPositions) {
     const normalizedSymbol = SymbolUtils.normalize(user.symbol);
     const target = targetMap.get(normalizedSymbol);
+    const currentTrader = currentTraderMap.get(normalizedSymbol);
 
     if (!target) {
-      // Position should not exist - remove it
-      if (!toRemove.find((p) => SymbolUtils.normalize(p.symbol) === normalizedSymbol)) {
-        console.log(`  ❌ User position ${user.symbol} should be closed (no matching target)`);
-        toRemove.push({ ...user, reason: 'Trader closed position' });
+      // Position not in targets - check if trader actually closed it or if it was just filtered out
+      if (!currentTrader) {
+        // Trader doesn't have this position anymore - close it
+        if (!toRemove.find((p) => SymbolUtils.normalize(p.symbol) === normalizedSymbol)) {
+          console.log(`  ❌ User position ${user.symbol} should be closed (trader closed position)`);
+          toRemove.push({ ...user, reason: 'Trader closed position' });
+        }
+      } else {
+        // Trader still has the position but it was filtered out (too small) - keep user's position
+        console.log(`  ℹ️  Keeping ${user.symbol} (trader still has it, filtered due to size constraints)`);
       }
     }
   }
