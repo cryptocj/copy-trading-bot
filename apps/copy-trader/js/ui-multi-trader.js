@@ -7,7 +7,6 @@ import {
   multiState,
   addTrader,
   removeTrader,
-  toggleTraderActive,
   calculateAllocations,
   addActivityLog,
   updateTraderPositions,
@@ -239,8 +238,15 @@ export function renderTraderGrid() {
     <div class="trader-card ${trader.isActive ? '' : 'paused'}" data-address="${trader.address}">
       <!-- Card Header -->
       <div class="card-header">
-        <span class="trader-name" title="${trader.name}">${trader.name}</span>
-        <span class="trader-address" title="${trader.address}">
+        <div class="card-header-left">
+          <div class="trader-name-row">
+            <span class="trader-name" title="${trader.name}">${trader.name}</span>
+            <span class="badge badge-${trader.platform}">${trader.platform}</span>
+            <span class="badge badge-${trader.isActive ? 'active' : 'paused'}">
+              ${trader.isActive ? 'Active' : 'Paused'}
+            </span>
+          </div>
+          <div class="trader-address" title="${trader.address}">
             ${shortenAddress(trader.address)}
             <button
               class="btn-icon-small"
@@ -249,60 +255,29 @@ export function renderTraderGrid() {
             >
               📋
             </button>
-        </span>
-        <span class="allocation-value">${(trader.allocation || 0).toFixed(1)}%</span>
-        <span class="badge badge-${trader.platform}">${trader.platform}</span>
-        <div class="card-row">
-          <span class="badge badge-${trader.isActive ? 'active' : 'paused'}">
-            ${trader.isActive ? 'Active' : 'Paused'}
-          </span>
+          </div>
+        </div>
+        <div class="card-header-actions">
+          <button
+            class="btn-header-action btn-edit"
+            onclick="window.handleEditTrader('${trader.address}')"
+            title="Edit trader"
+          >
+            ✏️
+          </button>
+          <button
+            class="btn-header-action btn-remove"
+            onclick="window.handleRemoveTrader('${trader.address}')"
+            title="Remove trader"
+          >
+            🗑️
+          </button>
         </div>
       </div>
 
       <!-- Card Body -->
       <div class="card-body">
         ${renderTraderPositions(trader.positions || [], trader.accountData || null)}
-      </div>
-
-      <!-- Card Actions -->
-      <div class="card-actions">
-        <button
-          class="btn-card btn-refresh"
-          onclick="window.handleUpdatePositions('${trader.address}', '${trader.platform}', '${trader.name}')"
-          title="Update positions"
-        >
-          🔄 Update
-        </button>
-
-        ${
-          trader.isActive
-            ? `
-          <button
-            class="btn-card btn-pause"
-            onclick="window.handlePauseTrader('${trader.address}')"
-            title="Pause trader"
-          >
-            Pause
-          </button>
-        `
-            : `
-          <button
-            class="btn-card btn-resume"
-            onclick="window.handleResumeTrader('${trader.address}')"
-            title="Resume trader"
-          >
-            Resume
-          </button>
-        `
-        }
-
-        <button
-          class="btn-card btn-remove"
-          onclick="window.handleRemoveTrader('${trader.address}')"
-          title="Remove trader"
-        >
-          Remove
-        </button>
       </div>
     </div>
   `
@@ -311,38 +286,24 @@ export function renderTraderGrid() {
 }
 
 /**
- * Handle pause trader
+ * Handle edit trader
  */
-window.handlePauseTrader = function (address) {
-  toggleTraderActive(address, false);
-
-  // Remove from monitoring if monitoring is active
-  removeTraderFromMonitoring(address);
-
-  calculateAllocations(); // Recalculate for active traders only
-  addActivityLog('info', `Trader paused: ${address}`);
-  renderTraderGrid();
-  showNotification('success', 'Trader paused');
-};
-
-/**
- * Handle resume trader
- */
-window.handleResumeTrader = function (address) {
-  toggleTraderActive(address, true);
-
-  // Add to monitoring if monitoring is active
+window.handleEditTrader = function (address) {
   const trader = multiState.watchedTraders.find(
     (t) => t.address.toLowerCase() === address.toLowerCase()
   );
-  if (trader) {
-    addTraderToMonitoring(trader);
-  }
 
-  calculateAllocations(); // Recalculate with resumed trader
-  addActivityLog('success', `Trader resumed: ${address}`);
-  renderTraderGrid();
-  showNotification('success', 'Trader resumed');
+  if (!trader) return;
+
+  // Simple edit: prompt for new name
+  const newName = prompt('Edit trader name:', trader.name);
+
+  if (newName && newName.trim() !== '') {
+    trader.name = newName.trim();
+    addActivityLog('info', `Trader renamed: ${trader.name}`);
+    renderTraderGrid();
+    showNotification('success', 'Trader updated');
+  }
 };
 
 /**
@@ -377,14 +338,6 @@ window.handleRemoveTrader = function (address) {
   addActivityLog('warning', `Trader removed: ${trader.name}`);
   renderTraderGrid();
   showNotification('success', 'Trader removed');
-};
-
-/**
- * Handle update positions
- */
-window.handleUpdatePositions = function (address, platform, name) {
-  // Call the async function to fetch positions
-  fetchTraderPositionsAsync(address, platform, name);
 };
 
 /**
