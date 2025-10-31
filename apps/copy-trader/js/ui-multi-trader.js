@@ -240,6 +240,7 @@ export function renderTraderGrid() {
       <div class="card-header">
         <div class="card-header-left">
           <div class="trader-name-row">
+            <span class="badge badge-${trader.platform}">${trader.platform}</span>
             <span class="trader-name" title="${trader.name}">${trader.name}</span>
             <span class="trader-address" title="${trader.address}">
               ${shortenAddress(trader.address)}
@@ -250,12 +251,6 @@ export function renderTraderGrid() {
               >
                 📋
               </button>
-            </span>
-          </div>
-          <div class="trader-badges">
-            <span class="badge badge-${trader.platform}">${trader.platform}</span>
-            <span class="badge badge-${trader.isActive ? 'active' : 'paused'}">
-              ${trader.isActive ? 'Active' : 'Paused'}
             </span>
           </div>
         </div>
