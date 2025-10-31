@@ -13,43 +13,201 @@ import {
   saveWatchedTraders,
 } from './multi-trader-state.js';
 import { createPositionDisplay } from './components/position-display.js';
-import {
-  addTraderToMonitoring,
-  removeTraderFromMonitoring,
-} from './multi-trader-monitor.js';
+import { addTraderToMonitoring, removeTraderFromMonitoring } from './multi-trader-monitor.js';
 import { fetchPositionsByPlatform } from './utils/position-fetcher.js';
+
+// Constants
+const PLATFORMS = {
+  MOONLANDER: 'moonlander',
+  HYPERLIQUID: 'hyperliquid',
+};
+
+const NOTIFICATION_TYPES = {
+  ERROR: 'error',
+  SUCCESS: 'success',
+  INFO: 'info',
+  WARNING: 'warning',
+};
+
+const FORM_ELEMENTS = {
+  FORM: 'add-trader-inline',
+  NAME_INPUT: 'trader-name-quick',
+  ADDRESS_INPUT: 'trader-address-quick',
+  PLATFORM_SELECT: 'trader-platform-quick',
+};
+
+const BUTTON_TEXT = {
+  ADD: 'Add Trader',
+  UPDATE: 'Update Trader',
+};
+
+const NOTIFICATION_TIMEOUT_MS = 3000;
+
+// Track edit mode
+let editingTraderAddress = null;
+
+// ============================================
+// Validation Functions
+// ============================================
+
+/**
+ * Validate trader form inputs
+ * @returns {Object} { isValid, name, address, platform, error }
+ */
+function validateTraderForm() {
+  const name = document.getElementById(FORM_ELEMENTS.NAME_INPUT)?.value.trim();
+  const address = document.getElementById(FORM_ELEMENTS.ADDRESS_INPUT)?.value.trim();
+  const platform = document.getElementById(FORM_ELEMENTS.PLATFORM_SELECT)?.value;
+
+  if (!ethers.isAddress(address)) {
+    return { isValid: false, error: 'Invalid Ethereum address format' };
+  }
+
+  if (!name) {
+    return { isValid: false, error: 'Please enter a trader name' };
+  }
+
+  if (platform !== PLATFORMS.MOONLANDER && platform !== PLATFORMS.HYPERLIQUID) {
+    return { isValid: false, error: 'Invalid platform' };
+  }
+
+  return { isValid: true, name, address: address.toLowerCase(), platform };
+}
+
+/**
+ * Check if address already exists (excluding specific trader)
+ */
+function isDuplicateAddress(address, excludeTrader = null) {
+  return multiState.watchedTraders.some(
+    (t) => t.address.toLowerCase() === address.toLowerCase() && t !== excludeTrader
+  );
+}
+
+// ============================================
+// Form Management Functions
+// ============================================
+
+/**
+ * Get form elements
+ */
+function getFormElements() {
+  const formInline = document.getElementById(FORM_ELEMENTS.FORM);
+  return {
+    formInline,
+    nameInput: document.getElementById(FORM_ELEMENTS.NAME_INPUT),
+    addressInput: document.getElementById(FORM_ELEMENTS.ADDRESS_INPUT),
+    platformSelect: document.getElementById(FORM_ELEMENTS.PLATFORM_SELECT),
+    btnSubmit: formInline?.querySelector('.btn-primary-small'),
+  };
+}
+
+/**
+ * Show form in add or edit mode
+ */
+function showForm(mode = 'add') {
+  const { formInline, addressInput, btnSubmit } = getFormElements();
+
+  if (mode === 'add') {
+    editingTraderAddress = null;
+    if (btnSubmit) btnSubmit.textContent = BUTTON_TEXT.ADD;
+  } else {
+    if (btnSubmit) btnSubmit.textContent = BUTTON_TEXT.UPDATE;
+  }
+
+  if (formInline) {
+    formInline.style.display = 'flex';
+    addressInput?.focus();
+  }
+}
+
+/**
+ * Hide form and reset state
+ */
+function hideForm() {
+  const { formInline } = getFormElements();
+  editingTraderAddress = null;
+  if (formInline) formInline.style.display = 'none';
+  clearQuickForm();
+}
+
+/**
+ * Clear form inputs
+ */
+function clearQuickForm() {
+  const { nameInput, addressInput, platformSelect } = getFormElements();
+  if (nameInput) nameInput.value = '';
+  if (addressInput) addressInput.value = '';
+  if (platformSelect) platformSelect.value = PLATFORMS.MOONLANDER;
+}
+
+/**
+ * Populate form with trader data
+ */
+function populateForm(trader) {
+  const { nameInput, addressInput, platformSelect } = getFormElements();
+  if (nameInput) nameInput.value = trader.name;
+  if (addressInput) addressInput.value = trader.address;
+  if (platformSelect) platformSelect.value = trader.platform;
+}
+
+// ============================================
+// Trader Operations
+// ============================================
+
+/**
+ * Handle monitoring updates when address changes
+ */
+function handleAddressChange(trader, oldAddress) {
+  removeTraderFromMonitoring(oldAddress);
+  trader.positions = [];
+  trader.accountData = null;
+
+  if (multiState.isMonitoring && trader.isActive) {
+    addTraderToMonitoring(trader);
+  }
+
+  fetchTraderPositionsAsync(trader.address, trader.platform, trader.name);
+}
+
+/**
+ * Finalize trader changes (save, log, render, notify)
+ */
+function finalizeTraderChanges(message, notificationType = NOTIFICATION_TYPES.SUCCESS) {
+  calculateAllocations();
+  saveWatchedTraders();
+  addActivityLog(notificationType, message);
+  hideForm();
+  renderTraderGrid();
+  showNotification(notificationType, message);
+}
+
+// ============================================
+// Form Initialization
+// ============================================
 
 /**
  * Initialize compact add trader form
  */
 export function initAddTraderCompact() {
   const btnAdd = document.getElementById('btn-add-trader');
-  const formInline = document.getElementById('add-trader-inline');
-  const btnCancel = formInline?.querySelector('.btn-cancel-small');
-  const btnSubmit = formInline?.querySelector('.btn-primary-small');
+  const { formInline, btnCancel, btnSubmit, addressInput } = getFormElements();
 
   // Show form on "+ Add" click
-  btnAdd?.addEventListener('click', () => {
-    formInline.style.display = 'flex';
-    document.getElementById('trader-address-quick')?.focus();
-  });
+  btnAdd?.addEventListener('click', () => showForm('add'));
 
   // Hide form on Cancel
-  btnCancel?.addEventListener('click', () => {
-    formInline.style.display = 'none';
-    clearQuickForm();
-  });
+  btnCancel?.addEventListener('click', hideForm);
 
-  // Submit form on Add Trader click
+  // Submit form on Add/Update Trader click
   btnSubmit?.addEventListener('click', () => {
-    handleQuickAddTrader();
+    editingTraderAddress ? handleQuickUpdateTrader() : handleQuickAddTrader();
   });
 
   // Submit on Enter key
-  document.getElementById('trader-address-quick')?.addEventListener('keypress', (e) => {
+  addressInput?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleQuickAddTrader();
+      editingTraderAddress ? handleQuickUpdateTrader() : handleQuickAddTrader();
     }
   });
 }
@@ -58,50 +216,40 @@ export function initAddTraderCompact() {
  * Handle quick add trader
  */
 async function handleQuickAddTrader() {
-  const name = document.getElementById('trader-name-quick')?.value.trim();
-  const address = document.getElementById('trader-address-quick')?.value.trim();
-  const platform = document.getElementById('trader-platform-quick')?.value;
-
-  // Validate address format using ethers.js
-  if (!ethers.isAddress(address)) {
-    showNotification('error', 'Invalid Ethereum address format');
+  // Validate form inputs
+  const validation = validateTraderForm();
+  if (!validation.isValid) {
+    showNotification(NOTIFICATION_TYPES.ERROR, validation.error);
     return;
   }
 
-  // Validate name
-  if (!name || name.length === 0) {
-    showNotification('error', 'Please enter a trader name');
+  const { name, address, platform } = validation;
+
+  // Check for duplicate
+  if (isDuplicateAddress(address)) {
+    showNotification(NOTIFICATION_TYPES.ERROR, 'Trader already added');
     return;
   }
 
-  // Add trader with user-provided name
+  // Add trader
   const success = addTrader(address, platform, name);
-
   if (!success) {
-    // Error handling (duplicate, max limit)
-    if (multiState.watchedTraders.some((t) => t.address.toLowerCase() === address.toLowerCase())) {
-      showNotification('error', 'Trader already added');
-    } else if (multiState.watchedTraders.length >= multiState.config.maxTraders) {
-      showNotification('error', `Maximum ${multiState.config.maxTraders} traders allowed`);
-    } else {
-      showNotification('error', 'Failed to add trader');
-    }
+    const error = multiState.watchedTraders.length >= multiState.config.maxTraders
+      ? `Maximum ${multiState.config.maxTraders} traders allowed`
+      : 'Failed to add trader';
+    showNotification(NOTIFICATION_TYPES.ERROR, error);
     return;
   }
 
-  // Success - show notification
-  showNotification('success', `Trader "${name}" added`);
-  addActivityLog('success', `Trader added: ${name} (${address})`);
-
-  // Hide form and refresh
-  document.getElementById('add-trader-inline').style.display = 'none';
-  clearQuickForm();
+  // Success - finalize
+  const message = `Trader "${name}" added`;
+  addActivityLog(NOTIFICATION_TYPES.SUCCESS, `Trader added: ${name} (${address})`);
+  hideForm();
   renderTraderGrid();
+  showNotification(NOTIFICATION_TYPES.SUCCESS, message);
 
-  // Fetch positions for the newly added trader
+  // Fetch positions and add to monitoring
   fetchTraderPositionsAsync(address, platform, name);
-
-  // Add to monitoring if monitoring is active
   const trader = multiState.watchedTraders.find(
     (t) => t.address.toLowerCase() === address.toLowerCase()
   );
@@ -111,20 +259,63 @@ async function handleQuickAddTrader() {
 }
 
 /**
+ * Handle quick update trader
+ */
+async function handleQuickUpdateTrader() {
+  // Validate form inputs
+  const validation = validateTraderForm();
+  if (!validation.isValid) {
+    showNotification(NOTIFICATION_TYPES.ERROR, validation.error);
+    return;
+  }
+
+  const { name, address, platform } = validation;
+
+  // Find trader being edited
+  const trader = multiState.watchedTraders.find(
+    (t) => t.address.toLowerCase() === editingTraderAddress.toLowerCase()
+  );
+
+  if (!trader) {
+    showNotification(NOTIFICATION_TYPES.ERROR, 'Trader not found');
+    return;
+  }
+
+  // Check for duplicate address (if changed)
+  if (address !== editingTraderAddress.toLowerCase() && isDuplicateAddress(address, trader)) {
+    showNotification(NOTIFICATION_TYPES.ERROR, 'Address already exists');
+    return;
+  }
+
+  // Apply updates
+  const addressChanged = address !== trader.address;
+  const oldAddress = trader.address;
+
+  trader.name = name;
+  trader.address = address;
+  trader.platform = platform;
+
+  // Handle address change
+  if (addressChanged) {
+    handleAddressChange(trader, oldAddress);
+  }
+
+  // Finalize changes
+  finalizeTraderChanges(`Trader updated: ${trader.name}`, NOTIFICATION_TYPES.INFO);
+}
+
+/**
  * Fetch positions for newly added trader
  */
 async function fetchTraderPositionsAsync(address, platform, name) {
   try {
-    showNotification('info', `Fetching positions for ${name}...`);
-    addActivityLog('info', `Fetching positions for ${name}...`);
+    showNotification(NOTIFICATION_TYPES.INFO, `Fetching positions for ${name}...`);
+    addActivityLog(NOTIFICATION_TYPES.INFO, `Fetching positions for ${name}...`);
 
-    // Fetch using shared utility (DRY principle)
     const { positions, accountData } = await fetchPositionsByPlatform(address, platform);
 
-    // Update trader positions in state
     updateTraderPositions(address, positions);
 
-    // Store account data for balance calculations
     const trader = multiState.watchedTraders.find(
       (t) => t.address.toLowerCase() === address.toLowerCase()
     );
@@ -132,28 +323,17 @@ async function fetchTraderPositionsAsync(address, platform, name) {
       trader.accountData = accountData;
     }
 
-    // Re-render grid to show positions
     renderTraderGrid();
 
-    showNotification('success', `Loaded ${positions.length} position(s) for ${name}`);
-    addActivityLog('success', `Loaded ${positions.length} position(s) for ${name}`);
+    const message = `Loaded ${positions.length} position(s) for ${name}`;
+    showNotification(NOTIFICATION_TYPES.SUCCESS, message);
+    addActivityLog(NOTIFICATION_TYPES.SUCCESS, message);
   } catch (error) {
     console.error('Failed to fetch positions:', error);
-    showNotification('error', `Failed to fetch positions: ${error.message}`);
-    addActivityLog('error', `Failed to fetch positions for ${name}: ${error.message}`);
+    const errorMsg = `Failed to fetch positions: ${error.message}`;
+    showNotification(NOTIFICATION_TYPES.ERROR, errorMsg);
+    addActivityLog(NOTIFICATION_TYPES.ERROR, `Failed to fetch positions for ${name}: ${error.message}`);
   }
-}
-
-/**
- * Clear quick form inputs
- */
-function clearQuickForm() {
-  const nameInput = document.getElementById('trader-name-quick');
-  const addressInput = document.getElementById('trader-address-quick');
-  const platformSelect = document.getElementById('trader-platform-quick');
-  if (nameInput) nameInput.value = '';
-  if (addressInput) addressInput.value = '';
-  if (platformSelect) platformSelect.value = 'moonlander';
 }
 
 /**
@@ -284,7 +464,7 @@ export function renderTraderGrid() {
 }
 
 /**
- * Handle edit trader
+ * Handle edit trader - populate form for editing
  */
 window.handleEditTrader = function (address) {
   const trader = multiState.watchedTraders.find(
@@ -293,82 +473,15 @@ window.handleEditTrader = function (address) {
 
   if (!trader) return;
 
-  // Edit name
-  const newName = prompt('Trader name:', trader.name);
-  if (newName === null) return; // User cancelled
-
-  // Edit address
-  const newAddress = prompt('Trader address (0x...):', trader.address);
-  if (newAddress === null) return; // User cancelled
-
-  // Validate address if changed
-  if (newAddress.toLowerCase() !== trader.address.toLowerCase()) {
-    if (!ethers.isAddress(newAddress)) {
-      showNotification('error', 'Invalid address format');
-      return;
-    }
-
-    // Check for duplicate address
-    const isDuplicate = multiState.watchedTraders.some(
-      (t) => t.address.toLowerCase() === newAddress.toLowerCase() && t !== trader
-    );
-    if (isDuplicate) {
-      showNotification('error', 'Address already exists');
-      return;
-    }
-  }
-
-  // Edit platform
-  const newPlatform = prompt(
-    'Platform (moonlander or hyperliquid):',
-    trader.platform
-  )?.toLowerCase();
-  if (newPlatform === null) return; // User cancelled
-
-  // Validate platform
-  if (newPlatform !== 'moonlander' && newPlatform !== 'hyperliquid') {
-    showNotification('error', 'Invalid platform. Use "moonlander" or "hyperliquid"');
-    return;
-  }
-
-  // Apply updates
-  const addressChanged = newAddress.toLowerCase() !== trader.address.toLowerCase();
-  const oldAddress = trader.address;
-
-  trader.name = newName.trim() || trader.name;
-  trader.address = newAddress.toLowerCase();
-  trader.platform = newPlatform;
-
-  // If address changed, need to update monitoring
-  if (addressChanged) {
-    // Remove old monitoring
-    removeTraderFromMonitoring(oldAddress);
-
-    // Clear old positions
-    trader.positions = [];
-    trader.accountData = null;
-
-    // Add new monitoring if monitoring is active
-    if (multiState.isMonitoring && trader.isActive) {
-      addTraderToMonitoring(trader);
-    }
-
-    // Fetch new positions
-    fetchTraderPositionsAsync(trader.address, trader.platform, trader.name);
-  }
-
-  calculateAllocations();
-  saveWatchedTraders();
-  addActivityLog('info', `Trader updated: ${trader.name}`);
-  renderTraderGrid();
-  showNotification('success', 'Trader updated successfully');
+  editingTraderAddress = trader.address;
+  populateForm(trader);
+  showForm('edit');
 };
 
 /**
  * Handle remove trader
  */
 window.handleRemoveTrader = function (address) {
-  // Confirmation dialog
   const trader = multiState.watchedTraders.find(
     (t) => t.address.toLowerCase() === address.toLowerCase()
   );
@@ -376,26 +489,19 @@ window.handleRemoveTrader = function (address) {
   if (!trader) return;
 
   const confirmMessage = `Remove trader "${trader.name}"? This will close all their positions.`;
+  if (!confirm(confirmMessage)) return;
 
-  if (!confirm(confirmMessage)) {
-    return;
-  }
-
-  // Remove trader using existing function
   const success = removeTrader(address);
-
   if (!success) {
-    showNotification('error', 'Failed to remove trader');
+    showNotification(NOTIFICATION_TYPES.ERROR, 'Failed to remove trader');
     return;
   }
 
-  // Remove from monitoring if monitoring is active
   removeTraderFromMonitoring(address);
-
-  calculateAllocations(); // Recalculate without removed trader
-  addActivityLog('warning', `Trader removed: ${trader.name}`);
+  calculateAllocations();
+  addActivityLog(NOTIFICATION_TYPES.WARNING, `Trader removed: ${trader.name}`);
   renderTraderGrid();
-  showNotification('success', 'Trader removed');
+  showNotification(NOTIFICATION_TYPES.SUCCESS, 'Trader removed');
 };
 
 /**
@@ -405,11 +511,11 @@ window.copyToClipboard = function (text) {
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      showNotification('success', 'Address copied to clipboard');
+      showNotification(NOTIFICATION_TYPES.SUCCESS, 'Address copied to clipboard');
     })
     .catch((err) => {
       console.error('Failed to copy:', err);
-      showNotification('error', 'Failed to copy address');
+      showNotification(NOTIFICATION_TYPES.ERROR, 'Failed to copy address');
     });
 };
 
@@ -432,5 +538,5 @@ function showNotification(type, message) {
 
   setTimeout(() => {
     notification.remove();
-  }, 3000);
+  }, NOTIFICATION_TIMEOUT_MS);
 }
